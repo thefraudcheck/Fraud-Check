@@ -1,0 +1,232 @@
+{
+  "hero": {
+    "title": "Scam Trends",
+    "subtitle": "Stay informed about the latest scams."
+  },
+  "scamOfTheWeek": {
+    "name": "HMRC Phishing Email Scam",
+    "description": "Fake emails claiming to be from HMRC offer tax refunds, directing users to phishing sites to steal personal information.",
+    "redFlags": ["Unsolicited emails about tax refunds", "Links to suspicious websites", "Requests for personal details"],
+    "action": "Do not click links; verify with HMRC at www.gov.uk.",
+    "source": "Action Fraud",
+    "reportDate": "2025-03-28"
+  },
+  "scamCategories": [
+    {
+      "name": "Imposter Scams",
+      "description": "Fraudsters pose as HMRC, banks, or delivery services to trick victims into sharing information or making payments.",
+      "redFlags": ["Unsolicited calls or emails", "Urgent demands for action", "Impersonation of trusted entities"],
+      "action": "Hang up or delete; contact the entity directly using official details.",
+      "source": "Ofcom 2023 Research, Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Crypto Scams",
+      "description": "Fake crypto platforms promise high returns, using AI-generated testimonials to lure victims into investing.",
+      "redFlags": ["Promises of guaranteed returns", "AI-generated endorsements", "Requests for upfront payments"],
+      "action": "Avoid unsolicited investment offers; research platforms thoroughly.",
+      "source": "GetFocal.ai 2025 Fraud Trends, User-Reported Trend (Verified by Scam Checker Team)",
+      "reportDate": "2025-03-31"
+    },
+    {
+      "name": "Phishing Scams",
+      "description": "Fake emails or texts posing as PayPal or Royal Mail steal login credentials or financial information.",
+      "redFlags": ["Unsolicited messages with links", "Urgent language", "Suspicious URLs"],
+      "action": "Do not click links; verify with the company using official channels.",
+      "source": "ONS 2022 Data, User-Reported Trend (Verified by Scam Checker Team)",
+      "reportDate": "2025-03-30"
+    },
+    {
+      "name": "Investment Scams",
+      "description": "Fake trading platforms or Ponzi schemes on social media promise guaranteed returns, often using deepfake ads.",
+      "redFlags": ["Celebrity endorsements in ads", "Guaranteed high returns", "Pressure to invest quickly"],
+      "action": "Be cautious of social media ads; verify investments with a financial advisor.",
+      "source": "ASA 2024 Scam Ad Trends, Which? 2025 Scam Predictions",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Romance Scams",
+      "description": "Scammers on dating platforms build trust, then request money for emergencies or travel expenses.",
+      "redFlags": ["Quick emotional bonding online", "Requests for money", "Avoidance of in-person meetings"],
+      "action": "Never send money to someone you haven’t met; report to the platform.",
+      "source": "UK Finance 2023 Annual Fraud Report",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Social Media Scams",
+      "description": "Fraudsters use fake profiles or ads on social media platforms like Instagram or TikTok to trick users into sharing personal information or making payments.",
+      "redFlags": ["Unsolicited messages from unknown profiles", "Too-good-to-be-true offers", "Links to suspicious websites"],
+      "action": "Verify profiles and offers; report suspicious activity to the platform.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Tech Support Scams",
+      "description": "Fake tech support calls or pop-ups claim your device is infected and request payment for fixes.",
+      "redFlags": ["Unexpected calls or pop-ups", "Claims of urgent device issues", "Requests for remote access or payment"],
+      "action": "Hang up or close pop-ups; contact official tech support directly.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Purchase Scams",
+      "description": "Online sellers offer fake or non-existent products, taking payment without delivering.",
+      "redFlags": ["Prices too good to be true", "Sellers avoiding secure payment methods", "No verifiable seller details"],
+      "action": "Use secure payment platforms; report to the marketplace.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Family Emergency Scams",
+      "description": "Scammers pose as family members in distress, requesting urgent money transfers.",
+      "redFlags": ["Unexpected calls claiming emergencies", "Requests for immediate payment", "Unverifiable contact details"],
+      "action": "Verify directly with family members; report to authorities.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Advance Fee Scams",
+      "description": "Scammers promise large rewards (e.g., loans or lottery winnings) in exchange for upfront fees.",
+      "redFlags": ["Promises of large rewards", "Requests for upfront payments", "Unverifiable claims"],
+      "action": "Avoid paying upfront fees; report to Action Fraud.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Fake Charity Scams",
+      "description": "Fraudsters solicit donations for fake charities, often after disasters.",
+      "redFlags": ["High-pressure donation requests", "Unverifiable charity details", "Suspicious payment methods"],
+      "action": "Verify charities via official websites; report suspicious requests.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Job Scams",
+      "description": "Fake job offers request payment for training or equipment before employment.",
+      "redFlags": ["Upfront payment requests", "Vague job details", "Unverifiable employers"],
+      "action": "Verify job offers directly with the company; avoid paying upfront.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Delivery Scams",
+      "description": "Fake delivery notifications request payment or personal details to release packages.",
+      "redFlags": ["Unsolicited delivery texts", "Requests for payment via links", "Suspicious URLs"],
+      "action": "Verify with the delivery service; report suspicious messages.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Rental Scams",
+      "description": "Fake rental listings trick tenants into paying deposits for non-existent properties.",
+      "redFlags": ["Deals too good to be true", "Pressure to pay without viewing", "Unverifiable landlords"],
+      "action": "View properties in person; use secure payment methods.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Subscription Scams",
+      "description": "Fake subscriptions trick users into recurring payments for unwanted services.",
+      "redFlags": ["Unclear subscription terms", "Difficulty canceling", "Unexpected charges"],
+      "action": "Review terms before subscribing; contact your bank to cancel payments.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "QR Code Scams",
+      "description": "Fake QR codes in public places lead to phishing sites or fraudulent payments.",
+      "redFlags": ["Unexpected QR codes", "Links to suspicious websites", "Requests for personal details"],
+      "action": "Avoid scanning unknown QR codes; verify URLs before proceeding.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    }
+  ],
+  "weeklyStats": {
+    "mostReported": "Phishing Scams",
+    "topDeliveryChannel": "Email and SMS",
+    "highRiskScamsDetected": "15% increase in fraud cases in 2024",
+    "redFlags": ["Unsolicited contact", "Urgency to act", "Requests for personal information"],
+    "source": "UK Finance 2023 Annual Fraud Report, Cifas Fraudscape 2024 Report, ONS 2022 Data",
+    "reportDate": "2025-04-01"
+  },
+  "quickAlerts": [
+    {
+      "name": "Fake HMRC Tax Refund Emails",
+      "description": "Emails claiming tax refunds lead to phishing sites stealing personal information.",
+      "redFlags": ["Unsolicited refund offers", "Suspicious links", "Requests for personal details"],
+      "action": "Verify with HMRC at www.gov.uk.",
+      "source": "Action Fraud",
+      "reportDate": "2025-03-28"
+    },
+    {
+      "name": "Royal Mail Delivery Fee Scam",
+      "description": "Texts claiming a delivery fee is needed to reschedule a missed delivery lead to phishing sites.",
+      "redFlags": ["Unsolicited texts", "Payment requests via links", "Suspicious URLs"],
+      "action": "Verify with Royal Mail at www.royalmail.com.",
+      "source": "Action Fraud",
+      "reportDate": "2025-03-29"
+    },
+    {
+      "name": "AI Celebrity Endorsement Scam",
+      "description": "AI-generated ads on Instagram featuring celebrities promote fake investment schemes.",
+      "redFlags": ["Celebrity endorsements in ads", "High-return promises", "Pressure to invest"],
+      "action": "Be cautious of social media ads; verify investments with a financial advisor.",
+      "source": "ASA 2024 Scam Ad Trends",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Crypto Recovery Scam",
+      "description": "Scammers target previous crypto scam victims, demanding upfront fees to recover losses.",
+      "redFlags": ["Unsolicited recovery offers", "Upfront fee requests", "Lack of verifiable details"],
+      "action": "Avoid unsolicited offers; report to Action Fraud.",
+      "source": "Action Fraud",
+      "reportDate": "2025-04-01"
+    },
+    {
+      "name": "Deepfake Video Call Scam",
+      "description": "Deepfake video calls pretending to be bank officials trick victims into sharing information.",
+      "redFlags": ["Unusual video call requests", "Pressure to share details", "Suspicious behavior"],
+      "action": "Verify identities directly with your bank using official channels.",
+      "source": "Which? 2025 Scam Predictions",
+      "reportDate": "2025-04-01"
+    }
+  ],
+  "userReportedScams": [
+    {
+      "name": "Fake PayPal Invoice Scam",
+      "description": "Email claiming I owed money for a purchase I never made, linking to a fake PayPal site.",
+      "redFlags": ["Unsolicited invoice email", "Link to a fake site", "Request for login details"],
+      "action": "Do not click links; verify with PayPal at www.paypal.com.",
+      "source": "User-Reported Trend (Verified by Scam Checker Team)",
+      "reportDate": "2025-04-18",
+      "status": "Pending Review"
+    },
+    {
+      "name": "Royal Mail Text Scam",
+      "description": "Text claiming I missed a delivery and needed to pay a fee to reschedule, linking to a phishing site.",
+      "redFlags": ["Unsolicited text message", "Payment request via link", "Suspicious URL"],
+      "action": "Verify with Royal Mail at www.royalmail.com.",
+      "source": "User-Reported Trend (Verified by Scam Checker Team)",
+      "reportDate": "2025-04-17",
+      "status": "Verified"
+    },
+    {
+      "name": "Crypto Investment Scam",
+      "description": "Instagram ad promised high returns on a crypto platform; after investing, the platform disappeared.",
+      "redFlags": ["High-return promises", "Social media ad", "Platform disappeared"],
+      "action": "Avoid unsolicited investment offers; report to the platform.",
+      "source": "User-Reported Trend (Verified by Scam Checker Team)",
+      "reportDate": "2025-04-16",
+      "status": "Verified"
+    },
+    {
+      "name": "Phishing Email Scam",
+      "description": "Received an email pretending to be from my bank asking for login details.",
+      "redFlags": ["Unsolicited email", "Request for sensitive information", "Suspicious sender address"],
+      "action": "Do not respond; verify with your bank directly.",
+      "source": "User-Reported Trend (Verified by Scam Checker Team)",
+      "reportDate": "2025-04-15",
+      "status": "Verified"
+    }
+  ]
+}

@@ -1,0 +1,686 @@
+import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
+import { getHomeArticlesData, setHomeArticlesData, getArticleSettings, setArticleSettings } from '../../utils/storage';
+import fraudCheckLogo from '../../assets/fraud-check-logo.png';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
+
+class ErrorBoundary extends React.Component {
+  state = { hasError: false, error: null };
+
+  static getDerivedStateFromError(error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error, errorInfo) {
+    console.error('ArticleEditor ErrorBoundary caught:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="p-5 text-center text-red-600">
+          <h1 className="text-3xl font-bold">Error in Editor</h1>
+          <p>{this.state.error?.message || 'Something went wrong.'}</p>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+const ArticleEditor = () => {
+  const [backgroundImage, setBackgroundImage] = useState(null);
+  const [defaultHeroImage, setDefaultHeroImage] = useState(null);
+  const [articles, setArticles] = useState([]);
+  const [newArticle, setNewArticle] = useState({
+    slug: '',
+    title: '',
+    summary: '',
+    content: '',
+    author: 'Fraud Check Team',
+    date: new Date().toISOString().split('T')[0],
+    category: '',
+    tags: [],
+    image: '',
+  });
+  const [editingArticle, setEditingArticle] = useState(null);
+  const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    try {
+      setLoading(true);
+      const settings = getArticleSettings() || {};
+      setBackgroundImage(settings.backgroundImage || null);
+      setDefaultHeroImage(settings.defaultHeroImage || null);
+
+      const articlesData = getHomeArticlesData() || { articles: [] };
+      setArticles(articlesData.articles || []);
+    } catch (err) {
+      setError('Error loading editor: ' + err.message);
+      setBackgroundImage(null);
+      setDefaultHeroImage(null);
+      setArticles([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const handleFileUpload = (e, setter) => {
+    const file = e.target.files[0];
+    if (!file) {
+      setError('No file selected.');
+      return;
+    }
+    if (!file.type.startsWith('image/')) {
+      setError('Please upload a valid image file (PNG or JPG).');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      setError('Image must be under 2MB.');
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      setter(reader.result);
+    };
+    reader.onerror = () => setError('Failed to read image file.');
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveSettings = () => {
+    try {
+      const settings = { backgroundImage, defaultHeroImage };
+      setArticleSettings(settings);
+      setError('');
+      alert('Images saved successfully.');
+    } catch (err) {
+      setError('Failed to save images: ' + err.message);
+    }
+  };
+
+  const handleResetStorage = () => {
+    try {
+      localStorage.removeItem('articleSettings');
+      localStorage.removeItem('homeArticlesData');
+      setBackgroundImage(null);
+      setDefaultHeroImage(null);
+      const articlesData = getHomeArticlesData();
+      setArticles(articlesData.articles || []);
+      setError('');
+      alert('Settings and articles reset to defaults.');
+    } catch (err) {
+      setError('Failed to reset settings: ' + err.message);
+    }
+  };
+
+  const handleAddOrUpdateArticle = () => {
+    try {
+      if (!newArticle.slug || !newArticle.title || !newArticle.content) {
+        throw new Error('Slug, title, and content are required.');
+      }
+      if (
+        articles.some(
+          (article) => article.slug === newArticle.slug && article.slug !== editingArticle?.slug
+        )
+      ) {
+        throw new Error('Slug must be unique.');
+      }
+
+      const normalizedSlug = newArticle.slug.toLowerCase().replace(/\s+/g, '-');
+      const updatedArticle = {
+        ...newArticle,
+        slug: normalizedSlug,
+        tags: newArticle.tags.length > 0 ? newArticle.tags : [newArticle.category].filter(Boolean),
+      };
+
+      let updatedArticles;
+      if (editingArticle) {
+        updatedArticles = articles.map((article) =>
+          article.slug === editingArticle.slug ? updatedArticle : article
+        );
+      } else {
+        updatedArticles = [...articles, updatedArticle];
+      }
+
+      setHomeArticlesData({ articles: updatedArticles });
+      setArticles(updatedArticles);
+      setNewArticle({
+        slug: '',
+        title: '',
+        summary: '',
+        content: '',
+        author: 'Fraud Check Team',
+        date: new Date().toISOString().split('T')[0],
+        category: '',
+        tags: [],
+        image: '',
+      });
+      setEditingArticle(null);
+      setError('');
+      alert(editingArticle ? 'Article updated successfully.' : 'Article added successfully.');
+    } catch (err) {
+      setError('Failed to save article: ' + err.message);
+    }
+  };
+
+  const handleEditArticle = (article) => {
+    console.log('Editing article:', article);
+    try {
+      const articleToEdit = {
+        slug: article.slug || '',
+        title: article.title || '',
+        summary: article.summary || '',
+        content: article.content || '',
+        author: article.author || 'Fraud Check Team',
+        date: article.date || new Date().toISOString().split('T')[0],
+        category: article.category || '',
+        tags: article.tags || [article.category].filter(Boolean),
+        image: article.image || '',
+      };
+      setEditingArticle(articleToEdit);
+      setNewArticle(articleToEdit);
+      setError('');
+    } catch (err) {
+      setError('Failed to load article for editing: ' + err.message);
+    }
+  };
+
+  const handleDeleteArticle = (slug) => {
+    if (window.confirm('Are you sure you want to delete this article?')) {
+      try {
+        const updatedArticles = articles.filter((article) => article.slug !== slug);
+        setHomeArticlesData({ articles: updatedArticles });
+        setArticles(updatedArticles);
+        setError('');
+        alert('Article deleted successfully.');
+      } catch (err) {
+        setError('Failed to delete article: ' + err.message);
+      }
+    }
+  };
+
+  const handleTagsChange = (e) => {
+    const tags = e.target.value.split(',').map((tag) => tag.trim()).filter(Boolean);
+    setNewArticle({ ...newArticle, tags });
+  };
+
+  return (
+    <ErrorBoundary>
+      <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+          {/* Header */}
+          <section className="text-center">
+            <img
+              src={fraudCheckLogo}
+              alt="Fraud Check Logo"
+              className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
+              onError={() => console.error('Failed to load logo')}
+            />
+            <div className="-mt-6">
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
+                Article Editor
+              </h2>
+            </div>
+            <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
+              Manage articles with insights, breakdowns, and safety guides from the Fraud Check team.
+            </p>
+          </section>
+
+          {/* Back to Dashboard */}
+          <section className="mt-8">
+            <Link
+              to="/admin/dashboard"
+              className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500 mb-6"
+            >
+              <ArrowLeftIcon className="w-5 h-5 mr-2" />
+              Back to Dashboard
+            </Link>
+          </section>
+
+          {error && <p className="text-center text-red-600 p-4">{error}</p>}
+
+          {loading ? (
+            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
+              <p className="text-gray-500 dark:text-gray-400 text-lg">Loading...</p>
+            </div>
+          ) : (
+            <>
+              {/* Settings Section */}
+              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Site Images
+                </h3>
+                <div className="mb-4">
+                  <label
+                    htmlFor="backgroundImage"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Background Image (Articles Page, Optional)
+                  </label>
+                  <input
+                    id="backgroundImage"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(e) => handleFileUpload(e, setBackgroundImage)}
+                    className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Current: {backgroundImage ? 'Custom Image' : 'None (uses gradient)'}
+                  </p>
+                  {backgroundImage && (
+                    <img
+                      src={backgroundImage}
+                      alt="Background Preview"
+                      className="mt-2 max-w-xs rounded"
+                      onError={() => {
+                        setError('Failed to load background image. Using default.');
+                        setBackgroundImage(null);
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="mb-4">
+                  <label
+                    htmlFor="defaultHeroImage"
+                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                  >
+                    Hero Image (Articles Page Header, Optional)
+                  </label>
+                  <input
+                    id="defaultHeroImage"
+                    type="file"
+                    accept="image/png,image/jpeg"
+                    onChange={(e) => handleFileUpload(e, setDefaultHeroImage)}
+                    className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Current: {defaultHeroImage ? 'Custom Image' : 'None'}
+                  </p>
+                  {defaultHeroImage && (
+                    <img
+                      src={defaultHeroImage}
+                      alt="Hero Preview"
+                      className="mt-2 max-w-xs rounded"
+                      onError={() => {
+                        setError('Failed to load hero image. Using default.');
+                        setDefaultHeroImage(null);
+                      }}
+                    />
+                  )}
+                </div>
+                <div className="flex gap-4">
+                  <button
+                    onClick={handleSaveSettings}
+                    className="px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg"
+                  >
+                    Save Images
+                  </button>
+                  <button
+                    onClick={handleResetStorage}
+                    className="px-6 py-2 bg-red-600 text-white hover:bg-red-700 transition-colors rounded-lg"
+                  >
+                    Reset to Defaults
+                  </button>
+                </div>
+              </section>
+
+              {/* Add/Edit Article Form */}
+              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                  {editingArticle ? 'Edit Article' : 'Add New Article'}
+                </h3>
+                <div className="grid gap-4">
+                  <div>
+                    <label
+                      htmlFor="slug"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Slug
+                    </label>
+                    <input
+                      id="slug"
+                      type="text"
+                      value={newArticle.slug}
+                      onChange={(e) => setNewArticle({ ...newArticle, slug: e.target.value })}
+                      placeholder="e.g., new-scam-005"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="title"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Title
+                    </label>
+                    <input
+                      id="title"
+                      type="text"
+                      value={newArticle.title}
+                      onChange={(e) => setNewArticle({ ...newArticle, title: e.target.value })}
+                      placeholder="e.g., New Scam Alert"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="summary"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Summary
+                    </label>
+                    <textarea
+                      id="summary"
+                      value={newArticle.summary}
+                      onChange={(e) => setNewArticle({ ...newArticle, summary: e.target.value })}
+                      placeholder="Brief summary of the article"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[80px]"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="content"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Content
+                    </label>
+                    <textarea
+                      id="content"
+                      value={newArticle.content}
+                      onChange={(e) => setNewArticle({ ...newArticle, content: e.target.value })}
+                      placeholder="Full article content"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[150px]"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="author"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Author
+                    </label>
+                    <input
+                      id="author"
+                      type="text"
+                      value={newArticle.author}
+                      onChange={(e) => setNewArticle({ ...newArticle, author: e.target.value })}
+                      placeholder="e.g., Fraud Check Team"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="date"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Date
+                    </label>
+                    <input
+                      id="date"
+                      type="date"
+                      value={newArticle.date}
+                      onChange={(e) => setNewArticle({ ...newArticle, date: e.target.value })}
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="category"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Category
+                    </label>
+                    <input
+                      id="category"
+                      type="text"
+                      value={newArticle.category}
+                      onChange={(e) => setNewArticle({ ...newArticle, category: e.target.value })}
+                      placeholder="e.g., Phishing"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="tags"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Tags (comma-separated)
+                    </label>
+                    <input
+                      id="tags"
+                      type="text"
+                      value={newArticle.tags.join(', ')}
+                      onChange={handleTagsChange}
+                      placeholder="e.g., scam, phishing, security"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                  </div>
+                  <div>
+                    <label
+                      htmlFor="image"
+                      className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
+                    >
+                      Article Image
+                    </label>
+                    <input
+                      id="image"
+                      type="file"
+                      accept="image/png,image/jpeg"
+                      onChange={(e) =>
+                        handleFileUpload(e, (result) => setNewArticle({ ...newArticle, image: result }))
+                      }
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                    />
+                    {newArticle.image && (
+                      <img
+                        src={newArticle.image}
+                        alt="Article Image Preview"
+                        className="mt-2 max-w-xs rounded"
+                        onError={() => setNewArticle({ ...newArticle, image: '' })}
+                      />
+                    )}
+                  </div>
+                </div>
+                <div className="mt-4 flex gap-4">
+                  <button
+                    onClick={handleAddOrUpdateArticle}
+                    className="px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg"
+                  >
+                    {editingArticle ? 'Update Article' : 'Add Article'}
+                  </button>
+                  {editingArticle && (
+                    <button
+                      onClick={() => {
+                        setEditingArticle(null);
+                        setNewArticle({
+                          slug: '',
+                          title: '',
+                          summary: '',
+                          content: '',
+                          author: 'Fraud Check Team',
+                          date: new Date().toISOString().split('T')[0],
+                          category: '',
+                          tags: [],
+                          image: '',
+                        });
+                        setError('');
+                      }}
+                      className="px-6 py-2 bg-gray-500 text-white hover:bg-gray-600 transition-colors rounded-lg"
+                    >
+                      Cancel
+                    </button>
+                  )}
+                </div>
+              </section>
+
+              {/* Live Preview */}
+              {newArticle.title && (
+                <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                    Article Preview
+                  </h3>
+                  <div className="max-w-7xl mx-auto">
+                    <h4 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
+                      {newArticle.title}
+                    </h4>
+                    <div className="flex gap-4 text-gray-500 dark:text-gray-400 mb-6">
+                      <p>
+                        {new Date(newArticle.date).toLocaleDateString('en-US', {
+                          month: 'long',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
+                      </p>
+                      <p>•</p>
+                      <p>{newArticle.author}</p>
+                      {newArticle.category && (
+                        <>
+                          <p>•</p>
+                          <p>{newArticle.category}</p>
+                        </>
+                      )}
+                      {newArticle.tags.length > 0 && (
+                        <>
+                          <p>•</p>
+                          <p>Tags: {newArticle.tags.join(', ')}</p>
+                        </>
+                      )}
+                    </div>
+                    {newArticle.image && (
+                      <img
+                        src={newArticle.image}
+                        alt="Article"
+                        className="w-full max-w-md rounded-lg mb-6"
+                        onError={() => setNewArticle({ ...newArticle, image: '' })}
+                      />
+                    )}
+                    <div className="text-gray-900 dark:text-gray-100 leading-6 whitespace-pre-wrap">
+                      {newArticle.content}
+                    </div>
+                  </div>
+                </section>
+              )}
+
+              {/* Articles List */}
+              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p	-6">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Existing Articles
+                </h3>
+                {articles.length === 0 ? (
+                  <p className="text-gray-500 dark:text-gray-400 text-lg">
+                    No articles found.
+                  </p>
+                ) : (
+                  <div className="grid gap-4">
+                    {articles.map((article) => (
+                      <div
+                        key={article.slug}
+                        className="p-4 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex justify-between items-start border border-gray-200 dark:border-slate-700"
+                      >
+                        <div>
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
+                            {article.title}
+                          </h4>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Slug: {article.slug}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Category: {article.category || 'None'}
+                          </p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">Author: {article.author}</p>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Date: {new Date(article.date).toLocaleDateString('en-US', {
+                              month: 'long',
+                              day: 'numeric',
+                              year: 'numeric',
+                            })}
+                          </p>
+                          {article.tags?.length > 0 && (
+                            <p className="text-sm text-gray-500 dark:text-gray-400">
+                              Tags: {article.tags.join(', ')}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleEditArticle(article)}
+                            className="px-4 py-1 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            onClick={() => handleDeleteArticle(article.slug)}
+                            className="px-4 py-1 bg-red-600 text-white hover:bg-red-700 transition-colors rounded-lg"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </section>
+
+              {/* Footer */}
+              <footer className="bg-slate-900 text-slate-300 pt-10 pb-6 px-4 sm:px-6 mt-12">
+                <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
+                    <ul className="space-y-2">
+                      <li><a href="/scam-checker" className="hover:text-white">Scam Checker</a></li>
+                      <li><a href="/scam-trends" className="hover:text-white">Trends & Reports</a></li>
+                      <li><a href="/help-advice" className="hover:text-white">Advice</a></li>
+                      <li><a href="/contacts" className="hover:text-white">Contacts</a></li>
+                      <li><a href="/about" className="hover:text-white">About</a></li>
+                    </ul>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-white">About Fraud Check</h3>
+                    <p className="text-sm">
+                      Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.
+                    </p>
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-semibold mb-4 text-white">Stay Updated</h3>
+                    <form className="flex flex-col sm:flex-row gap-2">
+                      <input
+                        type="email"
+                        placeholder="Your email"
+                        className="flex-1 px-4 py-2 rounded-lg bg-slate-800 text-white border-none focus:outline-none focus:ring-2 focus:ring-cyan-700"
+                        aria-label="Email for newsletter"
+                      />
+                      <button
+                        type="submit"
+                        className="bg-cyan-700 text-white px-4 py-2 rounded-lg hover:bg-cyan-800 transition-all"
+                        aria-label="Subscribe to newsletter"
+                      >
+                        Subscribe
+                      </button>
+                    </form>
+                    <div className="flex gap-4 mt-4">
+                      <a href="https://twitter.com" className="hover:text-white">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+                        </svg>
+                      </a>
+                      <a href="https://linkedin.com" className="hover:text-white">
+                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+                        </svg>
+                      </a>
+                    </div>
+                  </div>
+                </div>
+                <div className="max-w-7xl mx-auto mt-8 text-center text-sm">
+                  © 2025 Fraud Check. All rights reserved.
+                </div>
+              </footer>
+            </>
+          )}
+        </div>
+      </div>
+    </ErrorBoundary>
+  );
+};
+
+export default ArticleEditor;
