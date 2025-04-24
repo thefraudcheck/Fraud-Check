@@ -18,7 +18,7 @@ function Header() {
   };
 
   return (
-    <header className="flex justify-between items-center h-16 px-4 bg-white dark:bg-slate-900 shadow-md">
+    <header className="flex justify-between items-center h-16 px-4 bg-white dark:bg-slate-900 shadow-md relative">
       <div className="flex items-center justify-between w-full md:w-auto">
         <div className="flex items-center">
           <Link to="/">
@@ -44,7 +44,7 @@ function Header() {
       <nav
         className={`${
           isOpen ? 'flex' : 'hidden'
-        } md:flex flex-col md:flex-row md:items-center md:space-x-6 space-y-4 md:space-y-0 mt-4 md:mt-0 w-full md:w-auto text-center md:text-left text-base font-medium text-gray-600 dark:text-gray-300`}
+        } flex-col md:flex-row md:items-center md:space-x-6 space-y-4 md:space-y-0 mt-4 md:mt-0 w-full md:w-auto text-center md:text-left text-base font-medium text-gray-600 dark:text-gray-300 absolute md:static top-16 left-0 bg-white dark:bg-slate-900 z-50 max-h-[calc(100vh-80px)] overflow-y-auto`}
       >
         <div className="relative group">
           <div className="flex items-center justify-center w-full md:w-auto">
@@ -67,7 +67,7 @@ function Header() {
           <div
             className={`${
               isDropdownOpen ? 'flex' : 'hidden'
-            } md:group-hover:flex md:absolute md:top-full md:left-0 mt-2 md:mt-0 flex-col md:bg-white md:dark:bg-slate-800 md:shadow-lg md:rounded-md md:w-48 text-center md:text-left md:z-50`}
+            } flex-col w-full md:w-48 mt-2 bg-white dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left z-50 md:absolute md:top-full md:left-0 max-h-[calc(100vh-120px)] overflow-y-auto`}
             onClick={() => setIsOpen(false)}
           >
             <Link
@@ -111,7 +111,7 @@ function Header() {
 
         <Link
           to="/help-advice"
-          className={`hover:text-cyan-500 dark:hover:text-cyan-400 ${
+          className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 ${
             window.location.pathname === '/help-advice' ? 'text-cyan-600 dark:text-cyan-400' : ''
           }`}
           onClick={() => setIsOpen(false)}
@@ -121,7 +121,7 @@ function Header() {
 
         <Link
           to="/about"
-          className={`hover:text-cyan-500 dark:hover:text-cyan-400 ${
+          className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 ${
             window.location.pathname === '/about' ? 'text-cyan-600 dark:text-cyan-400' : ''
           }`}
           onClick={() => setIsOpen(false)}
