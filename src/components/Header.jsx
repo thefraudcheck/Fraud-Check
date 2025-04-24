@@ -18,14 +18,14 @@ function Header() {
   };
 
   return (
-    <header className="flex justify-between items-center h-16 px-4 bg-white dark:bg-slate-900 shadow-md relative">
+    <header className="flex justify-between items-center h-16 px-4 bg-white dark:bg-slate-900 shadow-md">
       <div className="flex items-center justify-between w-full md:w-auto">
         <div className="flex items-center">
           <Link to="/">
             <img
               src={logo}
               alt="Fraud Check Logo"
-              className="h-20 w-auto max-h-full object-contain"
+              className="h-12 w-auto max-h-full object-contain"
               onError={() => console.error('Failed to load logo in Header')}
             />
           </Link>
@@ -44,7 +44,7 @@ function Header() {
       <nav
         className={`${
           isOpen ? 'flex' : 'hidden'
-        } flex-col md:flex-row md:items-center md:space-x-6 space-y-4 md:space-y-0 mt-4 md:mt-0 w-full md:w-auto text-center md:text-left text-base font-medium text-gray-600 dark:text-gray-300 absolute md:static top-16 left-0 bg-white dark:bg-slate-900 z-50 max-h-[calc(100vh-80px)] overflow-y-auto`}
+        } flex-col md:flex md:flex-row md:items-center md:space-x-6 space-y-4 md:space-y-0 mt-4 md:mt-0 w-full md:w-auto text-center md:text-left text-base font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-900 z-10 max-h-[calc(100vh-80px)] overflow-y-auto`}
       >
         <div className="relative group">
           <div className="flex items-center justify-center w-full md:w-auto">
@@ -67,7 +67,7 @@ function Header() {
           <div
             className={`${
               isDropdownOpen ? 'flex' : 'hidden'
-            } flex-col w-full md:w-48 mt-2 bg-white dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left z-50 md:absolute md:top-full md:left-0 max-h-[calc(100vh-120px)] overflow-y-auto`}
+            } flex-col w-full md:w-48 mt-2 bg-white dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left z-20 md:absolute md:top-full md:left-0 max-h-[calc(100vh-120px)] overflow-y-auto`}
             onClick={() => setIsOpen(false)}
           >
             <Link
