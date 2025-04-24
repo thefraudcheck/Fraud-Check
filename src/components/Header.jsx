@@ -44,7 +44,7 @@ function Header() {
       <nav
         className={`${
           isOpen ? 'flex' : 'hidden'
-        } flex-col md:flex md:flex-row md:items-center md:space-x-6 space-y-4 md:space-y-0 mt-4 md:mt-0 w-full md:w-auto text-center md:text-left text-base font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-900 z-10 max-h-[calc(100vh-80px)] overflow-y-auto`}
+        } flex-col md:flex md:flex-row md:items-center md:space-x-6 space-y-2 md:space-y-0 mt-2 md:mt-0 w-full md:w-auto text-center md:text-left text-base font-medium text-gray-600 dark:text-gray-300 bg-white dark:bg-slate-900 z-10`}
       >
         <div className="relative group">
           <div className="flex items-center justify-center w-full md:w-auto">
@@ -67,12 +67,11 @@ function Header() {
           <div
             className={`${
               isDropdownOpen ? 'flex' : 'hidden'
-            } flex-col w-full md:w-48 mt-2 bg-white dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left z-20 md:absolute md:top-full md:left-0 max-h-[calc(100vh-120px)] overflow-y-auto`}
-            onClick={() => setIsOpen(false)}
+            } flex-col w-full md:w-48 mt-1 bg-white dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left z-20 md:absolute md:top-full md:left-0`}
           >
             <Link
               to="/scam-checker"
-              className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
+              className={`block px-4 py-1 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
                 window.location.pathname === '/scam-checker' ? 'text-cyan-600 dark:text-cyan-400' : ''
               }`}
               onClick={() => setIsOpen(false)}
@@ -81,7 +80,7 @@ function Header() {
             </Link>
             <Link
               to="/scam-trends"
-              className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
+              className={`block px-4 py-1 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
                 window.location.pathname === '/scam-trends' ? 'text-cyan-600 dark:text-cyan-400' : ''
               }`}
               onClick={() => setIsOpen(false)}
@@ -90,7 +89,7 @@ function Header() {
             </Link>
             <Link
               to="/contacts"
-              className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
+              className={`block px-4 py-1 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
                 window.location.pathname === '/contacts' ? 'text-cyan-600 dark:text-cyan-400' : ''
               }`}
               onClick={() => setIsOpen(false)}
@@ -99,7 +98,7 @@ function Header() {
             </Link>
             <Link
               to="/articles"
-              className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
+              className={`block px-4 py-1 hover:text-cyan-500 dark:hover:text-cyan-400 md:hover:bg-cyan-50 md:dark:hover:bg-slate-700 ${
                 window.location.pathname === '/articles' ? 'text-cyan-600 dark:text-cyan-400' : ''
               }`}
               onClick={() => setIsOpen(false)}
@@ -111,7 +110,7 @@ function Header() {
 
         <Link
           to="/help-advice"
-          className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 ${
+          className={`block px-4 py-1 hover:text-cyan-500 dark:hover:text-cyan-400 ${
             window.location.pathname === '/help-advice' ? 'text-cyan-600 dark:text-cyan-400' : ''
           }`}
           onClick={() => setIsOpen(false)}
@@ -121,7 +120,7 @@ function Header() {
 
         <Link
           to="/about"
-          className={`block px-4 py-2 hover:text-cyan-500 dark:hover:text-cyan-400 ${
+          className={`block px-4 py-1 hover:text-cyan-500 dark:hover:text-cyan-400 ${
             window.location.pathname === '/about' ? 'text-cyan-600 dark:text-cyan-400' : ''
           }`}
           onClick={() => setIsOpen(false)}
