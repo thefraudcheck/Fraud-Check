@@ -1,5 +1,6 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import fraudCheckLogo from './assets/fraud-check-logo.png'; // Import the logo from assets
 import Home from './pages/Home';
 import Articles from './pages/Articles';
 import ArticleDetail from './pages/ArticleDetail';
@@ -47,6 +48,18 @@ class ErrorBoundary extends React.Component {
 }
 
 function App() {
+  useEffect(() => {
+    // Set the favicon dynamically
+    const link = document.querySelector("link[rel*='icon']") || document.createElement('link');
+    link.type = 'image/png';
+    link.rel = 'icon';
+    link.href = fraudCheckLogo;
+    document.getElementsByTagName('head')[0].appendChild(link);
+
+    // Set the document title
+    document.title = 'Fraud Check';
+  }, []);
+
   return (
     <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
       <ErrorBoundary>
