@@ -150,6 +150,14 @@ export function getScamTrendsData() {
     const parsedData = JSON.parse(data);
     return {
       ...defaultData,
+      ...parsedData,
+      hero: {
+        ...defaultData.hero,
+        ...parsedData.hero,
+      },
+      scamOfTheWeek: parsedData.scamOfTheWeek || defaultData.scamOfTheWeek,
+      pastScamOfTheWeek: parsedData.pastScamOfTheWeek || defaultData.pastScamOfTheWeek || [],
+      scamCategories: parsedData.scamCategories || defaultData.scamCategories,
       userReportedScams: parsedData.userReportedScams || defaultData.userReportedScams,
     };
   } catch (e) {
@@ -160,13 +168,11 @@ export function getScamTrendsData() {
 
 export function setScamTrendsData(data) {
   try {
-    const storageData = {
-      userReportedScams: data.userReportedScams || [],
-    };
-    localStorage.setItem('scamTrendsData', JSON.stringify(storageData));
-    console.log('Saved scamTrendsData to localStorage:', storageData);
+    localStorage.setItem('scamTrendsData', JSON.stringify(data));
+    console.log('Saved scamTrendsData to localStorage:', data);
   } catch (e) {
     console.error('Error saving scamTrendsData:', e);
+    throw e; // Re-throw to be caught in the editor
   }
 }
 

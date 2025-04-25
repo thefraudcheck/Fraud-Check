@@ -22,6 +22,8 @@ import {
   ChartBarIcon,
   ChatBubbleOvalLeftIcon,
   ArrowLeftIcon,
+  ExclamationCircleIcon,
+  CheckCircleIcon, // Added for success message
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -29,17 +31,25 @@ function ScamTrendsEditor() {
   const [data, setData] = useState({
     hero: { title: '', subtitle: '', logo: '', textColor: '#000000' },
     scamOfTheWeek: { name: '', description: '', redFlags: [], source: '', action: '', reportDate: '' },
-    pastScamOfTheWeek: [], // New array for past scams
+    pastScamOfTheWeek: [],
     scamCategories: [],
     userReportedScams: [],
   });
   const [savedData, setSavedData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
+  const [saveError, setSaveError] = useState(null);
+  const [saveSuccess, setSaveSuccess] = useState(false);
   const [openSections, setOpenSections] = useState([]);
-  const [openPastScamSections, setOpenPastScamSections] = useState([]); // For past scams
+  const [openPastScamSections, setOpenPastScamSections] = useState([]);
 
   useEffect(() => {
     const initialData = getScamTrendsData();
+    if (!initialData) {
+      console.warn('No initial scam trends data found in storage, using default.');
+      setOpenSections([]);
+      setOpenPastScamSections([]);
+      return;
+    }
     const cleanedCategories = initialData.scamCategories?.map(({ prevention, reportDate, ...rest }) => rest) || [];
     const cleanedReports = initialData.userReportedScams?.map(({ name, ...rest }) => ({
       type: name || '',
@@ -48,7 +58,7 @@ function ScamTrendsEditor() {
     const cleanedData = {
       hero: initialData.hero || data.hero,
       scamOfTheWeek: initialData.scamOfTheWeek || data.scamOfTheWeek,
-      pastScamOfTheWeek: initialData.pastScamOfTheWeek || [], // Load past scams
+      pastScamOfTheWeek: initialData.pastScamOfTheWeek || [],
       scamCategories: cleanedCategories,
       userReportedScams: cleanedReports,
     };
@@ -60,15 +70,28 @@ function ScamTrendsEditor() {
 
   const handleSave = () => {
     setIsSaving(true);
-    setScamTrendsData(data);
-    setSavedData(data);
-    setTimeout(() => setIsSaving(false), 500);
+    setSaveError(null);
+    setSaveSuccess(false);
+    console.log('Saving data:', data);
+    try {
+      setScamTrendsData(data);
+      setSavedData(data);
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (error) {
+      console.error('Failed to save scam trends data:', error);
+      setSaveError('Failed to save changes. Please try again.');
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   const handleReset = () => {
     setData(savedData);
     setOpenSections(new Array(savedData.scamCategories?.length || 0).fill(false));
     setOpenPastScamSections(new Array(savedData.pastScamOfTheWeek?.length || 0).fill(false));
+    setSaveError(null);
+    setSaveSuccess(false);
   };
 
   // Hero Handlers
@@ -229,6 +252,20 @@ function ScamTrendsEditor() {
         </Link>
 
         <h1 className="text-3xl font-bold">Scam Trends Editor</h1>
+
+        {/* Save Status Messages */}
+        {saveError && (
+          <div className="bg-red-100 text-red-700 p-4 rounded-lg flex items-center">
+            <ExclamationCircleIcon className="w-5 h-5 mr-2" />
+            {saveError}
+          </div>
+        )}
+        {saveSuccess && (
+          <div className="bg-green-100 text-green-700 p-4 rounded-lg flex items-center">
+            <CheckCircleIcon className="w-5 h-5 mr-2" />
+            Changes saved successfully!
+          </div>
+        )}
 
         {/* Hero Section */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
