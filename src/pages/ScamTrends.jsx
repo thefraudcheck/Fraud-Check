@@ -31,20 +31,6 @@ import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import fraudCheckIcon from '../assets/fraud-check-icon.png';
 import { getScamTrendsData, setScamTrendsData } from '../utils/storage';
 
-// Static pastScams for archive
-export const pastScams = [
-  {
-    name: 'Fake HMRC Tax Rebate',
-    description: 'Emails claiming tax refunds linked to phishing sites.',
-    date: '2025-03-01',
-  },
-  {
-    name: 'Crypto Giveaway Scam',
-    description: 'Social media posts promising free crypto for a small fee.',
-    date: '2025-02-15',
-  },
-];
-
 // Icon mappings for scam categories
 const scamCategoryIcons = {
   'Imposter Scams': UserIcon,
@@ -78,10 +64,12 @@ function ScamTrends() {
   const [sortOption, setSortOption] = useState('Most Recent');
   const [showArchive, setShowArchive] = useState(false);
   const [selectedScam, setSelectedScam] = useState(null);
+  const [showAllReports, setShowAllReports] = useState(false);
   const modalRef = useRef(null);
   const [weeklyScamData, setWeeklyScamData] = useState([]);
   const [mostCommonScam, setMostCommonScam] = useState('N/A');
   const [reportsThisWeek, setReportsThisWeek] = useState(0);
+  const [pastScams, setPastScams] = useState([]); // Dynamic past scams
   const location = useLocation();
 
   // Scroll to top on page load, unless navigating to #reports
@@ -115,6 +103,7 @@ function ScamTrends() {
       }
       setScamData(data);
       setScamOfTheWeek(data.scamOfTheWeek || { name: 'N/A', description: '', redFlags: [], reportDate: '' });
+      setPastScams(data.pastScamOfTheWeek || []); // Load dynamic past scams
 
       // Normalize userReportedScams
       const storedReports = (data.userReportedScams || [])
@@ -231,6 +220,9 @@ function ScamTrends() {
       return 0;
     });
 
+  // Limit to 3 reports by default, or show all if toggled
+  const displayedReports = showAllReports ? filteredReports : filteredReports.slice(0, 3);
+
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900">
@@ -298,13 +290,19 @@ function ScamTrends() {
             </div>
             {showArchive && (
               <div className="mt-4 space-y-4">
-                {pastScams.map((pastScam, idx) => (
-                  <div key={idx} className="bg-slate-100 p-4 rounded-lg">
-                    <h4 className="text-md font-semibold text-[#002E5D]">{pastScam.name}</h4>
-                    <p className="text-sm text-gray-600">{pastScam.description}</p>
-                    <p className="text-xs text-gray-500 mt-1">Date: {pastScam.date}</p>
-                  </div>
-                ))}
+                {pastScams.length > 0 ? (
+                  pastScams.map((pastScam, idx) => (
+                    <div key={idx} className="bg-slate-100 p-4 rounded-lg">
+                      <h4 className="text-md font-semibold text-[#002E5D]">{pastScam.name}</h4>
+                      <p className="text-sm text-gray-600">{pastScam.description}</p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Reported: {pastScam.reportDate ? new Date(pastScam.reportDate).toLocaleDateString() : 'N/A'}
+                      </p>
+                    </div>
+                  ))
+                ) : (
+                  <p className="text-gray-500">No past scam alerts available.</p>
+                )}
               </div>
             )}
           </div>
@@ -381,9 +379,9 @@ function ScamTrends() {
                 <option value="Oldest">Oldest</option>
               </select>
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredReports.length > 0 ? (
-                filteredReports.map((report, idx) => (
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {displayedReports.length > 0 ? (
+                displayedReports.map((report, idx) => (
                   <div key={idx} className="bg-white rounded-2xl shadow-md overflow-hidden">
                     <div className="bg-[#002E5D] text-white text-sm font-semibold px-4 py-2">Reported Scam</div>
                     <div className="px-6 py-4 space-y-3">
@@ -423,6 +421,17 @@ function ScamTrends() {
                 <p className="text-center text-gray-500 col-span-full">No scam reports available yet.</p>
               )}
             </div>
+            {filteredReports.length > 3 && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={() => setShowAllReports(!showAllReports)}
+                  className="text-[#00488A] font-medium underline hover:text-[#0077B6] text-sm flex items-center mx-auto"
+                >
+                  {showAllReports ? 'Show Less' : 'See All Reports'} ({filteredReports.length})
+                  <ArrowRightIcon className="w-4 h-4 ml-1" />
+                </button>
+              </div>
+            )}
           </section>
         </div>
 

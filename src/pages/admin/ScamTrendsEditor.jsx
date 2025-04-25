@@ -29,12 +29,14 @@ function ScamTrendsEditor() {
   const [data, setData] = useState({
     hero: { title: '', subtitle: '', logo: '', textColor: '#000000' },
     scamOfTheWeek: { name: '', description: '', redFlags: [], source: '', action: '', reportDate: '' },
+    pastScamOfTheWeek: [], // New array for past scams
     scamCategories: [],
     userReportedScams: [],
   });
   const [savedData, setSavedData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
   const [openSections, setOpenSections] = useState([]);
+  const [openPastScamSections, setOpenPastScamSections] = useState([]); // For past scams
 
   useEffect(() => {
     const initialData = getScamTrendsData();
@@ -46,12 +48,14 @@ function ScamTrendsEditor() {
     const cleanedData = {
       hero: initialData.hero || data.hero,
       scamOfTheWeek: initialData.scamOfTheWeek || data.scamOfTheWeek,
+      pastScamOfTheWeek: initialData.pastScamOfTheWeek || [], // Load past scams
       scamCategories: cleanedCategories,
       userReportedScams: cleanedReports,
     };
     setData(cleanedData);
     setSavedData(cleanedData);
     setOpenSections(new Array(cleanedCategories.length).fill(false));
+    setOpenPastScamSections(new Array(cleanedData.pastScamOfTheWeek.length).fill(false));
   }, []);
 
   const handleSave = () => {
@@ -64,6 +68,7 @@ function ScamTrendsEditor() {
   const handleReset = () => {
     setData(savedData);
     setOpenSections(new Array(savedData.scamCategories?.length || 0).fill(false));
+    setOpenPastScamSections(new Array(savedData.pastScamOfTheWeek?.length || 0).fill(false));
   };
 
   // Hero Handlers
@@ -84,6 +89,49 @@ function ScamTrendsEditor() {
     } else {
       setData({ ...data, scamOfTheWeek: { ...data.scamOfTheWeek, [field]: value } });
     }
+  };
+
+  // Move current Scam of the Week to Past Scams
+  const moveToPastScams = () => {
+    if (data.scamOfTheWeek.name) {
+      setData({
+        ...data,
+        pastScamOfTheWeek: [
+          ...(data.pastScamOfTheWeek || []),
+          { ...data.scamOfTheWeek, id: uuidv4() },
+        ],
+        scamOfTheWeek: { name: '', description: '', redFlags: [], source: '', action: '', reportDate: '' },
+      });
+      setOpenPastScamSections([...openPastScamSections, false]);
+    }
+  };
+
+  // Past Scam of the Week Handlers
+  const updatePastScam = (index, field, value) => {
+    const newPastScams = [...(data.pastScamOfTheWeek || [])];
+    if (field === 'redFlags') {
+      newPastScams[index] = {
+        ...newPastScams[index],
+        [field]: value.split(',').map((item) => item.trim()).filter(Boolean),
+      };
+    } else {
+      newPastScams[index] = { ...newPastScams[index], [field]: value };
+    }
+    setData({ ...data, pastScamOfTheWeek: newPastScams });
+  };
+
+  const removePastScam = (index) => {
+    setData({
+      ...data,
+      pastScamOfTheWeek: (data.pastScamOfTheWeek || []).filter((_, i) => i !== index),
+    });
+    setOpenPastScamSections(openPastScamSections.filter((_, i) => i !== index));
+  };
+
+  const togglePastScamSection = (index) => {
+    const newOpenSections = [...openPastScamSections];
+    newOpenSections[index] = !newOpenSections[index];
+    setOpenPastScamSections(newOpenSections);
   };
 
   // Scam Categories Handlers
@@ -301,7 +349,113 @@ function ScamTrendsEditor() {
                 className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
               />
             </div>
+            <button
+              onClick={moveToPastScams}
+              className="mt-4 flex items-center px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all"
+            >
+              <PlusIcon className="w-5 h-5 mr-2" /> Move to Past Scams
+            </button>
           </div>
+        </div>
+
+        {/* Past Scam of the Week Section */}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
+          <h2 className="text-2xl font-semibold mb-4">Past Scam of the Week</h2>
+          {(data.pastScamOfTheWeek || []).length === 0 ? (
+            <p className="text-gray-500 dark:text-slate-400">No past scams added.</p>
+          ) : (
+            data.pastScamOfTheWeek.map((pastScam, index) => (
+              <div
+                key={pastScam.id || index}
+                className="rounded-lg border border-gray-200 dark:border-slate-600 p-4 mb-4 bg-gray-50 dark:bg-slate-700"
+              >
+                <button
+                  onClick={() => togglePastScamSection(index)}
+                  className="flex justify-between items-center w-full text-left"
+                >
+                  <strong className="text-gray-900 dark:text-gray-100">
+                    Past Scam {index + 1}: {pastScam.name || '[Enter a scam name]'}
+                  </strong>
+                  <ChevronDownIcon
+                    className={`w-5 h-5 text-cyan-600 dark:text-cyan-300 transition-transform duration-200 ${
+                      openPastScamSections[index] ? 'rotate-180' : ''
+                    }`}
+                  />
+                </button>
+                {openPastScamSections[index] && (
+                  <div className="mt-4 space-y-4 transition-all duration-200">
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Name</label>
+                      <input
+                        type="text"
+                        value={pastScam.name || ''}
+                        onChange={(e) => updatePastScam(index, 'name', e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                        placeholder="Enter scam name"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Description</label>
+                      <textarea
+                        value={pastScam.description || ''}
+                        onChange={(e) => updatePastScam(index, 'description', e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                        rows="4"
+                        placeholder="Enter scam description"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                        Red Flags (comma-separated)
+                      </label>
+                      <input
+                        type="text"
+                        value={pastScam.redFlags ? pastScam.redFlags.join(', ') : ''}
+                        onChange={(e) => updatePastScam(index, 'redFlags', e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                        placeholder="e.g., Unsolicited emails, Suspicious links"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Source</label>
+                      <input
+                        type="text"
+                        value={pastScam.source || ''}
+                        onChange={(e) => updatePastScam(index, 'source', e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                        placeholder="Enter source (e.g., User reports)"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Action</label>
+                      <input
+                        type="text"
+                        value={pastScam.action || ''}
+                        onChange={(e) => updatePastScam(index, 'action', e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                        placeholder="Enter recommended action"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Report Date</label>
+                      <input
+                        type="date"
+                        value={pastScam.reportDate || ''}
+                        onChange={(e) => updatePastScam(index, 'reportDate', e.target.value)}
+                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      />
+                    </div>
+                    <button
+                      onClick={() => removePastScam(index)}
+                      className="flex items-center text-red-600 dark:text-red-400 hover:text-red-800 dark:hover:text-red-300"
+                    >
+                      <TrashIcon className="w-5 h-5 mr-1" /> Remove
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))
+          )}
         </div>
 
         {/* Common Scam Types Section */}
