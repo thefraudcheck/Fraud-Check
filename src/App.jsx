@@ -1,3 +1,4 @@
+// App.js
 import React from 'react';
 import { BrowserRouter, Routes, Route } from 'react-router-dom';
 import Home from './pages/Home';
@@ -13,6 +14,8 @@ import AdminHomeEditor from './pages/admin/AdminHomeEditor';
 import ArticleEditor from './pages/admin/ArticleEditor';
 import ScamTrendsEditor from './pages/admin/ScamTrendsEditor';
 import ScamCheckerEditor from './pages/admin/ScamCheckerEditor';
+import AboutEditor from './pages/admin/AboutEditor';
+import HelpAdviceEditor from './pages/admin/HelpAdviceEditor';
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -65,6 +68,8 @@ function App() {
           <Route path="/admin/articles" element={<ArticleEditor />} />
           <Route path="/admin/scam-trends" element={<ScamTrendsEditor />} />
           <Route path="/admin/scam-checker" element={<ScamCheckerEditor />} />
+          <Route path="/admin/about" element={<AboutEditor />} />
+          <Route path="/admin/help-advice" element={<HelpAdviceEditor />} />
           <Route
             path="*"
             element={
@@ -75,7 +80,7 @@ function App() {
                   <p className="text-sm mb-4">
                     Available routes: /, /articles, /articles/:slug, /scam-trends, /scam-checker, /help-advice, /about,
                     /contacts, /admin, /admin/dashboard, /admin/home, /admin/articles, /admin/scam-trends,
-                    /admin/scam-checker
+                    /admin/scam-checker, /admin/about, /admin/help-advice
                   </p>
                 </div>
               </div>

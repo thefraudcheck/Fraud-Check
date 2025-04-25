@@ -1,5 +1,7 @@
+// pages/admin/HelpAdviceEditor.jsx
 import React, { useState, useEffect, useRef } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import axios from 'axios';
 import {
   ExclamationTriangleIcon,
   LockClosedIcon,
@@ -985,8 +987,15 @@ const initialAdviceCategories = [
 const defaultTipOfTheWeek = {
   title: '🛡️ Tip of the Week',
   text: 'Always verify before you trust. Scammers often pretend to be your bank, HMRC, or other trusted providers to create a false sense of urgency. Never act on unexpected messages alone — always use the company’s official website or app to verify what’s real.',
-  link: '/advice',
+  link: '/help-advice',
   icon: 'ShieldCheckIcon',
+  details: {
+    why: 'Scammers exploit trust by impersonating legitimate organizations, rushing you into decisions.',
+    examples: ['Fake bank calls, HMRC emails, or delivery texts.'],
+    whatToDo: ['Verify via official channels.', 'Report to Action Fraud.'],
+    signs: ['Urgent demands, odd contact details.'],
+    protect: ['Use 2FA, source contact info independently.'],
+  },
 };
 
 // Function to render icons dynamically
@@ -996,6 +1005,7 @@ const renderIcon = (iconName) => {
 };
 
 function HelpAdviceEditor() {
+  const navigate = useNavigate();
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [data, setData] = useState({
     categories: initialAdviceCategories,
@@ -1003,53 +1013,50 @@ function HelpAdviceEditor() {
     tipArchive: [],
   });
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
   const [previewTipIndex, setPreviewTipIndex] = useState(0);
   const tipRefs = useRef({});
 
+  // Fetch content from backend on mount
   useEffect(() => {
-    try {
-      const storedData = JSON.parse(localStorage.getItem('helpAdviceData'));
-      if (storedData && Array.isArray(storedData.categories)) {
+    const fetchContent = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get('http://localhost:5000/api/help-advice');
         setData({
-          categories: storedData.categories,
-          tipOfTheWeek: storedData.tipOfTheWeek || defaultTipOfTheWeek,
-          tipArchive: storedData.tipArchive || [],
+          categories: response.data.categories || initialAdviceCategories,
+          tipOfTheWeek: response.data.tipOfTheWeek || defaultTipOfTheWeek,
+          tipArchive: response.data.tipArchive || [],
         });
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load content. Using local data.');
+        setData({
+          categories: initialAdviceCategories,
+          tipOfTheWeek: defaultTipOfTheWeek,
+          tipArchive: [],
+        });
+        setLoading(false);
       }
-    } catch (error) {
-      console.error('Failed to load helpAdviceData:', error);
-      setData({
-        categories: initialAdviceCategories,
-        tipOfTheWeek: defaultTipOfTheWeek,
-        tipArchive: [],
-      });
-    }
+    };
+    fetchContent();
   }, []);
 
-  const handleSave = () => {
+  const handleSave = async () => {
     setIsSaving(true);
     try {
-      // Deep clone data to ensure immutability
-      const dataToSave = JSON.parse(JSON.stringify(data));
-      localStorage.setItem('helpAdviceData', JSON.stringify(dataToSave));
-      // Dispatch custom event for Advice.jsx
-      window.dispatchEvent(new CustomEvent('helpAdviceUpdated', { detail: dataToSave }));
-    } catch (error) {
-      console.error('Failed to save helpAdviceData:', error);
-      alert('Failed to save changes. Please check your browser storage settings.');
-    } finally {
-      setTimeout(() => setIsSaving(false), 500);
+      await axios.post('http://localhost:5000/api/help-advice', data);
+      alert('Content updated successfully!');
+      navigate('/help-advice');
+    } catch (err) {
+      setError('Failed to save content. Please try again.');
+      setIsSaving(false);
     }
   };
 
   const handleCancel = () => {
-    setData({
-      categories: initialAdviceCategories,
-      tipOfTheWeek: defaultTipOfTheWeek,
-      tipArchive: [],
-    });
-    setSelectedCategory(null);
-    localStorage.removeItem('helpAdviceData');
+    navigate('/admin/dashboard');
   };
 
   // Tip of the Week Handlers
@@ -1058,6 +1065,45 @@ function HelpAdviceEditor() {
       ...prev,
       tipOfTheWeek: { ...prev.tipOfTheWeek, [field]: value },
     }));
+  };
+
+  const updateTipOfTheWeekDetail = (field, value, subField = null) => {
+    setData((prev) => {
+      const newTipOfTheWeek = { ...prev.tipOfTheWeek };
+      if (subField !== null) {
+        newTipOfTheWeek.details = {
+          ...newTipOfTheWeek.details,
+          [field]: newTipOfTheWeek.details[field].map((item, idx) =>
+            idx === parseInt(subField) ? value : item
+          ),
+        };
+      } else {
+        newTipOfTheWeek.details = { ...newTipOfTheWeek.details, [field]: value };
+      }
+      return { ...prev, tipOfTheWeek: newTipOfTheWeek };
+    });
+  };
+
+  const addTipOfTheWeekDetailItem = (field) => {
+    setData((prev) => {
+      const newTipOfTheWeek = { ...prev.tipOfTheWeek };
+      newTipOfTheWeek.details = {
+        ...newTipOfTheWeek.details,
+        [field]: [...(newTipOfTheWeek.details[field] || []), 'New Item'],
+      };
+      return { ...prev, tipOfTheWeek: newTipOfTheWeek };
+    });
+  };
+
+  const removeTipOfTheWeekDetailItem = (field, itemIndex) => {
+    setData((prev) => {
+      const newTipOfTheWeek = { ...prev.tipOfTheWeek };
+      newTipOfTheWeek.details = {
+        ...newTipOfTheWeek.details,
+        [field]: newTipOfTheWeek.details[field].filter((_, idx) => idx !== itemIndex),
+      };
+      return { ...prev, tipOfTheWeek: newTipOfTheWeek };
+    });
   };
 
   const archiveCurrentTip = () => {
@@ -1074,8 +1120,15 @@ function HelpAdviceEditor() {
       tipOfTheWeek: {
         title: '🛡️ New Tip of the Week',
         text: 'Enter the new tip description.',
-        link: '/advice',
+        link: '/help-advice',
         icon: 'ShieldCheckIcon',
+        details: {
+          why: 'Explain why this tip is important.',
+          examples: ['Example 1'],
+          whatToDo: ['Step 1'],
+          signs: ['Sign 1'],
+          protect: ['Protection 1'],
+        },
       },
     }));
   };
@@ -1091,6 +1144,7 @@ function HelpAdviceEditor() {
           text: restoredTip.text,
           link: restoredTip.link,
           icon: restoredTip.icon,
+          details: restoredTip.details || defaultTipOfTheWeek.details,
         },
         tipArchive: newArchive,
       };
@@ -1215,7 +1269,57 @@ function HelpAdviceEditor() {
     });
   };
 
+  const addCategory = () => {
+    setData((prev) => ({
+      ...prev,
+      categories: [
+        ...prev.categories,
+        {
+          category: 'New Category',
+          tips: [
+            {
+              title: 'New Tip',
+              preview: 'Enter a brief preview of the tip.',
+              icon: 'ShieldCheckIcon',
+              details: {
+                why: 'Explain why this tip is important.',
+                examples: ['Example 1'],
+                whatToDo: ['Step 1'],
+                signs: ['Sign 1'],
+                protect: ['Protection 1'],
+              },
+            },
+          ],
+        },
+      ],
+    }));
+  };
+
+  const removeCategory = (categoryIndex) => {
+    if (categoryIndex < 0 || categoryIndex >= data.categories.length) return;
+    setData((prev) => ({
+      ...prev,
+      categories: prev.categories.filter((_, idx) => idx !== categoryIndex),
+    }));
+    setSelectedCategory(null);
+  };
+
   const categories = data.categories.map((cat) => cat.category).sort();
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+        <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      </div>
+    );
+  }
 
   return (
     <div className="flex-1 p-6 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
@@ -1230,6 +1334,12 @@ function HelpAdviceEditor() {
         </Link>
 
         <h1 className="text-3xl font-bold">Help & Advice Editor</h1>
+
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
+            {error}
+          </div>
+        )}
 
         {/* Tip of the Week Editor */}
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
@@ -1268,7 +1378,7 @@ function HelpAdviceEditor() {
                 value={data.tipOfTheWeek.link}
                 onChange={(e) => updateTipOfTheWeek('link', e.target.value)}
                 className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                placeholder="Enter link URL (e.g., /advice)"
+                placeholder="Enter link URL (e.g., /help-advice)"
               />
             </div>
             <div>
@@ -1286,6 +1396,133 @@ function HelpAdviceEditor() {
                   </option>
                 ))}
               </select>
+            </div>
+            {/* Tip of the Week Details */}
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Why It’s Important
+                </label>
+                <textarea
+                  value={data.tipOfTheWeek.details.why}
+                  onChange={(e) => updateTipOfTheWeekDetail('why', e.target.value)}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
+                  rows="4"
+                  placeholder="Explain why this tip is important"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Examples
+                </label>
+                {data.tipOfTheWeek.details.examples.map((example, exIndex) => (
+                  <div key={exIndex} className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={example}
+                      onChange={(e) => updateTipOfTheWeekDetail('examples', e.target.value, exIndex)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
+                      placeholder={`Example ${exIndex + 1}`}
+                    />
+                    <button
+                      onClick={() => removeTipOfTheWeekDetailItem('examples', exIndex)}
+                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addTipOfTheWeekDetailItem('examples')}
+                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" /> Add Example
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  What To Do
+                </label>
+                {data.tipOfTheWeek.details.whatToDo.map((step, stepIndex) => (
+                  <div key={stepIndex} className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={step}
+                      onChange={(e) => updateTipOfTheWeekDetail('whatToDo', e.target.value, stepIndex)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
+                      placeholder={`Step ${stepIndex + 1}`}
+                    />
+                    <button
+                      onClick={() => removeTipOfTheWeekDetailItem('whatToDo', stepIndex)}
+                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addTipOfTheWeekDetailItem('whatToDo')}
+                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" /> Add Step
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  Signs to Watch For
+                </label>
+                {data.tipOfTheWeek.details.signs.map((sign, signIndex) => (
+                  <div key={signIndex} className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={sign}
+                      onChange={(e) => updateTipOfTheWeekDetail('signs', e.target.value, signIndex)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
+                      placeholder={`Sign ${signIndex + 1}`}
+                    />
+                    <button
+                      onClick={() => removeTipOfTheWeekDetailItem('signs', signIndex)}
+                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addTipOfTheWeekDetailItem('signs')}
+                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" /> Add Sign
+                </button>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+                  How to Protect Yourself
+                </label>
+                {data.tipOfTheWeek.details.protect.map((protection, protIndex) => (
+                  <div key={protIndex} className="flex items-center gap-2 mb-2">
+                    <input
+                      type="text"
+                      value={protection}
+                      onChange={(e) => updateTipOfTheWeekDetail('protect', e.target.value, protIndex)}
+                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
+                      placeholder={`Protection ${protIndex + 1}`}
+                    />
+                    <button
+                      onClick={() => removeTipOfTheWeekDetailItem('protect', protIndex)}
+                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
+                    </button>
+                  </div>
+                ))}
+                <button
+                  onClick={() => addTipOfTheWeekDetailItem('protect')}
+                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
+                >
+                  <PlusIcon className="w-4 h-4 mr-1" /> Add Protection Tip
+                </button>
+              </div>
             </div>
             <div>
               <button
@@ -1352,18 +1589,31 @@ function HelpAdviceEditor() {
             <div className="w-full">
               <h2 className="text-2xl font-semibold mb-4">Advice Categories</h2>
               <div className="space-y-2">
-                {categories.map((category) => (
-                  <button
-                    key={category}
-                    onClick={() => {
-                      setSelectedCategory(category);
-                      setPreviewTipIndex(0);
-                    }}
-                    className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-cyan-100 dark:hover:bg-cyan-900"
-                  >
-                    {category}
-                  </button>
+                {categories.map((category, index) => (
+                  <div key={category} className="flex items-center justify-between">
+                    <button
+                      onClick={() => {
+                        setSelectedCategory(category);
+                        setPreviewTipIndex(0);
+                      }}
+                      className="flex-1 text-left px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-cyan-100 dark:hover:bg-cyan-900"
+                    >
+                      {category}
+                    </button>
+                    <button
+                      onClick={() => removeCategory(index)}
+                      className="ml-2 text-red-600 hover:text-red-800 text-sm flex items-center"
+                    >
+                      <TrashIcon className="w-4 h-4 mr-1" /> Delete
+                    </button>
+                  </div>
                 ))}
+                <button
+                  onClick={addCategory}
+                  className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm font-semibold"
+                >
+                  <PlusIcon className="w-4 h-4 inline mr-2" /> Add New Category
+                </button>
               </div>
             </div>
           ) : (
@@ -1723,7 +1973,7 @@ function HelpAdviceEditor() {
                 <h2 className="text-2xl font-semibold mb-4">Live Preview</h2>
                 <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 min-h-[400px]">
                   <div className="p-6 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-850">
-                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white font -sans">
+                    <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
                       {selectedCategory}
                     </h2>
                   </div>
@@ -1851,51 +2101,51 @@ function HelpAdviceEditor() {
                   </div>
                 </div>
               </div>
-
-          {/* Save/Cancel Buttons */}
-          <div className="flex justify-end space-x-4 mt-8">
-            <button
-              onClick={handleCancel}
-              className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-all text-sm"
-              disabled={isSaving}
-            >
-              Cancel
-            </button>
-            <button
-              onClick={handleSave}
-              className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all flex items-center text-sm"
-              disabled={isSaving}
-            >
-              {isSaving ? (
-                <>
-                  <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
-                    <circle
-                      className="opacity-25"
-                      cx="12"
-                      cy="12"
-                      r="10"
-                      stroke="currentColor"
-                      strokeWidth="4"
-                    />
-                    <path
-                      className="opacity-75"
-                      fill="currentColor"
-                      d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                    />
-                  </svg>
-                  Saving...
-                </>
-              ) : (
-                'Save Changes'
-              )}
-            </button>
-          </div>
+            </div>
+          )}
         </div>
-      )}
-    </div>
-  </div>
-</div>
 
+        {/* Save/Cancel Buttons */}
+        <div className="flex justify-end space-x-4 mt-8">
+          <button
+            onClick={handleCancel}
+            className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-all text-sm"
+            disabled={isSaving}
+          >
+            Cancel
+          </button>
+          <button
+            onClick={handleSave}
+            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all flex items-center text-sm"
+            disabled={isSaving}
+          >
+            {isSaving ? (
+              <>
+                <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                  <circle
+                    className="opacity-25"
+                    cx="12"
+                    cy="12"
+                    r="10"
+                    stroke="currentColor"
+                    strokeWidth="4"
+                  />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                Saving...
+              </>
+            ) : (
+              'Save Changes'
+            )}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
+
 export default HelpAdviceEditor;
