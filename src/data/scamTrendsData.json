@@ -1,7 +1,9 @@
 {
   "hero": {
     "title": "Scam Trends",
-    "subtitle": "Stay informed about the latest scams."
+    "subtitle": "Stay informed about the latest scams.",
+    "logo": "",
+    "textColor": "#000000"
   },
   "scamOfTheWeek": {
     "name": "HMRC Phishing Email Scam",
@@ -11,6 +13,7 @@
     "source": "Action Fraud",
     "reportDate": "2025-03-28"
   },
+  "pastScamOfTheWeek": [],
   "scamCategories": [
     {
       "name": "Imposter Scams",
@@ -18,7 +21,10 @@
       "redFlags": ["Unsolicited calls or emails", "Urgent demands for action", "Impersonation of trusted entities"],
       "action": "Hang up or delete; contact the entity directly using official details.",
       "source": "Ofcom 2023 Research, Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Crypto Scams",
@@ -26,7 +32,10 @@
       "redFlags": ["Promises of guaranteed returns", "AI-generated endorsements", "Requests for upfront payments"],
       "action": "Avoid unsolicited investment offers; research platforms thoroughly.",
       "source": "GetFocal.ai 2025 Fraud Trends, User-Reported Trend (Verified by Scam Checker Team)",
-      "reportDate": "2025-03-31"
+      "reportDate": "2025-03-31",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Phishing Scams",
@@ -34,7 +43,10 @@
       "redFlags": ["Unsolicited messages with links", "Urgent language", "Suspicious URLs"],
       "action": "Do not click links; verify with the company using official channels.",
       "source": "ONS 2022 Data, User-Reported Trend (Verified by Scam Checker Team)",
-      "reportDate": "2025-03-30"
+      "reportDate": "2025-03-30",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Investment Scams",
@@ -42,7 +54,10 @@
       "redFlags": ["Celebrity endorsements in ads", "Guaranteed high returns", "Pressure to invest quickly"],
       "action": "Be cautious of social media ads; verify investments with a financial advisor.",
       "source": "ASA 2024 Scam Ad Trends, Which? 2025 Scam Predictions",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Romance Scams",
@@ -50,7 +65,10 @@
       "redFlags": ["Quick emotional bonding online", "Requests for money", "Avoidance of in-person meetings"],
       "action": "Never send money to someone you haven’t met; report to the platform.",
       "source": "UK Finance 2023 Annual Fraud Report",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Social Media Scams",
@@ -58,7 +76,10 @@
       "redFlags": ["Unsolicited messages from unknown profiles", "Too-good-to-be-true offers", "Links to suspicious websites"],
       "action": "Verify profiles and offers; report suspicious activity to the platform.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Tech Support Scams",
@@ -66,7 +87,10 @@
       "redFlags": ["Unexpected calls or pop-ups", "Claims of urgent device issues", "Requests for remote access or payment"],
       "action": "Hang up or close pop-ups; contact official tech support directly.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Purchase Scams",
@@ -74,7 +98,10 @@
       "redFlags": ["Prices too good to be true", "Sellers avoiding secure payment methods", "No verifiable seller details"],
       "action": "Use secure payment platforms; report to the marketplace.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Family Emergency Scams",
@@ -82,7 +109,10 @@
       "redFlags": ["Unexpected calls claiming emergencies", "Requests for immediate payment", "Unverifiable contact details"],
       "action": "Verify directly with family members; report to authorities.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Advance Fee Scams",
@@ -90,7 +120,10 @@
       "redFlags": ["Promises of large rewards", "Requests for upfront payments", "Unverifiable claims"],
       "action": "Avoid paying upfront fees; report to Action Fraud.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Fake Charity Scams",
@@ -98,7 +131,10 @@
       "redFlags": ["High-pressure donation requests", "Unverifiable charity details", "Suspicious payment methods"],
       "action": "Verify charities via official websites; report suspicious requests.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Job Scams",
@@ -106,7 +142,10 @@
       "redFlags": ["Upfront payment requests", "Vague job details", "Unverifiable employers"],
       "action": "Verify job offers directly with the company; avoid paying upfront.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Delivery Scams",
@@ -114,7 +153,10 @@
       "redFlags": ["Unsolicited delivery texts", "Requests for payment via links", "Suspicious URLs"],
       "action": "Verify with the delivery service; report suspicious messages.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Rental Scams",
@@ -122,7 +164,10 @@
       "redFlags": ["Deals too good to be true", "Pressure to pay without viewing", "Unverifiable landlords"],
       "action": "View properties in person; use secure payment methods.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "Subscription Scams",
@@ -130,7 +175,10 @@
       "redFlags": ["Unclear subscription terms", "Difficulty canceling", "Unexpected charges"],
       "action": "Review terms before subscribing; contact your bank to cancel payments.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     },
     {
       "name": "QR Code Scams",
@@ -138,7 +186,10 @@
       "redFlags": ["Unexpected QR codes", "Links to suspicious websites", "Requests for personal details"],
       "action": "Avoid scanning unknown QR codes; verify URLs before proceeding.",
       "source": "Action Fraud",
-      "reportDate": "2025-04-01"
+      "reportDate": "2025-04-01",
+      "related": "",
+      "image": "",
+      "includeImage": false
     }
   ],
   "weeklyStats": {
@@ -199,7 +250,8 @@
       "action": "Do not click links; verify with PayPal at www.paypal.com.",
       "source": "User-Reported Trend (Verified by Scam Checker Team)",
       "reportDate": "2025-04-18",
-      "status": "Pending Review"
+      "status": "Pending Review",
+      "url": ""
     },
     {
       "name": "Royal Mail Text Scam",
@@ -208,7 +260,8 @@
       "action": "Verify with Royal Mail at www.royalmail.com.",
       "source": "User-Reported Trend (Verified by Scam Checker Team)",
       "reportDate": "2025-04-17",
-      "status": "Verified"
+      "status": "Verified",
+      "url": ""
     },
     {
       "name": "Crypto Investment Scam",
@@ -217,7 +270,8 @@
       "action": "Avoid unsolicited investment offers; report to the platform.",
       "source": "User-Reported Trend (Verified by Scam Checker Team)",
       "reportDate": "2025-04-16",
-      "status": "Verified"
+      "status": "Verified",
+      "url": ""
     },
     {
       "name": "Phishing Email Scam",
@@ -226,7 +280,8 @@
       "action": "Do not respond; verify with your bank directly.",
       "source": "User-Reported Trend (Verified by Scam Checker Team)",
       "reportDate": "2025-04-15",
-      "status": "Verified"
+      "status": "Verified",
+      "url": ""
     }
   ]
 }

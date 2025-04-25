@@ -23,7 +23,7 @@ import {
   ChatBubbleOvalLeftIcon,
   ArrowLeftIcon,
   ExclamationCircleIcon,
-  CheckCircleIcon, // Added for success message
+  CheckCircleIcon,
 } from '@heroicons/react/24/outline';
 import { Link } from 'react-router-dom';
 
@@ -34,6 +34,8 @@ function ScamTrendsEditor() {
     pastScamOfTheWeek: [],
     scamCategories: [],
     userReportedScams: [],
+    weeklyStats: {},
+    quickAlerts: [],
   });
   const [savedData, setSavedData] = useState(data);
   const [isSaving, setIsSaving] = useState(false);
@@ -50,10 +52,16 @@ function ScamTrendsEditor() {
       setOpenPastScamSections([]);
       return;
     }
-    const cleanedCategories = initialData.scamCategories?.map(({ prevention, reportDate, ...rest }) => rest) || [];
+    const cleanedCategories = initialData.scamCategories?.map(({ prevention, reportDate, ...rest }) => ({
+      ...rest,
+      related: rest.related || '',
+      image: rest.image || '',
+      includeImage: rest.includeImage || false,
+    })) || [];
     const cleanedReports = initialData.userReportedScams?.map(({ name, ...rest }) => ({
       type: name || '',
       ...rest,
+      url: rest.url || '',
     })) || [];
     const cleanedData = {
       hero: initialData.hero || data.hero,
@@ -61,7 +69,10 @@ function ScamTrendsEditor() {
       pastScamOfTheWeek: initialData.pastScamOfTheWeek || [],
       scamCategories: cleanedCategories,
       userReportedScams: cleanedReports,
+      weeklyStats: initialData.weeklyStats || data.weeklyStats,
+      quickAlerts: initialData.quickAlerts || data.quickAlerts,
     };
+    console.log('Loaded initial data:', cleanedData);
     setData(cleanedData);
     setSavedData(cleanedData);
     setOpenSections(new Array(cleanedCategories.length).fill(false));
@@ -72,21 +83,38 @@ function ScamTrendsEditor() {
     setIsSaving(true);
     setSaveError(null);
     setSaveSuccess(false);
-    console.log('Saving data:', data);
+    console.log('Attempting to save data:', data);
+
+    // Deep copy to ensure serializability
+    let dataToSave;
     try {
-      setScamTrendsData(data);
-      setSavedData(data);
+      dataToSave = JSON.parse(JSON.stringify(data));
+      console.log('Serialized data to save:', dataToSave);
+    } catch (error) {
+      console.error('Serialization error:', error);
+      setSaveError('Failed to serialize data. Please check your inputs for invalid values.');
+      setIsSaving(false);
+      return;
+    }
+
+    try {
+      setScamTrendsData(dataToSave);
+      setSavedData(dataToSave);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 3000);
+      // Verify the save by immediately reading back
+      const saved = getScamTrendsData();
+      console.log('Data after save (read back):', saved);
     } catch (error) {
       console.error('Failed to save scam trends data:', error);
-      setSaveError('Failed to save changes. Please try again.');
+      setSaveError(error.message || 'Failed to save changes. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
   const handleReset = () => {
+    console.log('Resetting to saved data:', savedData);
     setData(savedData);
     setOpenSections(new Array(savedData.scamCategories?.length || 0).fill(false));
     setOpenPastScamSections(new Array(savedData.pastScamOfTheWeek?.length || 0).fill(false));
@@ -96,34 +124,56 @@ function ScamTrendsEditor() {
 
   // Hero Handlers
   const updateHero = (field, value) => {
-    setData({ ...data, hero: { ...data.hero, [field]: value } });
+    setData((prevData) => {
+      const newData = {
+        ...prevData,
+        hero: { ...prevData.hero, [field]: value },
+      };
+      console.log('Updated hero:', newData.hero);
+      return newData;
+    });
   };
 
   // Scam of the Week Handlers
   const updateScamOfTheWeek = (field, value) => {
     if (field === 'redFlags') {
-      setData({
-        ...data,
-        scamOfTheWeek: {
-          ...data.scamOfTheWeek,
-          [field]: value.split(',').map((flag) => flag.trim()).filter(Boolean),
-        },
+      setData((prevData) => {
+        const newData = {
+          ...prevData,
+          scamOfTheWeek: {
+            ...prevData.scamOfTheWeek,
+            [field]: value.split(',').map((flag) => flag.trim()).filter(Boolean),
+          },
+        };
+        console.log('Updated scamOfTheWeek:', newData.scamOfTheWeek);
+        return newData;
       });
     } else {
-      setData({ ...data, scamOfTheWeek: { ...data.scamOfTheWeek, [field]: value } });
+      setData((prevData) => {
+        const newData = {
+          ...prevData,
+          scamOfTheWeek: { ...prevData.scamOfTheWeek, [field]: value },
+        };
+        console.log('Updated scamOfTheWeek:', newData.scamOfTheWeek);
+        return newData;
+      });
     }
   };
 
   // Move current Scam of the Week to Past Scams
   const moveToPastScams = () => {
     if (data.scamOfTheWeek.name) {
-      setData({
-        ...data,
-        pastScamOfTheWeek: [
-          ...(data.pastScamOfTheWeek || []),
-          { ...data.scamOfTheWeek, id: uuidv4() },
-        ],
-        scamOfTheWeek: { name: '', description: '', redFlags: [], source: '', action: '', reportDate: '' },
+      setData((prevData) => {
+        const newData = {
+          ...prevData,
+          pastScamOfTheWeek: [
+            ...(prevData.pastScamOfTheWeek || []),
+            { ...prevData.scamOfTheWeek, id: uuidv4() },
+          ],
+          scamOfTheWeek: { name: '', description: '', redFlags: [], source: '', action: '', reportDate: '' },
+        };
+        console.log('Moved to past scams:', newData.pastScamOfTheWeek);
+        return newData;
       });
       setOpenPastScamSections([...openPastScamSections, false]);
     }
@@ -131,22 +181,30 @@ function ScamTrendsEditor() {
 
   // Past Scam of the Week Handlers
   const updatePastScam = (index, field, value) => {
-    const newPastScams = [...(data.pastScamOfTheWeek || [])];
-    if (field === 'redFlags') {
-      newPastScams[index] = {
-        ...newPastScams[index],
-        [field]: value.split(',').map((item) => item.trim()).filter(Boolean),
-      };
-    } else {
-      newPastScams[index] = { ...newPastScams[index], [field]: value };
-    }
-    setData({ ...data, pastScamOfTheWeek: newPastScams });
+    setData((prevData) => {
+      const newPastScams = [...(prevData.pastScamOfTheWeek || [])];
+      if (field === 'redFlags') {
+        newPastScams[index] = {
+          ...newPastScams[index],
+          [field]: value.split(',').map((item) => item.trim()).filter(Boolean),
+        };
+      } else {
+        newPastScams[index] = { ...newPastScams[index], [field]: value };
+      }
+      const newData = { ...prevData, pastScamOfTheWeek: newPastScams };
+      console.log('Updated past scam at index', index, ':', newPastScams[index]);
+      return newData;
+    });
   };
 
   const removePastScam = (index) => {
-    setData({
-      ...data,
-      pastScamOfTheWeek: (data.pastScamOfTheWeek || []).filter((_, i) => i !== index),
+    setData((prevData) => {
+      const newData = {
+        ...prevData,
+        pastScamOfTheWeek: (prevData.pastScamOfTheWeek || []).filter((_, i) => i !== index),
+      };
+      console.log('Removed past scam at index', index, ':', newData.pastScamOfTheWeek);
+      return newData;
     });
     setOpenPastScamSections(openPastScamSections.filter((_, i) => i !== index));
   };
@@ -159,45 +217,57 @@ function ScamTrendsEditor() {
 
   // Scam Categories Handlers
   const addCategory = () => {
-    setData({
-      ...data,
-      scamCategories: [
-        ...(data.scamCategories || []),
-        {
-          id: uuidv4(),
-          name: '',
-          description: '',
-          redFlags: [],
-          source: '',
-          action: '',
-          related: '',
-          image: '',
-          includeImage: false,
-        },
-      ],
+    setData((prevData) => {
+      const newData = {
+        ...prevData,
+        scamCategories: [
+          ...(prevData.scamCategories || []),
+          {
+            id: uuidv4(),
+            name: '',
+            description: '',
+            redFlags: [],
+            source: '',
+            action: '',
+            related: '',
+            image: '',
+            includeImage: false,
+          },
+        ],
+      };
+      console.log('Added new scam category:', newData.scamCategories);
+      return newData;
     });
     setOpenSections([...openSections, false]);
   };
 
   const updateCategory = (index, field, value) => {
-    const newCategories = [...(data.scamCategories || [])];
-    if (field === 'redFlags') {
-      newCategories[index] = {
-        ...newCategories[index],
-        [field]: value.split(',').map((item) => item.trim()).filter(Boolean),
-      };
-    } else if (field === 'includeImage') {
-      newCategories[index] = { ...newCategories[index], [field]: value };
-    } else {
-      newCategories[index] = { ...newCategories[index], [field]: value };
-    }
-    setData({ ...data, scamCategories: newCategories });
+    setData((prevData) => {
+      const newCategories = [...(prevData.scamCategories || [])];
+      if (field === 'redFlags') {
+        newCategories[index] = {
+          ...newCategories[index],
+          [field]: value.split(',').map((item) => item.trim()).filter(Boolean),
+        };
+      } else if (field === 'includeImage') {
+        newCategories[index] = { ...newCategories[index], [field]: value };
+      } else {
+        newCategories[index] = { ...newCategories[index], [field]: value };
+      }
+      const newData = { ...prevData, scamCategories: newCategories };
+      console.log('Updated scam category at index', index, ':', newCategories[index]);
+      return newData;
+    });
   };
 
   const removeCategory = (index) => {
-    setData({
-      ...data,
-      scamCategories: (data.scamCategories || []).filter((_, i) => i !== index),
+    setData((prevData) => {
+      const newData = {
+        ...prevData,
+        scamCategories: (prevData.scamCategories || []).filter((_, i) => i !== index),
+      };
+      console.log('Removed scam category at index', index, ':', newData.scamCategories);
+      return newData;
     });
     setOpenSections(openSections.filter((_, i) => i !== index));
   };
@@ -210,32 +280,44 @@ function ScamTrendsEditor() {
 
   // User Reports Handlers
   const addReport = () => {
-    setData({
-      ...data,
-      userReportedScams: [
-        ...(data.userReportedScams || []),
-        {
-          id: uuidv4(),
-          type: '',
-          description: '',
-          reportDate: '',
-          action: '',
-          url: '',
-        },
-      ],
+    setData((prevData) => {
+      const newData = {
+        ...prevData,
+        userReportedScams: [
+          ...(prevData.userReportedScams || []),
+          {
+            id: uuidv4(),
+            type: '',
+            description: '',
+            reportDate: '',
+            action: '',
+            url: '',
+          },
+        ],
+      };
+      console.log('Added new user report:', newData.userReportedScams);
+      return newData;
     });
   };
 
   const updateReport = (index, field, value) => {
-    const newReports = [...(data.userReportedScams || [])];
-    newReports[index] = { ...newReports[index], [field]: value };
-    setData({ ...data, userReportedScams: newReports });
+    setData((prevData) => {
+      const newReports = [...(prevData.userReportedScams || [])];
+      newReports[index] = { ...newReports[index], [field]: value };
+      const newData = { ...prevData, userReportedScams: newReports };
+      console.log('Updated user report at index', index, ':', newReports[index]);
+      return newData;
+    });
   };
 
   const removeReport = (index) => {
-    setData({
-      ...data,
-      userReportedScams: (data.userReportedScams || []).filter((_, i) => i !== index),
+    setData((prevData) => {
+      const newData = {
+        ...prevData,
+        userReportedScams: (prevData.userReportedScams || []).filter((_, i) => i !== index),
+      };
+      console.log('Removed user report at index', index, ':', newData.userReportedScams);
+      return newData;
     });
   };
 

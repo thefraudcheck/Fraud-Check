@@ -69,10 +69,9 @@ function ScamTrends() {
   const [weeklyScamData, setWeeklyScamData] = useState([]);
   const [mostCommonScam, setMostCommonScam] = useState('N/A');
   const [reportsThisWeek, setReportsThisWeek] = useState(0);
-  const [pastScams, setPastScams] = useState([]); // Dynamic past scams
+  const [pastScams, setPastScams] = useState([]);
   const location = useLocation();
 
-  // Scroll to top on page load, unless navigating to #reports
   useEffect(() => {
     if (location.hash !== '#reports') {
       window.scrollTo(0, 0);
@@ -94,18 +93,13 @@ function ScamTrends() {
     try {
       const data = getScamTrendsData();
       console.log('Loaded scamTrendsData:', data);
-      console.log('Number of scam categories:', data.scamCategories?.length || 0);
-      console.log('Scam categories:', data.scamCategories?.map(c => c.name) || []);
-      console.log('Number of user reported scams:', data.userReportedScams?.length || 0);
       if (!data) throw new Error('Scam trends data is undefined or null');
-      if (!data.scamCategories || data.scamCategories.length < 16) {
-        throw new Error('Incomplete scam categories, expected 16');
-      }
-      setScamData(data);
-      setScamOfTheWeek(data.scamOfTheWeek || { name: 'N/A', description: '', redFlags: [], reportDate: '' });
-      setPastScams(data.pastScamOfTheWeek || []); // Load dynamic past scams
 
-      // Normalize userReportedScams
+      // Ensure all expected fields are present
+      setScamData(data);
+      setScamOfTheWeek(data.scamOfTheWeek || { name: 'N/A', description: '', redFlags: [], reportDate: '', source: '', action: '' });
+      setPastScams(data.pastScamOfTheWeek || []);
+
       const storedReports = (data.userReportedScams || [])
         .filter((report) => report && (report.name || report.type))
         .map((report) => ({
@@ -119,7 +113,6 @@ function ScamTrends() {
         }));
       setUserReports(storedReports);
 
-      // Calculate Weekly Stats
       const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
       const last7DaysReports = storedReports.filter((report) => {
         const reportDate = new Date(report.reportDate);
@@ -183,10 +176,15 @@ function ScamTrends() {
       userReportedScams: updatedReports,
     };
     setScamData(updatedScamData);
-    setScamTrendsData(updatedScamData);
+    try {
+      setScamTrendsData(updatedScamData);
+      console.log('Successfully saved user report:', updatedScamData);
+    } catch (error) {
+      console.error('Error saving user report:', error);
+      setError('Failed to save your scam report. Please try again.');
+    }
     setNewScamReport({ name: '', description: '', redFlags: '', action: '', url: '' });
 
-    // Update Weekly Stats
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000);
     const last7DaysReports = updatedReports.filter((report) => {
       const reportDate = new Date(report.reportDate);
@@ -216,11 +214,10 @@ function ScamTrends() {
     )
     .sort((a, b) => {
       if (sortOption === 'Most Recent') return new Date(b.reportDate || 0) - new Date(a.reportDate || 0);
-      if (sortOption === 'Oldest') return new Date(a.reportDate || 0) - new Date(a.reportDate || 0);
+      if (sortOption === 'Oldest') return new Date(a.reportDate || 0) - new Date(b.reportDate || 0);
       return 0;
     });
 
-  // Limit to 3 reports by default, or show all if toggled
   const displayedReports = showAllReports ? filteredReports : filteredReports.slice(0, 3);
 
   if (isLoading) {
@@ -244,14 +241,30 @@ function ScamTrends() {
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 space-y-6">
         <section className="text-center">
-          <img
-            src={fraudCheckLogo}
-            alt="Fraud Check Logo"
-            className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
-          />
+          {scamData.hero?.logo ? (
+            <img
+              src={scamData.hero.logo}
+              alt="Fraud Check Logo"
+              className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
+              onError={(e) => (e.target.src = fraudCheckLogo)}
+            />
+          ) : (
+            <img
+              src={fraudCheckLogo}
+              alt="Fraud Check Logo"
+              className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
+            />
+          )}
           <div className="-mt-4">
-            <h1 className="text-3xl md:text-4xl font-bold text-[#002E5D] mb-2">{scamData.hero?.title || 'Scam Trends'}</h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto">{scamData.hero?.subtitle || 'Stay informed about the latest scams.'}</p>
+            <h1
+              className="text-3xl md:text-4xl font-bold mb-2"
+              style={{ color: scamData.hero?.textColor || '#002E5D' }}
+            >
+              {scamData.hero?.title || 'Scam Trends'}
+            </h1>
+            <p className="text-lg text-gray-600 max-w-2xl mx-auto">
+              {scamData.hero?.subtitle || 'Stay informed about the latest scams.'}
+            </p>
           </div>
         </section>
 
@@ -270,11 +283,15 @@ function ScamTrends() {
               <div>
                 <h5 className="font-medium text-sm text-gray-800 mb-2">Red Flags</h5>
                 <div className="flex flex-wrap gap-2">
-                  {scamOfTheWeek.redFlags?.map((flag, idx) => (
-                    <span key={idx} className="bg-red-100 text-red-700 text-sm rounded-full px-3 py-1 font-medium">
-                      <ExclamationCircleIcon className="w-4 h-4 inline mr-1" /> {flag}
-                    </span>
-                  )) || <span className="text-sm text-gray-500">None listed</span>}
+                  {scamOfTheWeek.redFlags?.length > 0 ? (
+                    scamOfTheWeek.redFlags.map((flag, idx) => (
+                      <span key={idx} className="bg-red-100 text-red-700 text-sm rounded-full px-3 py-1 font-medium">
+                        <ExclamationCircleIcon className="w-4 h-4 inline mr-1" /> {flag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-sm text-gray-500">None listed</span>
+                  )}
                 </div>
               </div>
               <p className="text-xs text-gray-500">
@@ -293,8 +310,8 @@ function ScamTrends() {
                 {pastScams.length > 0 ? (
                   pastScams.map((pastScam, idx) => (
                     <div key={idx} className="bg-slate-100 p-4 rounded-lg">
-                      <h4 className="text-md font-semibold text-[#002E5D]">{pastScam.name}</h4>
-                      <p className="text-sm text-gray-600">{pastScam.description}</p>
+                      <h4 className="text-md font-semibold text-[#002E5D]">{pastScam.name || 'N/A'}</h4>
+                      <p className="text-sm text-gray-600">{pastScam.description || 'No description available.'}</p>
                       <p className="text-xs text-gray-500 mt-1">
                         Reported: {pastScam.reportDate ? new Date(pastScam.reportDate).toLocaleDateString() : 'N/A'}
                       </p>
@@ -567,31 +584,55 @@ function ScamTrends() {
               <div>
                 <h4 className="text-2xl font-semibold text-[#002E5D] dark:text-cyan-400 mb-4">Red Flags</h4>
                 <div className="flex flex-wrap gap-4">
-                  {selectedScam.redFlags?.map((flag, idx) => (
-                    <span
-                      key={idx}
-                      className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-lg rounded-full px-5 py-2 font-medium shadow-sm hover:bg-red-200 transition-colors"
-                    >
-                      <ExclamationCircleIcon className="w-6 h-6 inline mr-2" /> {flag}
-                    </span>
-                  )) || <span className="text-lg text-gray-500">No red flags listed.</span>}
+                  {selectedScam.redFlags?.length > 0 ? (
+                    selectedScam.redFlags.map((flag, idx) => (
+                      <span
+                        key={idx}
+                        className="bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-200 text-lg rounded-full px-5 py-2 font-medium shadow-sm hover:bg-red-200 transition-colors"
+                      >
+                        <ExclamationCircleIcon className="w-6 h-6 inline mr-2" /> {flag}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-lg text-gray-500">No red flags listed.</span>
+                  )}
                 </div>
               </div>
               <div>
-                <h4 className="text-2xl font-semibold text-[#002E5D] dark:text-cyan-400 mb-4">What to Do If Targeted</h4>
-                <ul className="list-none space-y-3 text-lg text-gray-600 dark:text-gray-400">
-                  <li className="flex items-start">
-                    <ArrowRightIcon className="w-6 h-6 text-cyan-500 mr-2 mt-1 flex-shrink-0" />
-                    <span>{selectedScam.action || 'No action specified.'}</span>
-                  </li>
-                </ul>
+                <h4 className="text-2xl font-semibold text-[#002E5D] dark:text-cyan-400 mb-4">What to Do</h4>
+                <p className="text-lg text-gray-700 dark:text-gray-300">
+                  {selectedScam.action || 'No action specified.'}
+                </p>
               </div>
+              {selectedScam.source && (
+                <div>
+                  <h4 className="text-2xl font-semibold text-[#002E5D] dark:text-cyan-400 mb-4">Source</h4>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">{selectedScam.source}</p>
+                </div>
+              )}
+              {selectedScam.related && (
+                <div>
+                  <h4 className="text-2xl font-semibold text-[#002E5D] dark:text-cyan-400 mb-4">Related Scams</h4>
+                  <p className="text-lg text-gray-700 dark:text-gray-300">{selectedScam.related}</p>
+                </div>
+              )}
+              {selectedScam.includeImage && selectedScam.image && (
+                <div>
+                  <h4 className="text-2xl font-semibold text-[#002E5D] dark:text-cyan-400 mb-4">Image</h4>
+                  <img
+                    src={selectedScam.image}
+                    alt={selectedScam.name}
+                    className="w-full max-w-md mx-auto rounded-lg shadow-md"
+                    onError={(e) => (e.target.style.display = 'none')}
+                  />
+                </div>
+              )}
             </div>
             <button
               onClick={() => setSelectedScam(null)}
-              className="mt-10 w-full bg-gradient-to-r from-[#002E5D] to-[#01487a] hover:from-[#01487a] hover:to-[#002E5D] text-white rounded-2xl px-6 py-3 text-lg font-semibold flex items-center justify-center shadow-md transition-all"
+              className="mt-8 px-6 py-3 bg-[#002E5D] dark:bg-cyan-600 text-white rounded-full hover:bg-[#01487a] dark:hover:bg-cyan-700 transition-colors text-lg font-semibold"
             >
-              Close <ArrowRightIcon className="w-6 h-6 ml-2" />
+              Close
             </button>
           </div>
         </div>
