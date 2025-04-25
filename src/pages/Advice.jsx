@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import axios from 'axios';
 import {
   ShieldCheckIcon,
   ExclamationTriangleIcon,
@@ -15,8 +16,6 @@ import {
   ClipboardDocumentCheckIcon,
   BuildingLibraryIcon,
   ShieldExclamationIcon,
-  ArrowRightIcon,
-  XMarkIcon,
   LockClosedIcon,
   UserIcon,
 } from '@heroicons/react/24/outline';
@@ -25,28 +24,28 @@ import Header from '../components/Header.jsx';
 import Footer from '../components/Footer.jsx';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 
-// Icon mappings
-const iconOptions = {
-  ShieldCheckIcon,
-  ExclamationTriangleIcon,
-  ShoppingCartIcon,
-  BanknotesIcon,
-  CreditCardIcon,
-  LinkIcon,
-  KeyIcon,
-  WifiIcon,
-  PhoneIcon,
-  ComputerDesktopIcon,
-  IdentificationIcon,
-  EnvelopeIcon,
-  ClipboardDocumentCheckIcon,
-  BuildingLibraryIcon,
-  ShieldExclamationIcon,
-  LockClosedIcon,
-  UserIcon,
-};
+// Icon options (aligned with HelpAdviceEditor.jsx)
+const iconOptions = [
+  { name: 'ShieldCheckIcon', component: <ShieldCheckIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'ExclamationTriangleIcon', component: <ExclamationTriangleIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'ShoppingCartIcon', component: <ShoppingCartIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'BanknotesIcon', component: <BanknotesIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'CreditCardIcon', component: <CreditCardIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'LinkIcon', component: <LinkIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'KeyIcon', component: <KeyIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'WifiIcon', component: <WifiIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'PhoneIcon', component: <PhoneIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'ComputerDesktopIcon', component: <ComputerDesktopIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'IdentificationIcon', component: <IdentificationIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'EnvelopeIcon', component: <EnvelopeIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'ClipboardDocumentCheckIcon', component: <ClipboardDocumentCheckIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'BuildingLibraryIcon', component: <BuildingLibraryIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'ShieldExclamationIcon', component: <ShieldExclamationIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'LockClosedIcon', component: <LockClosedIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+  { name: 'UserIcon', component: <UserIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" /> },
+];
 
-// Advice categories data
+// Initial data (from provided Advice.jsx)
 const initialAdviceCategories = [
   {
     category: 'General Safety Tips',
@@ -981,7 +980,6 @@ const initialAdviceCategories = [
   },
 ];
 
-// Default Tip of the Week
 const defaultTipOfTheWeek = {
   title: '🛡️ Tip of the Week',
   text: 'Always verify before you trust. Scammers often pretend to be your bank, HMRC, or other trusted providers to create a false sense of urgency. Never act on unexpected messages alone — always use the company’s official website or app to verify what’s real.',
@@ -998,244 +996,337 @@ const defaultTipOfTheWeek = {
 
 // Function to render icons dynamically
 const renderIcon = (iconName) => {
-  const Icon = iconOptions[iconName] || ShieldCheckIcon;
-  return <Icon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" />;
+  const icon = iconOptions.find((opt) => opt.name === iconName);
+  return icon ? icon.component : <ShieldCheckIcon className="w-6 h-6 text-cyan-700 dark:text-cyan-300" />;
 };
 
 function Advice() {
-  const [categories, setCategories] = useState(initialAdviceCategories);
-  const [tipOfTheWeek, setTipOfTheWeek] = useState(defaultTipOfTheWeek);
+  const [data, setData] = useState({
+    categories: initialAdviceCategories,
+    tipOfTheWeek: defaultTipOfTheWeek,
+    tipArchive: [],
+  });
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedTip, setSelectedTip] = useState(null);
+  const [selectedTipIndex, setSelectedTipIndex] = useState(0);
 
-  // Scroll to top on page load
+  // Backend API URL (replace with production URL in Vercel environment variables)
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/help-advice';
+
+  // Fetch content from backend on mount
   useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(API_URL);
+        setData({
+          categories: response.data.categories || initialAdviceCategories,
+          tipOfTheWeek: response.data.tipOfTheWeek || defaultTipOfTheWeek,
+          tipArchive: response.data.tipArchive || [],
+        });
+        setLoading(false);
+      } catch (err) {
+        setError('Failed to load content. Showing default data.');
+        setData({
+          categories: initialAdviceCategories,
+          tipOfTheWeek: defaultTipOfTheWeek,
+          tipArchive: [],
+        });
+        setLoading(false);
+      }
+    };
+    fetchContent();
     window.scrollTo(0, 0);
   }, []);
 
-  useEffect(() => {
-    try {
-      const storedData = JSON.parse(localStorage.getItem('helpAdviceData'));
-      if (storedData) {
-        if (Array.isArray(storedData.categories)) {
-          setCategories(storedData.categories);
-        }
-        if (storedData.tipOfTheWeek) {
-          setTipOfTheWeek({
-            ...defaultTipOfTheWeek,
-            ...storedData.tipOfTheWeek,
-            details: {
-              why: storedData.tipOfTheWeek.details?.why || defaultTipOfTheWeek.details.why,
-              examples: storedData.tipOfTheWeek.details?.examples || defaultTipOfTheWeek.details.examples,
-              whatToDo: storedData.tipOfTheWeek.details?.whatToDo || defaultTipOfTheWeek.details.whatToDo,
-              signs: storedData.tipOfTheWeek.details?.signs || defaultTipOfTheWeek.details.signs,
-              protect: storedData.tipOfTheWeek.details?.protect || defaultTipOfTheWeek.details.protect,
-            },
-          });
-        }
-      }
-    } catch (error) {
-      console.error('Failed to load helpAdviceData:', error);
-      setCategories(initialAdviceCategories);
-      setTipOfTheWeek(defaultTipOfTheWeek);
-    }
-  }, []);
-
-  const openCategoryModal = (category) => {
-    setSelectedCategory(category);
-  };
-
-  const closeCategoryModal = () => {
-    setSelectedCategory(null);
-  };
-
-  const openTipModal = (tip) => {
-    setSelectedTip(tip);
-  };
-
-  const closeTipModal = () => {
-    setSelectedTip(null);
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+        <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+    <div className="min-h-screen bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
       <Header />
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+      <div className="max-w-screen-xl mx-auto px-4 sm:px-6 py-8 space-y-8">
         {/* Header */}
         <section className="text-center">
           <img
             src={fraudCheckLogo}
             alt="Fraud Check Logo"
-            className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
+            className="h-20 md:h-24 max-h-24 md:max-h-28 mx-auto mb-4 object-contain"
           />
-          <div className="-mt-6">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
-              Help & Advice
-            </h2>
-          </div>
+          <h1 className="text-4xl font-bold text-gray-900 dark:text-white">Help & Advice</h1>
           <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
             Stay one step ahead of fraudsters with our expert guidance. Learn how to spot scams, protect your accounts, and recover if something goes wrong.
           </p>
         </section>
 
+        {error && (
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">{error}</div>
+        )}
+
         {/* Tip of the Week */}
-        <section className="mt-8 bg-gradient-to-r from-cyan-50 to-blue-50 dark:from-slate-800 dark:to-slate-700 shadow-sm rounded-2xl p-6 relative">
-          <span className="absolute top-4 left-4 bg-cyan-700 text-white text-xs font-semibold px-2 py-1 rounded-full">
-            Featured
-          </span>
-          <h2 className="text-2xl font-bold text-[#002E5D] dark:text-cyan-300 mt-8">
-            {tipOfTheWeek.title}
-          </h2>
-          <blockquote className="text-gray-600 dark:text-slate-300 mt-2 mb-4 italic">
-            "{tipOfTheWeek.text}"
-          </blockquote>
-          <button
-            onClick={() => openTipModal(tipOfTheWeek)}
-            className="inline-flex items-center px-6 py-3 bg-cyan-700 text-white rounded-lg font-semibold hover:bg-cyan-800 transition-all duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-          >
-            Learn More <ArrowRightIcon className="w-4 h-4 ml-2" />
-          </button>
-        </section>
-
-        {/* Advice Categories */}
-        <section className="mt-8">
-          {categories.map((category, idx) => (
-            <div key={idx} className="mb-8">
-              <h3 className="text-2xl font-semibold text-[#002E5D] dark:text-white mb-4">
-                {category.category}
+        <section className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
+          <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Tip of the Week</h2>
+          <div className="flex items-start gap-4">
+            {renderIcon(data.tipOfTheWeek.icon)}
+            <div>
+              <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                {data.tipOfTheWeek.title}
               </h3>
-              <div className="flex flex-col gap-4">
-                {category.tips.slice(0, 3).map((tip, tipIdx) => (
-                  <button
-                    key={tipIdx}
-                    onClick={() => openTipModal(tip)}
-                    className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-4 flex items-center gap-4 border border-gray-200 dark:border-slate-700 hover:shadow-md hover:-translate-y-1 transition-all duration-200 text-left"
-                  >
-                    {renderIcon(tip.icon)}
-                    <div>
-                      <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {tip.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-slate-300">
-                        {tip.preview}
-                      </p>
-                    </div>
-                  </button>
-                ))}
+              <p className="text-gray-600 dark:text-slate-300 mb-4">{data.tipOfTheWeek.text}</p>
+              {data.tipOfTheWeek.link && (
+                <Link
+                  to={data.tipOfTheWeek.link}
+                  className="text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500"
+                >
+                  Learn More
+                </Link>
+              )}
+              <div className="space-y-4 mt-4">
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Why It’s Important</h4>
+                  <p className="text-gray-600 dark:text-slate-300">{data.tipOfTheWeek.details.why}</p>
+                </div>
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Examples</h4>
+                  <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                    {data.tipOfTheWeek.details.examples.map((example, idx) => (
+                      <li key={idx}>{example}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">What To Do</h4>
+                  <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                    {data.tipOfTheWeek.details.whatToDo.map((step, idx) => (
+                      <li key={idx}>{step}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">Signs to Watch For</h4>
+                  <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                    {data.tipOfTheWeek.details.signs.map((sign, idx) => (
+                      <li key={idx}>{sign}</li>
+                    ))}
+                  </ul>
+                </div>
+                <div>
+                  <h4 className="text-lg font-medium text-gray-900 dark:text-white">How to Protect Yourself</h4>
+                  <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                    {data.tipOfTheWeek.details.protect.map((protection, idx) => (
+                      <li key={idx}>{protection}</li>
+                    ))}
+                  </ul>
+                </div>
               </div>
-              <button
-                onClick={() => openCategoryModal(category)}
-                className="mt-4 inline-flex items-center px-6 py-3 bg-cyan-700 text-white rounded-lg font-semibold hover:bg-cyan-800 transition-all duration-200 shadow-md focus:outline-none focus:ring-2 focus:ring-cyan-500 text-sm"
-              >
-                See All Tips <ArrowRightIcon className="w-4 h-4 ml-2" />
-              </button>
             </div>
-          ))}
-        </section>
-
-        {/* Modal for Category Tips */}
-        {selectedCategory && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full mx-4 relative max-h-[80vh] overflow-y-auto">
-              <button
-                onClick={closeCategoryModal}
-                className="absolute top-4 right-4 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-              <h3 className="text-2xl font-semibold text-[#002E5D] dark:text-white mb-4">
-                {selectedCategory.category}
-              </h3>
+          </div>
+          {/* Previous Tips */}
+          {data.tipArchive.length > 0 && (
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Previous Tips</h3>
               <div className="space-y-4">
-                {selectedCategory.tips.map((tip, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => openTipModal(tip)}
-                    className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 flex items-center gap-4 hover:bg-gray-100 dark:hover:bg-slate-600 transition-all duration-200 w-full text-left"
+                {data.tipArchive.map((tip, index) => (
+                  <div
+                    key={index}
+                    className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 flex items-start gap-4"
                   >
                     {renderIcon(tip.icon)}
                     <div>
-                      <h4 className="text-lg font-medium text-gray-900 dark:text-gray-100">
-                        {tip.title}
-                      </h4>
-                      <p className="text-sm text-gray-600 dark:text-slate-300">
-                        {tip.preview}
+                      <h4 className="text-sm font-medium text-gray-900 dark:text-white">{tip.title}</h4>
+                      <p className="text-xs text-gray-600 dark:text-slate-300 mt-1">{tip.text}</p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
+                        Archived: {new Date(tip.archivedAt).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })}
                       </p>
                     </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+        </section>
+
+        {/* Categories and Tips */}
+        <section className="flex flex-col md:flex-row gap-8">
+          {/* Category List */}
+          {!selectedCategory ? (
+            <div className="w-full">
+              <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Advice Categories</h2>
+              <div className="space-y-2">
+                {data.categories.map((category, index) => (
+                  <button
+                    key={index}
+                    onClick={() => {
+                      setSelectedCategory(category.category);
+                      setSelectedTipIndex(0);
+                    }}
+                    className="w-full text-left px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-cyan-100 dark:hover:bg-cyan-900"
+                  >
+                    {category.category}
                   </button>
                 ))}
               </div>
             </div>
-          </div>
-        )}
+          ) : (
+            <div className="w-full">
+              {/* Category Header */}
+              <div className="flex items-center mb-6">
+                <button
+                  onClick={() => setSelectedCategory(null)}
+                  className="mr-4 p-2 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600"
+                >
+                  <svg className="w-5 h-5 text-gray-900 dark:text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+                  </svg>
+                </button>
+                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">{selectedCategory}</h2>
+              </div>
 
-        {/* Modal for Tip Details */}
-        {selectedTip && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-            <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-lg w-full mx-4 relative max-h-[80vh] overflow-y-auto">
-              <button
-                onClick={closeTipModal}
-                className="absolute top-4 right-4 text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
-              >
-                <XMarkIcon className="w-6 h-6" />
-              </button>
-              <h3 className="text-2xl font-semibold text-[#002E5D] dark:text-white mb-4">
-                {selectedTip.title}
-              </h3>
-              <div className="space-y-4 text-gray-600 dark:text-slate-300">
-                {selectedTip.details?.why && (
-                  <div>
-                    <h4 className="text-lg font-medium">Why It Matters</h4>
-                    <p>{selectedTip.details.why}</p>
+              {/* Tips Display */}
+              <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
+                {data.categories
+                  .find((cat) => cat.category === selectedCategory)
+                  ?.tips[selectedTipIndex] ? (
+                  <div className="space-y-6">
+                    <div className="flex items-start gap-4">
+                      {renderIcon(
+                        data.categories.find((cat) => cat.category === selectedCategory).tips[
+                          selectedTipIndex
+                        ].icon
+                      )}
+                      <div>
+                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
+                          {
+                            data.categories.find((cat) => cat.category === selectedCategory).tips[
+                              selectedTipIndex
+                            ].title
+                          }
+                        </h3>
+                        <p className="text-gray-600 dark:text-slate-300 mb-4">
+                          {
+                            data.categories.find((cat) => cat.category === selectedCategory).tips[
+                              selectedTipIndex
+                            ].preview
+                          }
+                        </p>
+                        <div className="space-y-4">
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                              Why It’s Important
+                            </h4>
+                            <p className="text-gray-600 dark:text-slate-300">
+                              {
+                                data.categories.find((cat) => cat.category === selectedCategory)
+                                  .tips[selectedTipIndex].details.why
+                              }
+                            </p>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                              Examples
+                            </h4>
+                            <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                              {data.categories
+                                .find((cat) => cat.category === selectedCategory)
+                                .tips[selectedTipIndex].details.examples.map((example, idx) => (
+                                  <li key={idx}>{example}</li>
+                                ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                              What To Do
+                            </h4>
+                            <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                              {data.categories
+                                .find((cat) => cat.category === selectedCategory)
+                                .tips[selectedTipIndex].details.whatToDo.map((step, idx) => (
+                                  <li key={idx}>{step}</li>
+                                ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                              Signs to Watch For
+                            </h4>
+                            <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                              {data.categories
+                                .find((cat) => cat.category === selectedCategory)
+                                .tips[selectedTipIndex].details.signs.map((sign, idx) => (
+                                  <li key={idx}>{sign}</li>
+                                ))}
+                            </ul>
+                          </div>
+                          <div>
+                            <h4 className="text-lg font-medium text-gray-900 dark:text-white">
+                              How to Protect Yourself
+                            </h4>
+                            <ul className="list-disc pl-5 text-gray-600 dark:text-slate-300">
+                              {data.categories
+                                .find((cat) => cat.category === selectedCategory)
+                                .tips[selectedTipIndex].details.protect.map((protection, idx) => (
+                                  <li key={idx}>{protection}</li>
+                                ))}
+                            </ul>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex justify-between">
+                      <button
+                        onClick={() => setSelectedTipIndex((prev) => Math.max(0, prev - 1))}
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm disabled:opacity-50"
+                        disabled={selectedTipIndex === 0}
+                        aria-label="Previous tip"
+                      >
+                        Previous
+                      </button>
+                      <button
+                        onClick={() =>
+                          setSelectedTipIndex((prev) =>
+                            Math.min(
+                              data.categories.find((cat) => cat.category === selectedCategory).tips
+                                .length - 1,
+                              prev + 1
+                            )
+                          )
+                        }
+                        className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm disabled:opacity-50"
+                        disabled={
+                          selectedTipIndex ===
+                          data.categories.find((cat) => cat.category === selectedCategory).tips
+                            .length - 1
+                        }
+                        aria-label="Next tip"
+                      >
+                        Next
+                      </button>
+                    </div>
                   </div>
-                )}
-                {selectedTip.details?.examples?.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-medium">Examples</h4>
-                    <ul className="list-disc pl-5">
-                      {selectedTip.details.examples.map((example, idx) => (
-                        <li key={idx}>{example}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {selectedTip.details?.whatToDo?.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-medium">What To Do</h4>
-                    <ul className="list-disc pl-5">
-                      {selectedTip.details.whatToDo.map((action, idx) => (
-                        <li key={idx}>{action}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {selectedTip.details?.signs?.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-medium">Signs to Watch For</h4>
-                    <ul className="list-disc pl-5">
-                      {selectedTip.details.signs.map((sign, idx) => (
-                        <li key={idx}>{sign}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {selectedTip.details?.protect?.length > 0 && (
-                  <div>
-                    <h4 className="text-lg font-medium">How to Protect Yourself</h4>
-                    <ul className="list-disc pl-5">
-                      {selectedTip.details.protect.map((protection, idx) => (
-                        <li key={idx}>{protection}</li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-                {!selectedTip.details && (
-                  <p>{selectedTip.text || 'No additional details available.'}</p>
+                ) : (
+                  <p className="text-gray-500 dark:text-slate-400">No tips available in this category.</p>
                 )}
               </div>
             </div>
-          </div>
-        )}
+          )}
+        </section>
       </div>
       <Footer />
     </div>

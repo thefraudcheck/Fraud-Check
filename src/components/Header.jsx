@@ -25,7 +25,7 @@ function Header() {
             <img
               src={logo}
               alt="Fraud Check Logo"
-              className="h-16 w-auto max-h-full object-contain sm:h-18 md:h-20" // Responsive logo size
+              className="h-16 w-auto max-h-full object-contain sm:h-18 md:h-20" // Larger logo
               onError={() => console.error('Failed to load logo in Header')}
             />
           </Link>
@@ -61,7 +61,7 @@ function Header() {
           </button>
         </div>
 
-        <div className="flex flex-col items-center justify-center flex-1 md:flex-row md:items-center md:justify-start space-y-6 md:space-y-0 md:space-x-6 px-4">
+        <div className="flex flex-col items-center justify-center flex-1 md:flex-row md:items-center md:justify-start space-y-8 md:space-y-0 md:space-x-6 px-4">
           <div className="relative w-full md:w-auto">
             <div className="flex items-center justify-center w-full">
               <Link
@@ -91,7 +91,7 @@ function Header() {
             <div
               className={`${
                 isDropdownOpen ? 'flex' : 'hidden'
-              } flex-col w-full mt-2 bg-gray-50 dark:bg-slate-800 md:bg-white md:dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left md:absolute md:top-full md:left-0 md:w-48 z-20 space-y-2 md:space-y-0`}
+              } flex-col w-full mt-4 bg-gray-50 dark:bg-slate-800 md:bg-white md:dark:bg-slate-800 md:shadow-lg md:rounded-md text-center md:text-left md:absolute md:top-full md:left-0 md:w-48 z-20 space-y-4 md:space-y-0`}
             >
               <Link
                 to="/scam-checker"
