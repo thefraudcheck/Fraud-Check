@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { getHomeArticlesData, setHomeArticlesData, getArticleSettings, setArticleSettings } from '../../utils/storage';
+import axios from 'axios';
 import fraudCheckLogo from '../../assets/fraud-check-logo.png';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 
@@ -29,8 +29,6 @@ class ErrorBoundary extends React.Component {
 }
 
 const ArticleEditor = () => {
-  const [backgroundImage, setBackgroundImage] = useState(null);
-  const [defaultHeroImage, setDefaultHeroImage] = useState(null);
   const [articles, setArticles] = useState([]);
   const [newArticle, setNewArticle] = useState({
     slug: '',
@@ -45,28 +43,38 @@ const ArticleEditor = () => {
   });
   const [editingArticle, setEditingArticle] = useState(null);
   const [error, setError] = useState('');
+  const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
 
-  useEffect(() => {
-    try {
-      setLoading(true);
-      const settings = getArticleSettings() || {};
-      setBackgroundImage(settings.backgroundImage || null);
-      setDefaultHeroImage(settings.defaultHeroImage || null);
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
 
-      const articlesData = getHomeArticlesData() || { articles: [] };
-      setArticles(articlesData.articles || []);
-    } catch (err) {
-      setError('Error loading editor: ' + err.message);
-      setBackgroundImage(null);
-      setDefaultHeroImage(null);
-      setArticles([]);
-    } finally {
-      setLoading(false);
-    }
+  useEffect(() => {
+    const fetchArticles = async () => {
+      try {
+        setLoading(true);
+        const response = await axios.get(API_URL, { timeout: 5000 });
+        setArticles(response.data || []);
+        setLoading(false);
+      } catch (err) {
+        console.error('Fetch articles error:', {
+          message: err.message,
+          response: err.response?.data,
+          status: err.response?.status,
+          url: API_URL,
+        });
+        setError(
+          `Failed to load articles: ${err.message}${
+            err.response?.data?.error ? ` - ${err.response.data.error}` : ''
+          }`
+        );
+        setArticles([]);
+        setLoading(false);
+      }
+    };
+    fetchArticles();
   }, []);
 
-  const handleFileUpload = (e, setter) => {
+  const handleFileUpload = (e) => {
     const file = e.target.files[0];
     if (!file) {
       setError('No file selected.');
@@ -83,49 +91,18 @@ const ArticleEditor = () => {
 
     const reader = new FileReader();
     reader.onload = () => {
-      setter(reader.result);
+      setNewArticle({ ...newArticle, image: reader.result });
     };
     reader.onerror = () => setError('Failed to read image file.');
     reader.readAsDataURL(file);
   };
 
-  const handleSaveSettings = () => {
+  const handleAddOrUpdateArticle = async () => {
     try {
-      const settings = { backgroundImage, defaultHeroImage };
-      setArticleSettings(settings);
       setError('');
-      alert('Images saved successfully.');
-    } catch (err) {
-      setError('Failed to save images: ' + err.message);
-    }
-  };
-
-  const handleResetStorage = () => {
-    try {
-      localStorage.removeItem('articleSettings');
-      localStorage.removeItem('homeArticlesData');
-      setBackgroundImage(null);
-      setDefaultHeroImage(null);
-      const articlesData = getHomeArticlesData();
-      setArticles(articlesData.articles || []);
-      setError('');
-      alert('Settings and articles reset to defaults.');
-    } catch (err) {
-      setError('Failed to reset settings: ' + err.message);
-    }
-  };
-
-  const handleAddOrUpdateArticle = () => {
-    try {
+      setSuccess('');
       if (!newArticle.slug || !newArticle.title || !newArticle.content) {
         throw new Error('Slug, title, and content are required.');
-      }
-      if (
-        articles.some(
-          (article) => article.slug === newArticle.slug && article.slug !== editingArticle?.slug
-        )
-      ) {
-        throw new Error('Slug must be unique.');
       }
 
       const normalizedSlug = newArticle.slug.toLowerCase().replace(/\s+/g, '-');
@@ -135,17 +112,24 @@ const ArticleEditor = () => {
         tags: newArticle.tags.length > 0 ? newArticle.tags : [newArticle.category].filter(Boolean),
       };
 
-      let updatedArticles;
       if (editingArticle) {
-        updatedArticles = articles.map((article) =>
-          article.slug === editingArticle.slug ? updatedArticle : article
-        );
+        await axios.put(`${API_URL}/${editingArticle.slug}`, updatedArticle);
+        setSuccess('Article updated successfully.');
       } else {
-        updatedArticles = [...articles, updatedArticle];
+        try {
+          await axios.get(`${API_URL}/${normalizedSlug}`);
+          throw new Error('Slug already exists. Please choose a unique slug.');
+        } catch (err) {
+          if (err.response?.status !== 404) {
+            throw err;
+          }
+        }
+        await axios.post(API_URL, updatedArticle);
+        setSuccess('Article added successfully.');
       }
 
-      setHomeArticlesData({ articles: updatedArticles });
-      setArticles(updatedArticles);
+      const response = await axios.get(API_URL);
+      setArticles(response.data || []);
       setNewArticle({
         slug: '',
         title: '',
@@ -158,16 +142,15 @@ const ArticleEditor = () => {
         image: '',
       });
       setEditingArticle(null);
-      setError('');
-      alert(editingArticle ? 'Article updated successfully.' : 'Article added successfully.');
     } catch (err) {
-      setError('Failed to save article: ' + err.message);
+      setError(`Failed to save article: ${err.response?.data?.error || err.message}`);
     }
   };
 
   const handleEditArticle = (article) => {
-    console.log('Editing article:', article);
     try {
+      setError('');
+      setSuccess('');
       const articleToEdit = {
         slug: article.slug || '',
         title: article.title || '',
@@ -176,33 +159,36 @@ const ArticleEditor = () => {
         author: article.author || 'Fraud Check Team',
         date: article.date || new Date().toISOString().split('T')[0],
         category: article.category || '',
-        tags: article.tags || [article.category].filter(Boolean),
+        tags: Array.isArray(article.tags) ? article.tags : [article.category].filter(Boolean),
         image: article.image || '',
       };
       setEditingArticle(articleToEdit);
       setNewArticle(articleToEdit);
-      setError('');
     } catch (err) {
-      setError('Failed to load article for editing: ' + err.message);
+      setError(`Failed to load article for editing: ${err.message}`);
     }
   };
 
-  const handleDeleteArticle = (slug) => {
+  const handleDeleteArticle = async (slug) => {
     if (window.confirm('Are you sure you want to delete this article?')) {
       try {
-        const updatedArticles = articles.filter((article) => article.slug !== slug);
-        setHomeArticlesData({ articles: updatedArticles });
-        setArticles(updatedArticles);
         setError('');
-        alert('Article deleted successfully.');
+        setSuccess('');
+        await axios.delete(`${API_URL}/${slug}`);
+        const response = await axios.get(API_URL);
+        setArticles(response.data || []);
+        setSuccess('Article deleted successfully.');
       } catch (err) {
-        setError('Failed to delete article: ' + err.message);
+        setError(`Failed to delete article: ${err.response?.data?.error || err.message}`);
       }
     }
   };
 
   const handleTagsChange = (e) => {
-    const tags = e.target.value.split(',').map((tag) => tag.trim()).filter(Boolean);
+    const tags = e.target.value
+      .split(',')
+      .map((tag) => tag.trim())
+      .filter(Boolean);
     setNewArticle({ ...newArticle, tags });
   };
 
@@ -210,7 +196,6 @@ const ArticleEditor = () => {
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          {/* Header */}
           <section className="text-center">
             <img
               src={fraudCheckLogo}
@@ -219,16 +204,13 @@ const ArticleEditor = () => {
               onError={() => console.error('Failed to load logo')}
             />
             <div className="-mt-6">
-              <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
-                Article Editor
-              </h2>
+              <h2 className="text-4xl font-bold text-gray-900 dark:text-white">Article Editor</h2>
             </div>
             <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
               Manage articles with insights, breakdowns, and safety guides from the Fraud Check team.
             </p>
           </section>
 
-          {/* Back to Dashboard */}
           <section className="mt-8">
             <Link
               to="/admin/dashboard"
@@ -239,7 +221,12 @@ const ArticleEditor = () => {
             </Link>
           </section>
 
-          {error && <p className="text-center text-red-600 p-4">{error}</p>}
+          {error && (
+            <p className="text-center text-red-600 p-4 bg-red-100 rounded-lg mb-4">{error}</p>
+          )}
+          {success && (
+            <p className="text-center text-green-600 p-4 bg-green-100 rounded-lg mb-4">{success}</p>
+          )}
 
           {loading ? (
             <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
@@ -247,86 +234,6 @@ const ArticleEditor = () => {
             </div>
           ) : (
             <>
-              {/* Settings Section */}
-              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Site Images
-                </h3>
-                <div className="mb-4">
-                  <label
-                    htmlFor="backgroundImage"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Background Image (Articles Page, Optional)
-                  </label>
-                  <input
-                    id="backgroundImage"
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    onChange={(e) => handleFileUpload(e, setBackgroundImage)}
-                    className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Current: {backgroundImage ? 'Custom Image' : 'None (uses gradient)'}
-                  </p>
-                  {backgroundImage && (
-                    <img
-                      src={backgroundImage}
-                      alt="Background Preview"
-                      className="mt-2 max-w-xs rounded"
-                      onError={() => {
-                        setError('Failed to load background image. Using default.');
-                        setBackgroundImage(null);
-                      }}
-                    />
-                  )}
-                </div>
-                <div className="mb-4">
-                  <label
-                    htmlFor="defaultHeroImage"
-                    className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
-                  >
-                    Hero Image (Articles Page Header, Optional)
-                  </label>
-                  <input
-                    id="defaultHeroImage"
-                    type="file"
-                    accept="image/png,image/jpeg"
-                    onChange={(e) => handleFileUpload(e, setDefaultHeroImage)}
-                    className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
-                  />
-                  <p className="text-xs text-gray-500 mt-1">
-                    Current: {defaultHeroImage ? 'Custom Image' : 'None'}
-                  </p>
-                  {defaultHeroImage && (
-                    <img
-                      src={defaultHeroImage}
-                      alt="Hero Preview"
-                      className="mt-2 max-w-xs rounded"
-                      onError={() => {
-                        setError('Failed to load hero image. Using default.');
-                        setDefaultHeroImage(null);
-                      }}
-                    />
-                  )}
-                </div>
-                <div className="flex gap-4">
-                  <button
-                    onClick={handleSaveSettings}
-                    className="px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg"
-                  >
-                    Save Images
-                  </button>
-                  <button
-                    onClick={handleResetStorage}
-                    className="px-6 py-2 bg-red-600 text-white hover:bg-red-700 transition-colors rounded-lg"
-                  >
-                    Reset to Defaults
-                  </button>
-                </div>
-              </section>
-
-              {/* Add/Edit Article Form */}
               <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
                 <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                   {editingArticle ? 'Edit Article' : 'Add New Article'}
@@ -345,7 +252,7 @@ const ArticleEditor = () => {
                       value={newArticle.slug}
                       onChange={(e) => setNewArticle({ ...newArticle, slug: e.target.value })}
                       placeholder="e.g., new-scam-005"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -361,7 +268,7 @@ const ArticleEditor = () => {
                       value={newArticle.title}
                       onChange={(e) => setNewArticle({ ...newArticle, title: e.target.value })}
                       placeholder="e.g., New Scam Alert"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -376,7 +283,7 @@ const ArticleEditor = () => {
                       value={newArticle.summary}
                       onChange={(e) => setNewArticle({ ...newArticle, summary: e.target.value })}
                       placeholder="Brief summary of the article"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[80px]"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[80px] focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -391,7 +298,7 @@ const ArticleEditor = () => {
                       value={newArticle.content}
                       onChange={(e) => setNewArticle({ ...newArticle, content: e.target.value })}
                       placeholder="Full article content"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[150px]"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[150px] focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -407,7 +314,7 @@ const ArticleEditor = () => {
                       value={newArticle.author}
                       onChange={(e) => setNewArticle({ ...newArticle, author: e.target.value })}
                       placeholder="e.g., Fraud Check Team"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -422,7 +329,7 @@ const ArticleEditor = () => {
                       type="date"
                       value={newArticle.date}
                       onChange={(e) => setNewArticle({ ...newArticle, date: e.target.value })}
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -438,7 +345,7 @@ const ArticleEditor = () => {
                       value={newArticle.category}
                       onChange={(e) => setNewArticle({ ...newArticle, category: e.target.value })}
                       placeholder="e.g., Phishing"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -454,7 +361,7 @@ const ArticleEditor = () => {
                       value={newArticle.tags.join(', ')}
                       onChange={handleTagsChange}
                       placeholder="e.g., scam, phishing, security"
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
                     />
                   </div>
                   <div>
@@ -462,15 +369,13 @@ const ArticleEditor = () => {
                       htmlFor="image"
                       className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2"
                     >
-                      Article Image
+                      Article Image (Optional)
                     </label>
                     <input
                       id="image"
                       type="file"
                       accept="image/png,image/jpeg"
-                      onChange={(e) =>
-                        handleFileUpload(e, (result) => setNewArticle({ ...newArticle, image: result }))
-                      }
+                      onChange={handleFileUpload}
                       className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
                     />
                     {newArticle.image && (
@@ -506,6 +411,7 @@ const ArticleEditor = () => {
                           image: '',
                         });
                         setError('');
+                        setSuccess('');
                       }}
                       className="px-6 py-2 bg-gray-500 text-white hover:bg-gray-600 transition-colors rounded-lg"
                     >
@@ -515,7 +421,6 @@ const ArticleEditor = () => {
                 </div>
               </section>
 
-              {/* Live Preview */}
               {newArticle.title && (
                 <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
                   <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
@@ -563,15 +468,12 @@ const ArticleEditor = () => {
                 </section>
               )}
 
-              {/* Articles List */}
-              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p	-6">
+              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
                 <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                   Existing Articles
                 </h3>
                 {articles.length === 0 ? (
-                  <p className="text-gray-500 dark:text-gray-400 text-lg">
-                    No articles found.
-                  </p>
+                  <p className="text-gray-500 dark:text-gray-400 text-lg">No articles found.</p>
                 ) : (
                   <div className="grid gap-4">
                     {articles.map((article) => (
@@ -621,23 +523,43 @@ const ArticleEditor = () => {
                 )}
               </section>
 
-              {/* Footer */}
               <footer className="bg-slate-900 text-slate-300 pt-10 pb-6 px-4 sm:px-6 mt-12">
                 <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
                   <div>
                     <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
                     <ul className="space-y-2">
-                      <li><a href="/scam-checker" className="hover:text-white">Scam Checker</a></li>
-                      <li><a href="/scam-trends" className="hover:text-white">Trends & Reports</a></li>
-                      <li><a href="/help-advice" className="hover:text-white">Advice</a></li>
-                      <li><a href="/contacts" className="hover:text-white">Contacts</a></li>
-                      <li><a href="/about" className="hover:text-white">About</a></li>
+                      <li>
+                        <a href="/scam-checker" className="hover:text-white">
+                          Scam Checker
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/scam-trends" className="hover:text-white">
+                          Trends & Reports
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/help-advice" className="hover:text-white">
+                          Advice
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/contacts" className="hover:text-white">
+                          Contacts
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/about" className="hover:text-white">
+                          About
+                        </a>
+                      </li>
                     </ul>
                   </div>
                   <div>
                     <h3 className="text-lg font-semibold mb-4 text-white">About Fraud Check</h3>
                     <p className="text-sm">
-                      Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.
+                      Fraud Check is your free tool for staying safe online. Built by fraud experts to
+                      help real people avoid modern scams.
                     </p>
                   </div>
                   <div>

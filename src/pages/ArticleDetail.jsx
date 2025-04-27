@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import { getHomeArticlesData } from '../utils/storage';
+import axios from 'axios';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import Header from '../components/Header';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
@@ -43,27 +43,32 @@ const ArticleDetail = () => {
   const { slug } = useParams();
   const [article, setArticle] = useState(null);
   const [error, setError] = useState('');
+  const [loading, setLoading] = useState(true);
+
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
 
   useEffect(() => {
-    try {
-      const articlesData = getHomeArticlesData();
-      const foundArticle = articlesData.articles.find((a) => a.slug === slug);
-      if (!foundArticle) {
-        throw new Error('Article not found');
+    const fetchArticle = async () => {
+      try {
+        const response = await axios.get(`${API_URL}/${slug}`);
+        setArticle(response.data);
+        setLoading(false);
+      } catch (err) {
+        setError(
+          err.response?.status === 404 ? 'Article not found' : `Failed to load article: ${err.message}`
+        );
+        setArticle(null);
+        setLoading(false);
       }
-      setArticle(foundArticle);
-    } catch (err) {
-      setError(err.message);
-      setArticle(null);
-    }
-  }, [slug]);
+    };
+    fetchArticle();
+  }, [slug, API_URL]); // Added API_URL to dependency array
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          {/* Page Header */}
           <section className="text-center">
             <img
               src={fraudCheckLogo}
@@ -81,15 +86,15 @@ const ArticleDetail = () => {
             </p>
           </section>
 
-          {/* Article Content */}
           <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
-            {error ? (
+            {loading ? (
+              <p className="text-gray-500 dark:text-gray-400 text-center text-lg">Loading article...</p>
+            ) : error ? (
               <p className="text-red-600 text-center text-lg">{error}</p>
             ) : !article ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center text-lg">Loading article...</p>
+              <p className="text-red-600 text-center text-lg">Article not found</p>
             ) : (
               <>
-                {/* Return to Articles Button */}
                 <Link
                   to="/articles"
                   className="inline-flex items-center px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg mb-6"
@@ -98,12 +103,10 @@ const ArticleDetail = () => {
                   Return to Articles
                 </Link>
 
-                {/* Section Header */}
                 <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
                   {article.category || 'Article Details'}
                 </h2>
 
-                {/* Article Content */}
                 <h3 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{article.title}</h3>
                 <div className="flex gap-4 text-gray-500 dark:text-gray-400 mb-6">
                   <p>
@@ -143,7 +146,6 @@ const ArticleDetail = () => {
             )}
           </section>
 
-          {/* Footer */}
           <footer className="bg-slate-900 text-slate-300 pt-10 pb-6 px-4 sm:px-6 mt-12">
             <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
               <div>
@@ -187,7 +189,7 @@ const ArticleDetail = () => {
                   </a>
                   <a href="https://linkedin.com" className="hover:text-white">
                     <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
                     </svg>
                   </a>
                 </div>

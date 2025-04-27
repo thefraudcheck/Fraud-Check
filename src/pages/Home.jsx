@@ -6,9 +6,10 @@ import Header from '../components/Header';
 import Hero from '../components/Hero';
 import ArticleCard from '../components/ArticleCard';
 import Footer from '../components/Footer';
-import { getScamTrendsData, getHomeArticlesData } from '../utils/storage';
+import axios from 'axios';
 import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import fraudCheckImage from '../assets/fraud-check-image.png';
+import { getScamTrendsData } from '../utils/storage';
 
 function Home() {
   const [pageData, setPageData] = useState({
@@ -51,6 +52,8 @@ function Home() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
+  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
+
   useEffect(() => {
     window.scrollTo(0, 0);
     document.body.style.margin = '0';
@@ -60,6 +63,7 @@ function Home() {
   }, []);
 
   useEffect(() => {
+    // Load homepage data from localStorage
     try {
       const storedData = JSON.parse(localStorage.getItem('homePageData'));
       if (storedData) {
@@ -80,14 +84,19 @@ function Home() {
       setError('Failed to load homepage data.');
     }
 
-    try {
-      const articlesData = getHomeArticlesData() || { articles: [] };
-      setArticles(articlesData.articles.slice(0, 3) || []);
-    } catch (error) {
-      console.error('Failed to load articles:', error);
-      setError('Failed to load articles.');
-    }
+    // Fetch articles from backend
+    const fetchArticles = async () => {
+      try {
+        const response = await axios.get(API_URL);
+        setArticles(response.data.slice(0, 3) || []);
+      } catch (error) {
+        console.error('Failed to load articles:', error);
+        setError('Failed to load articles.');
+      }
+    };
+    fetchArticles();
 
+    // Load scam reports
     const loadReports = () => {
       try {
         const scamData = getScamTrendsData();
@@ -123,7 +132,7 @@ function Home() {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  }, [API_URL]);
 
   useEffect(() => {
     if (demoScams.length <= 1) return;
@@ -185,7 +194,7 @@ function Home() {
         </div>
       )}
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8" role="region" aria-label="Latest Articles">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8" aria-label="Latest Articles">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
             Latest Articles
@@ -204,17 +213,18 @@ function Home() {
           </p>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {articles.map((article) => (
+            {articles.map((article, index) => (
               <ArticleCard
-                key={article.slug || `article-${article.title}`}
+                key={article.slug || `article-${index}`}
                 article={article}
+                index={index}
               />
             ))}
           </div>
         )}
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16" role="region" aria-label="Recently Reported Scams">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16" aria-label="Recently Reported Scams">
         <div className="flex justify-between items-center mb-6">
           <h2 className="text-3xl font-bold text-gray-900 dark:text-white">
             Recently Reported Scams
@@ -290,7 +300,7 @@ function Home() {
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16" role="region" aria-label="Why Use Fraud Check">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16" aria-label="Why Use Fraud Check">
         <h2 className="text-3xl font-bold text-center mb-12 text-gray-900 dark:text-white">
           Why Use Fraud Check?
         </h2>
@@ -299,7 +309,6 @@ function Home() {
             <div
               key={feature.title}
               className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 text-center transition-all duration-200 hover:shadow-lg hover:-translate-y-1"
-              role="region"
               aria-label={feature.title}
             >
               {renderIcon(feature.icon)}
@@ -310,7 +319,7 @@ function Home() {
         </div>
       </section>
 
-      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12" role="region" aria-label="Tip of the Week">
+      <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12" aria-label="Tip of the Week">
         <div className="bg-sky-50 dark:bg-slate-800 rounded-xl shadow-md hover:shadow-lg transition px-6 py-10 max-w-3xl mx-auto text-center">
           <h2 className="text-2xl font-bold text-slate-800 dark:text-white mb-2">{pageData.tipOfTheWeek.title}</h2>
           <p className="text-sm text-slate-600 dark:text-slate-300 max-w-xl mx-auto leading-snug mb-4">

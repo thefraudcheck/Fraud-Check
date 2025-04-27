@@ -80,63 +80,6 @@ export function setHomeData(data) {
   }
 }
 
-export function getHomeArticlesData() {
-  const data = localStorage.getItem('homeArticlesData');
-  const defaultData = {
-    articles: [
-      {
-        slug: 'welcome-to-fraud-check',
-        title: 'Welcome to Fraud Check',
-        description:
-          'Your free tool for staying safe online. Learn about our mission to help you identify, report, and stay informed about fraud.',
-        date: '2024-10-01',
-        image: null,
-        content: 'Full content goes here...',
-        category: 'General',
-      },
-      {
-        slug: 'how-to-spot-a-scam',
-        title: 'How to Spot a Scam',
-        description: 'Learn the top 5 signs of a scam and how to protect yourself from fraudsters.',
-        date: '2024-10-02',
-        image: null,
-        content: 'Full content goes here...',
-        category: 'Tips',
-      },
-      {
-        slug: 'reporting-fraud',
-        title: 'Why Reporting Fraud Matters',
-        description: 'Understand the importance of reporting scams and how it helps keep everyone safer.',
-        date: '2024-10-03',
-        image: null,
-        content: 'Full content goes here...',
-        category: 'Community',
-      },
-    ],
-  };
-
-  if (!data) {
-    localStorage.setItem('homeArticlesData', JSON.stringify(defaultData));
-    return defaultData;
-  }
-
-  try {
-    return JSON.parse(data);
-  } catch (e) {
-    console.error('Error parsing homeArticlesData:', e);
-    localStorage.setItem('homeArticlesData', JSON.stringify(defaultData));
-    return defaultData;
-  }
-}
-
-export function setHomeArticlesData(data) {
-  try {
-    localStorage.setItem('homeArticlesData', JSON.stringify(data));
-  } catch (e) {
-    console.error('Error saving homeArticlesData:', e);
-  }
-}
-
 export function getScamTrendsData() {
   const data = localStorage.getItem('scamTrendsData');
   const defaultData = scamTrendsData;
@@ -172,7 +115,7 @@ export function setScamTrendsData(data) {
     console.log('Saved scamTrendsData to localStorage:', data);
   } catch (e) {
     console.error('Error saving scamTrendsData:', e);
-    throw e; // Re-throw to be caught in the editor
+    throw e;
   }
 }
 
