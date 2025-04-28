@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import axios from 'axios';
 import fraudCheckLogo from '../../assets/fraud-check-logo.png';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
+import { supabase } from '../../utils/supabase';
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -46,27 +46,20 @@ const ArticleEditor = () => {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
-
   useEffect(() => {
     const fetchArticles = async () => {
       try {
         setLoading(true);
-        const response = await axios.get(API_URL, { timeout: 5000 });
-        setArticles(response.data || []);
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .order('date', { ascending: false });
+        if (error) throw error;
+        setArticles(data || []);
         setLoading(false);
       } catch (err) {
-        console.error('Fetch articles error:', {
-          message: err.message,
-          response: err.response?.data,
-          status: err.response?.status,
-          url: API_URL,
-        });
-        setError(
-          `Failed to load articles: ${err.message}${
-            err.response?.data?.error ? ` - ${err.response.data.error}` : ''
-          }`
-        );
+        console.error('Fetch articles error:', err);
+        setError(`Failed to load articles: ${err.message}`);
         setArticles([]);
         setLoading(false);
       }
@@ -113,23 +106,33 @@ const ArticleEditor = () => {
       };
 
       if (editingArticle) {
-        await axios.put(`${API_URL}/${editingArticle.slug}`, updatedArticle);
+        const { error } = await supabase
+          .from('articles')
+          .update(updatedArticle)
+          .eq('slug', editingArticle.slug);
+        if (error) throw error;
         setSuccess('Article updated successfully.');
       } else {
-        try {
-          await axios.get(`${API_URL}/${normalizedSlug}`);
+        const { data: existingArticle, error: fetchError } = await supabase
+          .from('articles')
+          .select('slug')
+          .eq('slug', normalizedSlug)
+          .single();
+        if (fetchError && fetchError.code !== 'PGRST116') throw fetchError;
+        if (existingArticle) {
           throw new Error('Slug already exists. Please choose a unique slug.');
-        } catch (err) {
-          if (err.response?.status !== 404) {
-            throw err;
-          }
         }
-        await axios.post(API_URL, updatedArticle);
+        const { error } = await supabase.from('articles').insert([updatedArticle]);
+        if (error) throw error;
         setSuccess('Article added successfully.');
       }
 
-      const response = await axios.get(API_URL);
-      setArticles(response.data || []);
+      const { data, error: fetchError } = await supabase
+        .from('articles')
+        .select('*')
+        .order('date', { ascending: false });
+      if (fetchError) throw fetchError;
+      setArticles(data || []);
       setNewArticle({
         slug: '',
         title: '',
@@ -143,7 +146,7 @@ const ArticleEditor = () => {
       });
       setEditingArticle(null);
     } catch (err) {
-      setError(`Failed to save article: ${err.response?.data?.error || err.message}`);
+      setError(`Failed to save article: ${err.message}`);
     }
   };
 
@@ -157,7 +160,7 @@ const ArticleEditor = () => {
         summary: article.summary || '',
         content: article.content || '',
         author: article.author || 'Fraud Check Team',
-        date: article.date || new Date().toISOString().split('T')[0],
+        date: new Date(article.date).toISOString().split('T')[0],
         category: article.category || '',
         tags: Array.isArray(article.tags) ? article.tags : [article.category].filter(Boolean),
         image: article.image || '',
@@ -174,12 +177,17 @@ const ArticleEditor = () => {
       try {
         setError('');
         setSuccess('');
-        await axios.delete(`${API_URL}/${slug}`);
-        const response = await axios.get(API_URL);
-        setArticles(response.data || []);
+        const { error } = await supabase.from('articles').delete().eq('slug', slug);
+        if (error) throw error;
+        const { data, error: fetchError } = await supabase
+          .from('articles')
+          .select('*')
+          .order('date', { ascending: false });
+        if (fetchError) throw fetchError;
+        setArticles(data || []);
         setSuccess('Article deleted successfully.');
       } catch (err) {
-        setError(`Failed to delete article: ${err.response?.data?.error || err.message}`);
+        setError(`Failed to delete article: ${err.message}`);
       }
     }
   };
@@ -497,7 +505,7 @@ const ArticleEditor = () => {
                               year: 'numeric',
                             })}
                           </p>
-                          {article.tags?.length > 0 && (
+                          {Array.isArray(article.tags) && article.tags.length > 0 && (
                             <p className="text-sm text-gray-500 dark:text-gray-400">
                               Tags: {article.tags.join(', ')}
                             </p>
@@ -587,7 +595,7 @@ const ArticleEditor = () => {
                       </a>
                       <a href="https://linkedin.com" className="hover:text-white">
                         <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
+                          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
                         </svg>
                       </a>
                     </div>

@@ -6,10 +6,10 @@ import Header from '../components/Header';
 import Hero from '../components/Hero';
 import ArticleCard from '../components/ArticleCard';
 import Footer from '../components/Footer';
-import axios from 'axios';
 import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import fraudCheckImage from '../assets/fraud-check-image.png';
 import { getScamTrendsData } from '../utils/storage';
+import { supabase } from '../utils/supabase';
 
 function Home() {
   const [pageData, setPageData] = useState({
@@ -52,8 +52,6 @@ function Home() {
   const [error, setError] = useState(null);
   const navigate = useNavigate();
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
-
   useEffect(() => {
     window.scrollTo(0, 0);
     document.body.style.margin = '0';
@@ -84,11 +82,16 @@ function Home() {
       setError('Failed to load homepage data.');
     }
 
-    // Fetch articles from backend
+    // Fetch articles from Supabase
     const fetchArticles = async () => {
       try {
-        const response = await axios.get(API_URL);
-        setArticles(response.data.slice(0, 3) || []);
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .order('date', { ascending: false })
+          .limit(3);
+        if (error) throw error;
+        setArticles(data || []);
       } catch (error) {
         console.error('Failed to load articles:', error);
         setError('Failed to load articles.');
@@ -132,7 +135,7 @@ function Home() {
     };
     window.addEventListener('storage', handleStorage);
     return () => window.removeEventListener('storage', handleStorage);
-  }, [API_URL]);
+  }, []);
 
   useEffect(() => {
     if (demoScams.length <= 1) return;

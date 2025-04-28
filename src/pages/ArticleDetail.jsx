@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import axios from 'axios';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import Header from '../components/Header';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { supabase } from '../utils/supabase';
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -45,24 +45,25 @@ const ArticleDetail = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
-
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const response = await axios.get(`${API_URL}/${slug}`);
-        setArticle(response.data);
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .eq('slug', slug)
+          .single();
+        if (error) throw error;
+        setArticle(data);
         setLoading(false);
       } catch (err) {
-        setError(
-          err.response?.status === 404 ? 'Article not found' : `Failed to load article: ${err.message}`
-        );
+        setError(err.message || 'Article not found');
         setArticle(null);
         setLoading(false);
       }
     };
     fetchArticle();
-  }, [slug, API_URL]); // Added API_URL to dependency array
+  }, [slug]);
 
   return (
     <ErrorBoundary>
@@ -124,7 +125,7 @@ const ArticleDetail = () => {
                       <p>{article.category}</p>
                     </>
                   )}
-                  {article.tags?.length > 0 && (
+                  {Array.isArray(article.tags) && article.tags.length > 0 && (
                     <>
                       <p>•</p>
                       <p>Tags: {article.tags.join(', ')}</p>

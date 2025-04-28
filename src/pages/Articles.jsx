@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import ArticleCard from '../components/ArticleCard';
-import axios from 'axios';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
+import { supabase } from '../utils/supabase';
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -43,13 +43,15 @@ function Articles() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
-  const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:5000/api/articles';
-
   useEffect(() => {
     const fetchArticles = async () => {
       try {
-        const response = await axios.get(API_URL);
-        setArticles(response.data || []);
+        const { data, error } = await supabase
+          .from('articles')
+          .select('*')
+          .order('date', { ascending: false });
+        if (error) throw error;
+        setArticles(data || []);
         setLoading(false);
       } catch (err) {
         setError(`Failed to load articles: ${err.message}`);
