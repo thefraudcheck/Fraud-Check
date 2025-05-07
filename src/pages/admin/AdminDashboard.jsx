@@ -52,19 +52,19 @@ function AdminDashboard() {
         if (error) {
           console.error('Supabase auth error in AdminDashboard:', error);
           setError(`Authentication failed: ${error.message}`);
-          navigate('/');
+          navigate('/login'); // Changed from '/' to '/login'
           return;
         }
         if (!user) {
           console.log('No user found, redirecting to home page');
-          navigate('/');
+          navigate('/login'); // Changed from '/' to '/login'
           return;
         }
         setUser(user);
       } catch (err) {
         console.error('Unexpected error during auth check:', err);
         setError(`Unexpected error: ${err.message}`);
-        navigate('/');
+        navigate('/login'); // Changed from '/' to '/login'
       } finally {
         setLoading(false);
       }
@@ -80,7 +80,7 @@ function AdminDashboard() {
         setError(`Sign out failed: ${error.message}`);
         return;
       }
-      navigate('/');
+      navigate('/login'); // Changed from '/' to '/login'
     } catch (err) {
       console.error('Unexpected error during sign out:', err);
       setError(`Unexpected error: ${err.message}`);
