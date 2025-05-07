@@ -164,10 +164,10 @@ function Home() {
 
   const renderIcon = (iconName) => {
     switch (iconName) {
-      case 'shield-check': return <ShieldCheck className="w-12 h-12 text-cyan-700 mx-auto mb-4" aria-hidden="true" />;
-      case 'light-bulb': return <Lightbulb className="w-12 h-12 text-cyan-700 mx-auto mb-4" aria-hidden="true" />;
-      case 'exclamation-triangle': return <AlertTriangle className="w-12 h-12 text-cyan-700 mx-auto mb-4" aria-hidden="true" />;
-      default: return <ShieldCheck className="w-12 h-12 text-cyan-700 mx-auto mb-4" aria-hidden="true" />;
+      case 'shield-check': return <ShieldCheck className="w-12 h-12 text-cyan-700 dark:text-cyan-300 mx-auto mb-4" aria-hidden="true" />;
+      case 'light-bulb': return <Lightbulb className="w-12 h-12 text-cyan-700 dark:text-cyan-300 mx-auto mb-4" aria-hidden="true" />;
+      case 'exclamation-triangle': return <AlertTriangle className="w-12 h-12 text-cyan-700 dark:text-cyan-300 mx-auto mb-4" aria-hidden="true" />;
+      default: return <ShieldCheck className="w-12 h-12 text-cyan-700 dark:text-cyan-300 mx-auto mb-4" aria-hidden="true" />;
     }
   };
 
@@ -183,14 +183,14 @@ function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-white">
+      <div className="min-h-screen flex items-center justify-center">
         <p>Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-slate-900 dark:text-slate-100" style={{ backgroundImage: `url(${fraudCheckerBackground})`, backgroundSize: 'cover', backgroundPosition: 'center', backgroundRepeat: 'no-repeat' }}>
+    <div className="min-h-screen">
       <Header />
       <div className="w-full">
         <Hero onStartScamCheck={handleStartScamCheck} heroData={pageData.hero} />
@@ -202,13 +202,13 @@ function Home() {
       )}
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-8 animate-fadeIn" aria-label="Latest Articles">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-[#002E5D] dark:text-white font-inter">Latest Articles</h2>
-          <Link to="/articles" className="bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="View all articles">See All</Link>
+          <h2 className="text-3xl font-bold text-[#002E5D] dark:text-gray-100 font-inter">Latest Articles</h2>
+          <Link to="/articles" className="bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="View all articles">See All</Link>
         </div>
         {isLoadingArticles ? (
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
             {[1, 2, 3].map((_, idx) => (
-              <div key={idx} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+              <div key={idx} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6">
                 <div className="h-40 w-full skeleton rounded mb-4"></div>
                 <div className="h-6 w-3/4 skeleton rounded mb-2"></div>
                 <div className="h-4 w-full skeleton rounded"></div>
@@ -227,30 +227,30 @@ function Home() {
       </section>
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 animate-fadeIn" aria-label="Community Reported Scams">
         <div className="flex justify-between items-center mb-6">
-          <h2 className="text-3xl font-bold text-[#002E5D] dark:text-white font-inter">Community Reported Scams</h2>
-          <Link to="/scam-trends#reports" className="bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="View all reports">View All Reports</Link>
+          <h2 className="text-3xl font-bold text-[#002E5D] dark:text-gray-100 font-inter">Community Reported Scams</h2>
+          <Link to="/scam-trends#reports" className="bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="View all reports">View All Reports</Link>
         </div>
         <div className="relative">
           <div className="overflow-hidden">
             <div className="flex transition-transform duration-500 ease-in-out" style={{ transform: `translateX(-${currentIndex * 100}%)` }}>
               {demoScams.length === 0 ? (
                 <div className="flex-shrink-0 w-full p-4">
-                  <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 flex flex-col h-[420px] justify-center">
+                  <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col h-[420px] justify-center">
                     <span className="text-gray-500 dark:text-gray-400 text-center font-inter">No recent reports available.</span>
                   </div>
                 </div>
               ) : (
                 demoScams.map((scam) => (
                   <div key={`${scam.title}-${scam.rawDate}`} className="flex-shrink-0 w-full p-4" aria-label={`Reported scam: ${scam.title}`}>
-                    <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 flex flex-col h-[420px] card-hover">
-                      <span className="inline-block bg-cyan-100 text-cyan-800 text-xs font-semibold px-2 py-1 rounded-full mb-4">{scam.category}</span>
-                      <h3 className="text-xl font-semibold mb-4 text-[#002E5D] dark:text-white font-inter">{scam.title}</h3>
-                      <span className="text-gray-600 dark:text-slate-300 mb-4 font-inter">{scam.description}</span>
-                      <span className="text-gray-700 dark:text-slate-200 mb-4 flex-grow font-inter"><span className="font-medium">Situation:</span> {scam.situation}</span>
-                      <span className="text-red-600 font-medium mb-4 font-inter">Red Flag: {scam.redFlag}</span>
+                    <div className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 flex flex-col h-[420px] card-hover">
+                      <span className="inline-block bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-300 text-xs font-semibold px-2 py-1 rounded-full mb-4">{scam.category}</span>
+                      <h3 className="text-xl font-semibold mb-4 text-[#002E5D] dark:text-gray-100 font-inter">{scam.title}</h3>
+                      <span className="text-gray-600 dark:text-gray-400 mb-4 font-inter">{scam.description}</span>
+                      <span className="text-gray-700 dark:text-gray-300 mb-4 flex-grow font-inter"><span className="font-medium">Situation:</span> {scam.situation}</span>
+                      <span className="text-red-600 dark:text-red-400 font-medium mb-4 font-inter">Red Flag: {scam.redFlag}</span>
                       <div className="mt-auto flex items-center justify-between">
-                        <span className="text-xs text-gray-500 dark:text-slate-400 font-inter">Reported: {scam.date}</span>
-                        <Link to="/scam-trends" className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label={`View full report for ${scam.title}`}>View Full Report</Link>
+                        <span className="text-xs text-gray-500 dark:text-gray-400 font-inter">Reported: {scam.date}</span>
+                        <Link to="/scam-trends" className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label={`View full report for ${scam.title}`}>View Full Report</Link>
                       </div>
                     </div>
                   </div>
@@ -260,69 +260,69 @@ function Home() {
           </div>
           {demoScams.length > 1 && (
             <>
-              <button onClick={handlePrev} aria-label="Previous scam" className="absolute left-0 top-1/2 -translate-y-1/2 bg-cyan-700 p-2 rounded-full hover:bg-cyan-500 transition-all"><ChevronLeftIcon className="w-5 h-5 text-white" aria-hidden="true" /></button>
-              <button onClick={handleNext} aria-label="Next scam" className="absolute right-0 top-1/2 -translate-y-1/2 bg-cyan-700 p-2 rounded-full hover:bg-cyan-500 transition-all"><ChevronRightIcon className="w-5 h-5 text-white" aria-hidden="true" /></button>
+              <button onClick={handlePrev} aria-label="Previous scam" className="absolute left-0 top-1/2 -translate-y-1/2 bg-cyan-700 dark:bg-cyan-600 p-2 rounded-full hover:bg-cyan-500 transition-all"><ChevronLeftIcon className="w-5 h-5 text-white" aria-hidden="true" /></button>
+              <button onClick={handleNext} aria-label="Next scam" className="absolute right-0 top-1/2 -translate-y-1/2 bg-cyan-700 dark:bg-cyan-600 p-2 rounded-full hover:bg-cyan-500 transition-all"><ChevronRightIcon className="w-5 h-5 text-white" aria-hidden="true" /></button>
             </>
           )}
         </div>
       </section>
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-16 animate-fadeIn" aria-label="Why Use Fraud Check">
-        <h2 className="text-3xl font-bold text-center mb-12 text-[#002E5D] dark:text-white font-inter">Why Use Fraud Check?</h2>
+        <h2 className="text-3xl font-bold text-center mb-12 text-[#002E5D] dark:text-gray-100 font-inter">Why Use Fraud Check?</h2>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {pageData.keyFeatures.map((feature, index) => (
-            <div key={feature.id || index} className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center card-hover" aria-label={feature.title}>
+            <div key={feature.id || index} className="bg-white dark:bg-gray-800 rounded-2xl shadow-sm p-6 text-center card-hover" aria-label={feature.title}>
               {renderIcon(feature.icon)}
-              <h3 className="text-xl font-semibold mb-2 text-[#002E5D] dark:text-white font-inter">{feature.title}</h3>
-              <span className="text-gray-600 dark:text-slate-300 text-sm font-inter">{feature.description}</span>
+              <h3 className="text-xl font-semibold mb-2 text-[#002E5D] dark:text-gray-100 font-inter">{feature.title}</h3>
+              <span className="text-gray-600 dark:text-gray-400 text-sm font-inter">{feature.description}</span>
             </div>
           ))}
         </div>
       </section>
       <section className="max-w-7xl mx-auto px-4 sm:px-6 py-12 animate-fadeIn" aria-label="Advice Sections">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-md p-8 card-hover">
-            <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-white mb-6 font-inter text-center">{pageData.tipOfTheWeek.title}</h2>
-            <span className="text-sm text-gray-600 dark:text-slate-300 block max-w-xl mx-auto leading-relaxed mb-6 font-inter text-center">{pageData.tipOfTheWeek.text}</span>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-md p-8 card-hover">
+            <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 mb-6 font-inter text-center">{pageData.tipOfTheWeek.title}</h2>
+            <span className="text-sm text-gray-600 dark:text-gray-400 block max-w-xl mx-auto leading-relaxed mb-6 font-inter text-center">{pageData.tipOfTheWeek.text}</span>
             {pageData.tipOfTheWeek.whatToDo?.length > 0 && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-8">
                 {pageData.tipOfTheWeek.whatToDo.map((action, idx) => {
                   const icons = [ShieldCheckIcon, LinkIcon, ExclamationCircleIcon];
                   const Icon = icons[idx % icons.length];
                   return (
-                    <div key={idx} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex flex-col items-center card-hover">
-                      <Icon className="w-8 h-8 text-cyan-700 mb-3" aria-hidden="true" />
-                      <span className="text-sm text-gray-600 dark:text-slate-300 font-inter text-center">{action}</span>
+                    <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col items-center card-hover">
+                      <Icon className="w-8 h-8 text-cyan-700 dark:text-cyan-300 mb-3" aria-hidden="true" />
+                      <span className="text-sm text-gray-600 dark:text-gray-400 font-inter text-center">{action}</span>
                     </div>
                   );
                 })}
               </div>
             )}
             <div className="text-center">
-              <Link to={pageData.tipOfTheWeek.link} className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="Visit Help & Advice for more tips">Visit Help & Advice</Link>
+              <Link to={pageData.tipOfTheWeek.link} className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="Visit Help & Advice for more tips">Visit Help & Advice</Link>
             </div>
           </div>
-          <div className="bg-white dark:bg-slate-800 rounded-3xl shadow-md p-8 card-hover">
-            <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-white mb-6 font-inter text-center">What To Do If…</h2>
+          <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-md p-8 card-hover">
+            <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 mb-6 font-inter text-center">What To Do If…</h2>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
               {pageData.whatToDoIf.slice(0, 3).map((scenario, idx) => {
                 const Icon = iconMap[scenario.icon] || ShieldCheckIcon;
                 return (
-                  <div key={scenario.id || idx} className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-4 flex flex-col items-center card-hover">
-                    <Icon className="w-8 h-8 text-cyan-700 mb-3" aria-hidden="true" />
-                    <h3 className="text-base font-medium text-[#002E5D] dark:text-white mb-3 font-inter text-center">{scenario.title}</h3>
-                    <Link to={scenario.link} className="mt-auto bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label={`Learn what to do if ${scenario.title.toLowerCase()}`}>Learn More</Link>
+                  <div key={scenario.id || idx} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col items-center card-hover">
+                    <Icon className="w-8 h-8 text-cyan-700 dark:text-cyan-300 mb-3" aria-hidden="true" />
+                    <h3 className="text-base font-medium text-[#002E5D] dark:text-gray-100 mb-3 font-inter text-center">{scenario.title}</h3>
+                    <Link to={scenario.link} className="mt-auto bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label={`Learn what to do if ${scenario.title.toLowerCase()}`}>Learn More</Link>
                   </div>
                 );
               })}
             </div>
             <div className="text-center">
-              <Link to="/help-advice" className="text-cyan-700 dark:text-cyan-400 text-base font-medium underline hover:text-cyan-500 dark:hover:text-cyan-300 transition-colors font-inter" aria-label="See all scenarios">See All</Link>
+              <Link to="/help-advice" className="text-cyan-700 dark:text-cyan-300 text-base font-medium underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors font-inter" aria-label="See all scenarios">See All</Link>
             </div>
           </div>
         </div>
       </section>
       <div className="w-full py-8">
-        <svg className="w-full h-16 text-[#e6f9fd] dark:text-slate-800" viewBox="0 0 1440 100" fill="currentColor" aria-hidden="true">
+        <svg className="w-full h-16 text-[#e6f9fd] dark:text-gray-900" viewBox="0 0 1440 100" fill="currentColor" aria-hidden="true">
           <path d="M0,0 L1440,0 L1440,100 C720,50 360,50 0,100 Z" />
         </svg>
       </div>
