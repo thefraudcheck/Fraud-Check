@@ -54,21 +54,21 @@ function Hero({ onStartScamCheck, heroData }) {
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
             <button
               onClick={onStartScamCheck}
-              className="bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter"
+              className="flex items-center justify-center bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter w-full sm:w-auto"
               aria-label="Start Scam Checker"
             >
               Scam Checker
             </button>
             <Link
               to="/scam-trends"
-              className="bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter"
+              className="flex items-center justify-center bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter w-full sm:w-auto"
               aria-label="View Community Reports"
             >
               Community Reports
             </Link>
             <Link
               to="/contacts"
-              className="bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter"
+              className="flex items-center justify-center bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter w-full sm:w-auto"
               aria-label="Access Contact Database"
             >
               Contact Database
