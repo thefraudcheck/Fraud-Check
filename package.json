@@ -2,6 +2,7 @@
   "name": "scam-checker",
   "version": "0.1.0",
   "private": true,
+  "homepage": "/",
   "dependencies": {
     "@heroicons/react": "^2.2.0",
     "@supabase/supabase-js": "^2.49.4",

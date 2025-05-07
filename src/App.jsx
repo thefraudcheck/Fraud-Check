@@ -17,16 +17,18 @@ import ScamCheckerEditor from './pages/admin/ScamCheckerEditor';
 import AboutEditor from './pages/admin/AboutEditor';
 import HelpAdviceEditor from './pages/admin/HelpAdviceEditor';
 import ContactEditor from './pages/admin/ContactEditor';
+import Login from './pages/Login'; // Import the Login page
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
 
   static getDerivedStateFromError(error) {
+    console.error('ErrorBoundary caught:', error);
     return { hasError: true, error };
   }
 
   componentDidCatch(error, errorInfo) {
-    console.error('ErrorBoundary caught:', error, errorInfo);
+    console.error('ErrorBoundary error info:', errorInfo);
   }
 
   resetError = () => {
@@ -57,7 +59,6 @@ class ErrorBoundary extends React.Component {
   }
 }
 
-// Protected Route Component
 const ProtectedRoute = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -66,17 +67,19 @@ const ProtectedRoute = ({ children }) => {
   useEffect(() => {
     const checkUser = async () => {
       try {
+        console.log('ProtectedRoute: Checking user authentication...');
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
-          console.error('Auth check error:', error);
+          console.error('ProtectedRoute: Auth check error:', error);
           setError('Authentication failed. Please log in.');
           setLoading(false);
           return;
         }
+        console.log('ProtectedRoute: User authenticated:', user ? user.id : 'No user');
         setUser(user);
         setLoading(false);
       } catch (err) {
-        console.error('Auth check error:', err);
+        console.error('ProtectedRoute: Unexpected auth error:', err);
         setError('An unexpected error occurred during authentication.');
         setLoading(false);
       }
@@ -85,6 +88,7 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (loading) {
+    console.log('ProtectedRoute: Loading state active');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
@@ -100,16 +104,17 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (error) {
+    console.log('ProtectedRoute: Error state, redirecting to /login:', error);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
         <div className="text-center">
           <h1 className="text-2xl font-bold mb-4 font-inter">Authentication Error</h1>
           <p className="text-lg mb-4 font-inter">{error}</p>
           <Link
-            to="/"
+            to="/login"
             className="px-6 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter"
           >
-            Go to Home
+            Go to Login
           </Link>
         </div>
       </div>
@@ -117,9 +122,11 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
-    return <Navigate to="/" replace />;
+    console.log('ProtectedRoute: No user found, navigating to /login');
+    return <Navigate to="/login" replace />;
   }
 
+  console.log('ProtectedRoute: Rendering children');
   return children;
 };
 
@@ -127,6 +134,7 @@ function AppContent() {
   const location = useLocation();
 
   useEffect(() => {
+    console.log('AppContent: Current route:', location.pathname);
     const errorBoundary = document.querySelector('ErrorBoundary');
     if (errorBoundary && errorBoundary.resetError) {
       errorBoundary.resetError();
@@ -144,6 +152,7 @@ function AppContent() {
         <Route path="/help-advice" element={<Advice />} />
         <Route path="/about" element={<About />} />
         <Route path="/contacts" element={<Contacts />} />
+        <Route path="/login" element={<Login />} />
         <Route
           path="/admin"
           element={
