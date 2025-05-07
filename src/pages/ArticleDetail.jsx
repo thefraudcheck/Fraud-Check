@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
+import ArticleCard from '../components/ArticleCard'; // Added missing import
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import Header from '../components/Header';
-import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { ArrowLeftIcon, ShareIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../utils/supabase';
 
 class ErrorBoundary extends React.Component {
@@ -42,35 +43,69 @@ class ErrorBoundary extends React.Component {
 const ArticleDetail = () => {
   const { slug } = useParams();
   const [article, setArticle] = useState(null);
+  const [relatedArticles, setRelatedArticles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchArticle = async () => {
       try {
-        const { data, error } = await supabase
+        setLoading(true);
+        const { data: articleData, error: articleError } = await supabase
           .from('articles')
           .select('*')
           .eq('slug', slug)
           .single();
-        if (error) throw error;
-        setArticle(data);
-        setLoading(false);
+        if (articleError) throw articleError;
+        setArticle(articleData);
+
+        // Fetch related articles (same category, limit 3)
+        const { data: relatedData, error: relatedError } = await supabase
+          .from('articles')
+          .select('*')
+          .neq('slug', slug)
+          .eq('category', articleData.category)
+          .order('date', { ascending: false })
+          .limit(3);
+        if (relatedError) throw relatedError;
+        setRelatedArticles(relatedData || []);
       } catch (err) {
         setError(err.message || 'Article not found');
         setArticle(null);
+        setRelatedArticles([]);
+      } finally {
         setLoading(false);
       }
     };
     fetchArticle();
   }, [slug]);
 
+  const handleShare = () => {
+    const url = window.location.href;
+    navigator.clipboard.writeText(url).then(() => {
+      alert('Article URL copied to clipboard!');
+    });
+  };
+
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+        <style jsx>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+          .card-hover:hover {
+            transform: scale(1.02);
+            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+            transition: all 0.2s ease-in-out;
+          }
+        `}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <section className="text-center">
+          <section className="text-center animate-fadeIn">
             <img
               src={fraudCheckLogo}
               alt="Fraud Check Logo"
@@ -78,129 +113,100 @@ const ArticleDetail = () => {
               onError={() => console.error('Failed to load logo')}
             />
             <div className="-mt-6">
-              <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
-                Fraud Articles
-              </h2>
+              <h2 className="text-4xl font-bold text-[#002E5D] dark:text-white font-inter">Fraud Articles</h2>
+              <div className="mt-2 w-24 mx-auto border-b-2 border-cyan-200/50"></div>
             </div>
-            <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
-              Insights, breakdowns, and safety guides from the Fraud Check team.
+            <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto font-inter">
+              Expert insights, detailed breakdowns, and actionable safety guides from the Fraud Check team.
             </p>
           </section>
 
-          <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
+          <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-8 animate-fadeIn">
             {loading ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center text-lg">Loading article...</p>
+              <p className="text-gray-500 dark:text-gray-400 text-center text-lg font-inter">Loading article...</p>
             ) : error ? (
-              <p className="text-red-600 text-center text-lg">{error}</p>
+              <p className="text-red-600 text-center text-lg font-inter">{error}</p>
             ) : !article ? (
-              <p className="text-red-600 text-center text-lg">Article not found</p>
+              <p className="text-red-600 text-center text-lg font-inter">Article not found</p>
             ) : (
               <>
                 <Link
                   to="/articles"
-                  className="inline-flex items-center px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg mb-6"
+                  className="inline-flex items-center px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-500 active:scale-95 transition-all duration-100 rounded-lg mb-6 font-inter"
                 >
                   <ArrowLeftIcon className="w-5 h-5 mr-2" />
                   Return to Articles
                 </Link>
 
-                <h2 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                  {article.category || 'Article Details'}
-                </h2>
-
-                <h3 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{article.title}</h3>
-                <div className="flex gap-4 text-gray-500 dark:text-gray-400 mb-6">
-                  <p>
-                    {new Date(article.date).toLocaleDateString('en-US', {
-                      month: 'long',
-                      day: 'numeric',
-                      year: 'numeric',
-                    })}
-                  </p>
-                  <p>•</p>
-                  <p>{article.author}</p>
-                  {article.category && (
-                    <>
-                      <p>•</p>
-                      <p>{article.category}</p>
-                    </>
-                  )}
-                  {Array.isArray(article.tags) && article.tags.length > 0 && (
-                    <>
-                      <p>•</p>
-                      <p>Tags: {article.tags.join(', ')}</p>
-                    </>
-                  )}
-                </div>
                 {article.image && (
                   <img
                     src={article.image}
-                    alt="Article"
-                    className="w-full max-w-md rounded-lg mb-6"
+                    alt={article.title}
+                    className="w-full max-w-3xl rounded-lg mb-6 object-cover"
+                    style={{ aspectRatio: '16/9' }}
                     onError={() => setArticle({ ...article, image: '' })}
                   />
                 )}
-                <div className="text-gray-900 dark:text-gray-100 leading-6 whitespace-pre-wrap">
-                  {article.content}
+
+                <div className="space-y-4">
+                  {article.category && (
+                    <span className="inline-block bg-cyan-100 text-cyan-800 text-xs font-semibold px-2 py-1 rounded-full">
+                      {article.category}
+                    </span>
+                  )}
+                  <h3 className="text-3xl font-bold text-[#002E5D] dark:text-white font-inter">{article.title}</h3>
+                  <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-slate-400 font-inter">
+                    <p>
+                      {new Date(article.date).toLocaleDateString('en-US', {
+                        month: 'long',
+                        day: 'numeric',
+                        year: 'numeric',
+                      })}
+                    </p>
+                    {article.author && (
+                      <>
+                        <p>•</p>
+                        <p>{article.author}</p>
+                      </>
+                    )}
+                    {Array.isArray(article.tags) && article.tags.length > 0 && (
+                      <>
+                        <p>•</p>
+                        <p>Tags: {article.tags.join(', ')}</p>
+                      </>
+                    )}
+                  </div>
+                  <div className="text-base text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-wrap font-inter">
+                    {article.content}
+                  </div>
                 </div>
+
+                {/* Related Articles */}
+                {relatedArticles.length > 0 && (
+                  <div className="mt-12">
+                    <h4 className="text-xl font-semibold text-[#002E5D] dark:text-white mb-6 font-inter">Related Articles</h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {relatedArticles.map((related, idx) => (
+                        <ArticleCard key={related.slug || `related-${idx}`} article={related} index={idx} />
+                      ))}
+                    </div>
+                  </div>
+                )}
               </>
             )}
           </section>
-
-          <footer className="bg-slate-900 text-slate-300 pt-10 pb-6 px-4 sm:px-6 mt-12">
-            <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
-                <ul className="space-y-2">
-                  <li><Link to="/scam-checker" className="hover:text-white">Scam Checker</Link></li>
-                  <li><Link to="/scam-trends" className="hover:text-white">Trends & Reports</Link></li>
-                  <li><Link to="/help-advice" className="hover:text-white">Advice</Link></li>
-                  <li><Link to="/contacts" className="hover:text-white">Contacts</Link></li>
-                  <li><Link to="/about" className="hover:text-white">About</Link></li>
-                </ul>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-white">About Fraud Check</h3>
-                <p className="text-sm">
-                  Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold mb-4 text-white">Stay Updated</h3>
-                <form className="flex flex-col sm:flex-row gap-2">
-                  <input
-                    type="email"
-                    placeholder="Your email"
-                    className="flex-1 px-4 py-2 rounded-lg bg-slate-800 text-white border-none focus:outline-none focus:ring-2 focus:ring-cyan-700"
-                    aria-label="Email for newsletter"
-                  />
-                  <button
-                    type="submit"
-                    className="bg-cyan-700 text-white px-4 py-2 rounded-lg hover:bg-cyan-800 transition-all"
-                    aria-label="Subscribe to newsletter"
-                  >
-                    Subscribe
-                  </button>
-                </form>
-                <div className="flex gap-4 mt-4">
-                  <a href="https://twitter.com" className="hover:text-white">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                    </svg>
-                  </a>
-                  <a href="https://linkedin.com" className="hover:text-white">
-                    <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                      <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-                    </svg>
-                  </a>
-                </div>
-              </div>
-            </div>
-            <div className="max-w-7xl mx-auto mt-8 text-center text-sm">
-              © 2025 Fraud Check. All rights reserved.
-            </div>
-          </footer>
         </div>
+
+        {/* Sticky Share Button */}
+        {article && !loading && !error && (
+          <button
+            onClick={handleShare}
+            className="fixed bottom-4 right-4 bg-cyan-600 text-white rounded-full p-3 shadow-md hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 flex items-center gap-2 font-inter"
+          >
+            <ShareIcon className="w-5 h-5" />
+            Share
+          </button>
+        )}
       </div>
     </ErrorBoundary>
   );

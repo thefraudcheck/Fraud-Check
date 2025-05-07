@@ -3,11 +3,15 @@ import { createRoot } from 'react-dom/client';
 import App from './App.jsx';
 import './styles.css';
 
-console.log('index.js: Starting render');
+if (process.env.NODE_ENV !== 'production') {
+  console.log('index.js: Starting render');
+}
 const root = createRoot(document.getElementById('root'));
 root.render(
   <React.StrictMode>
     <App />
   </React.StrictMode>
 );
-console.log('index.js: Render complete');
+if (process.env.NODE_ENV !== 'production') {
+  console.log('index.js: Render complete');
+}

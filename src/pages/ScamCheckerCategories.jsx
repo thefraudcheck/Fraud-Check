@@ -1,7 +1,10 @@
+// src/components/ScamCheckerCategories.jsx
 import { useState, useEffect, useRef } from 'react';
+import PropTypes from 'prop-types';
 import paymentFlows from '../data/paymentFlows';
 import calculateRisk from '../utils/scamLogic';
 import Header from '../components/Header';
+import ResultCard from '../components/ResultCard';
 import botImage from '../assets/bot-image.png';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import fraudCheckerBackground from '../assets/fraud-checker-background.png';
@@ -61,7 +64,7 @@ function ScamCheckerCategories() {
   const [answers, setAnswers] = useState([]);
   const [isTyping, setIsTyping] = useState(false);
   const [expandedSections, setExpandedSections] = useState({});
-  const [dynamicPaymentFlows, setDynamicPaymentFlows] = useState(paymentFlows); // Renamed state variable
+  const [dynamicPaymentFlows, setDynamicPaymentFlows] = useState(paymentFlows);
   const chatEndRef = useRef(null);
 
   useEffect(() => {
@@ -86,10 +89,15 @@ function ScamCheckerCategories() {
 
   const handleOptionClick = (value) => {
     if (!selectedCategory) {
+      // Handle initial category selection
       if (!dynamicPaymentFlows[value] || !dynamicPaymentFlows[value][0]) {
         setMessages((prev) => [
           ...prev,
-          { sender: 'bot', text: `Sorry, the "${value}" category is unavailable. Please try another option.`, timestamp: new Date() },
+          {
+            sender: 'bot',
+            text: `Sorry, the "${value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}" category is unavailable. Please try another option.`,
+            timestamp: new Date(),
+          },
         ]);
         return;
       }
@@ -120,7 +128,77 @@ function ScamCheckerCategories() {
         ]);
         setCurrentStep(1);
       }, 1000);
+    } else if (selectedCategory === 'other' && currentStep === 1) {
+      // Handle Q1 redirect for "Other" category
+      const redirectMap = {
+        'purchase-or-item': 'marketplace',
+        'helping-service': 'service-provider',
+        'friend-partner-family': 'partner-or-loved-one',
+        'business-investment': 'investment',
+        'own-account-transfer': 'own-account-transfer',
+        'building-work-service': 'building-work',
+        'safety-security': 'other',
+        'none-not-sure': 'other',
+      };
+
+      const redirectCategory = redirectMap[value];
+      if (redirectCategory && redirectCategory !== 'other') {
+        if (!dynamicPaymentFlows[redirectCategory] || !dynamicPaymentFlows[redirectCategory][0]) {
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'bot',
+              text: `Sorry, the "${redirectCategory.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}" category is unavailable. Please try another option.`,
+              timestamp: new Date(),
+            },
+          ]);
+          return;
+        }
+        setSelectedCategory(redirectCategory);
+        setCurrentStep(1);
+        setAnswers([]);
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'user', text: value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()), timestamp: new Date() },
+          {
+            sender: 'bot',
+            text: `This sounds like a "${redirectCategory.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())}" payment. Let’s check it.`,
+            timestamp: new Date(),
+          },
+          {
+            sender: 'bot',
+            text: dynamicPaymentFlows[redirectCategory][0].question,
+            type: dynamicPaymentFlows[redirectCategory][0].type,
+            options: dynamicPaymentFlows[redirectCategory][0].options,
+            timestamp: new Date(),
+          },
+        ]);
+      } else {
+        // Proceed with "Other" flow
+        setAnswers((prev) => [...prev, value]);
+        setMessages((prev) => [
+          ...prev,
+          { sender: 'user', text: 'None of these / I’m not sure', timestamp: new Date() },
+        ]);
+        setIsTyping(true);
+        setTimeout(() => {
+          setIsTyping(false);
+          const nextQuestion = dynamicPaymentFlows[selectedCategory][1];
+          setMessages((prev) => [
+            ...prev,
+            {
+              sender: 'bot',
+              text: nextQuestion.question,
+              type: nextQuestion.type,
+              options: nextQuestion.options,
+              timestamp: new Date(),
+            },
+          ]);
+          setCurrentStep(2);
+        }, 1000);
+      }
     } else {
+      // Handle subsequent questions
       const flow = dynamicPaymentFlows[selectedCategory];
       if (!flow || currentStep > flow.length) {
         setMessages((prev) => [
@@ -132,7 +210,7 @@ function ScamCheckerCategories() {
 
       const previousOptions = flow[currentStep - 1]?.options || [];
       const selectedOption = previousOptions.find((opt) => opt.value === value) || { label: 'Unknown Response' };
-      const userText = selectedOption.label;
+      const userText = typeof selectedOption.label === 'string' ? selectedOption.label : value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       setAnswers((prev) => [...prev, value]);
       setMessages((prev) => [
@@ -162,6 +240,7 @@ function ScamCheckerCategories() {
         setIsTyping(true);
         setTimeout(() => {
           setIsTyping(false);
+          const result = calculateRisk(answers, flow, selectedCategory);
           setMessages((prev) => [
             ...prev,
             {
@@ -186,7 +265,7 @@ function ScamCheckerCategories() {
             {
               sender: 'bot',
               text: '',
-              result: calculateRisk(answers, flow),
+              resultData: result,
               timestamp: new Date(),
             },
           ]);
@@ -331,72 +410,87 @@ function ScamCheckerCategories() {
                                 {msg.summary.map((item, idx) => (
                                   <li key={idx}>
                                     <strong>Q:</strong> {item.question} <br />
-                                    <strong>A:</strong> {item.answer}
+                                    <strong>A:</strong> {typeof item.answer === 'string' ? item.answer : item.answer}
                                   </li>
                                 ))}
                               </ul>
                             </div>
                           )}
-                          {msg.result && (
-                            <div className={`mt-3 p-4 rounded-xl ${riskStyles[msg.result.riskLevel].bg} border-l-4 ${riskStyles[msg.result.riskLevel].border} shadow-md`}>
-                              <h3 className={`text-lg font-semibold ${riskStyles[msg.result.riskLevel].color}`}>
-                                {msg.result.riskLevel}
+                          {msg.resultData && (
+                            <div className={`mt-3 p-4 rounded-xl ${riskStyles[msg.resultData.riskLevel].bg} border-l-4 ${riskStyles[msg.resultData.riskLevel].border} shadow-md`}>
+                              <h3 className={`text-lg font-semibold ${riskStyles[msg.resultData.riskLevel].color}`}>
+                                {msg.resultData.riskLevel}
                               </h3>
-                              <p className={`mt-2 text-sm ${riskStyles[msg.result.riskLevel].text}`}>{msg.result.summary}</p>
-                              {msg.result.redFlags.length > 0 && (
+                              <ResultCard
+                                isScam={msg.resultData.riskLevel === 'High Risk'}
+                                message={msg.resultData.summary}
+                              />
+                              {msg.resultData.redFlags.length > 0 && (
                                 <div className="mt-4 bg-red-100 dark:bg-red-900/20 p-3 rounded-md">
                                   <button
                                     onClick={() => toggleSection('redFlags')}
                                     className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400 hover:underline w-full"
                                   >
-                                    <span className="text-red-600">❌</span> Red Flags Detected ({msg.result.redFlags.length})
+                                    <span className="text-red-600">❌</span> Red Flags Detected ({msg.resultData.redFlags.length})
                                   </button>
                                   {expandedSections.redFlags && (
                                     <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
-                                      {msg.result.redFlags.map((flag, i) => (
+                                      {msg.resultData.redFlags.map((flag, i) => (
                                         <li key={i}>{flag}</li>
                                       ))}
                                     </ul>
                                   )}
                                 </div>
                               )}
-                              {msg.result.missedBestPractices.length > 0 && (
+                              {msg.resultData.missedBestPractices.length > 0 && (
                                 <div className="mt-4 bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-md">
                                   <button
                                     onClick={() => toggleSection('missedBestPractices')}
                                     className="flex items-center gap-2 text-sm font-medium text-yellow-700 dark:text-yellow-400 hover:underline w-full"
                                   >
-                                    <span className="text-yellow-600">⚠️</span> Missed Best Practices ({msg.result.missedBestPractices.length})
+                                    <span className="text-yellow-600">⚠️</span> Missed Best Practices ({msg.resultData.missedBestPractices.length})
                                   </button>
                                   {expandedSections.missedBestPractices && (
                                     <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
-                                      {msg.result.missedBestPractices.map((missed, i) => (
+                                      {msg.resultData.missedBestPractices.map((missed, i) => (
                                         <li key={i}>{missed}</li>
                                       ))}
                                     </ul>
                                   )}
                                 </div>
                               )}
-                              {msg.result.bestPractices.length > 0 && (
+                              {msg.resultData.bestPractices.length > 0 && (
                                 <div className="mt-4 bg-green-100 dark:bg-green-900/20 p-3 rounded-md">
                                   <button
                                     onClick={() => toggleSection('bestPractices')}
                                     className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400 hover:underline w-full"
                                   >
-                                    <span className="text-green-600">✅</span> Best Practices Followed ({msg.result.bestPractices.length})
+                                    <span className="text-green-600">✅</span> Best Practices Followed ({msg.resultData.bestPractices.length})
                                   </button>
                                   {expandedSections.bestPractices && (
                                     <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
-                                      {msg.result.bestPractices.map((practice, i) => (
+                                      {msg.resultData.bestPractices.map((practice, i) => (
                                         <li key={i}>{practice}</li>
                                       ))}
                                     </ul>
                                   )}
                                 </div>
                               )}
+                              {msg.resultData.patternSuggestions?.length > 0 && (
+                                <div className="mt-4 bg-blue-100 dark:bg-blue-900/20 p-3 rounded-md">
+                                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                                    This situation may be related to another scam type:
+                                  </p>
+                                  <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                                    {msg.resultData.patternSuggestions.map((suggestion, i) => (
+                                      <li key={i}>{suggestion}</li>
+                                    ))}
+                                  </ul>
+                                </div>
+                              )}
                               <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
                                 <p className="text-sm font-medium text-gray-700 dark:text-gray-300">What to Do Next:</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{msg.result.advice}</p>
+                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{msg.resultData.advice}</p>
                               </div>
                             </div>
                           )}
@@ -481,5 +575,7 @@ function ScamCheckerCategories() {
     </div>
   );
 }
+
+ScamCheckerCategories.propTypes = {};
 
 export default ScamCheckerCategories;

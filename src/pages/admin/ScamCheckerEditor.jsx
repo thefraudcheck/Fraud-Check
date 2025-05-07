@@ -1,4 +1,5 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+// src/components/ScamCheckerEditor.jsx
+import React, { useState, useEffect, useRef } from 'react';
 import { Link } from 'react-router-dom';
 import paymentFlows from '../../data/paymentFlows';
 import ResultCard from '../../components/ResultCard';
@@ -9,30 +10,17 @@ import { ArrowLeftIcon as ArrowLeftIconSolid } from '@heroicons/react/24/solid';
 const botImage = 'https://via.placeholder.com/24';
 const fraudCheckLogo = 'https://via.placeholder.com/100x40?text=Fraud+Check';
 
-// Initialize answerMetadata
-const defaultAnswerMetadata = Object.keys(paymentFlows).reduce((acc, category) => {
-  acc[category] = {};
-  paymentFlows[category].forEach((q, idx) => {
-    const qId = `q${idx}`;
-    acc[category][qId] = q.options.reduce((optAcc, opt) => ({
-      ...optAcc,
-      [opt.value]: {
-        redFlag: opt.risk >= 3,
-        bestPractice: opt.risk === 0,
-      },
-    }), {});
-  });
-  return acc;
-}, {});
-
-// Initialize paymentFlows with resultCard
+// Initialize paymentFlows with resultCard and answer metadata, preserving original risk-based flags
 const initializedPaymentFlows = Object.keys(paymentFlows).reduce((acc, category) => {
   acc[category] = paymentFlows[category].map((q, idx) => ({
     ...q,
-    id: `q${idx}`, // Add unique ID for questions
+    id: `q${idx}`,
     options: q.options.map((opt, optIdx) => ({
-      ...opt,
-      id: `opt${optIdx}`, // Add unique ID for options
+      id: `opt${optIdx}`,
+      text: opt.label,
+      value: opt.value,
+      isRedFlag: opt.risk >= 3, // Preserve original red flag based on risk >= 3
+      isBestPractice: opt.risk === 0, // Preserve original best practice based on risk === 0
     })),
     resultCard: q.resultCard || {
       title: `${category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Risk`,
@@ -47,10 +35,7 @@ const initializedPaymentFlows = Object.keys(paymentFlows).reduce((acc, category)
 
 function ScamCheckerEditor() {
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [data, setData] = useState({
-    paymentFlows: initializedPaymentFlows,
-    answerMetadata: defaultAnswerMetadata,
-  });
+  const [data, setData] = useState({ paymentFlows: initializedPaymentFlows });
   const [isSaving, setIsSaving] = useState(false);
   const [previewQuestionIndex, setPreviewQuestionIndex] = useState(0);
   const questionRefs = useRef({});
@@ -59,32 +44,23 @@ function ScamCheckerEditor() {
     try {
       const storedData = JSON.parse(localStorage.getItem('scamCheckerData'));
       if (storedData) {
-        const updatedMetadata = { ...defaultAnswerMetadata, ...storedData.answerMetadata };
         const updatedFlows = { ...storedData.paymentFlows };
         Object.keys(updatedFlows).forEach((cat) => {
-          if (!updatedMetadata[cat]) updatedMetadata[cat] = {};
           updatedFlows[cat] = updatedFlows[cat].map((q, idx) => ({
             ...q,
             id: `q${idx}`,
             options: q.options.map((opt, optIdx) => ({
               ...opt,
               id: opt.id || `opt${optIdx}`,
+              text: opt.text || opt.label,
+              value: opt.value,
+              isRedFlag: opt.isRedFlag !== undefined ? opt.isRedFlag : (paymentFlows[cat]?.[idx]?.options?.[optIdx]?.risk >= 3),
+              isBestPractice: opt.isBestPractice !== undefined ? opt.isBestPractice : (paymentFlows[cat]?.[idx]?.options?.[optIdx]?.risk === 0),
             })),
+            resultCard: q.resultCard || initializedPaymentFlows[cat]?.[idx]?.resultCard,
           }));
-          updatedFlows[cat].forEach((q, idx) => {
-            const qId = `q${idx}`;
-            if (!updatedMetadata[cat][qId]) {
-              updatedMetadata[cat][qId] = q.options.reduce((acc, opt) => ({
-                ...acc,
-                [opt.value]: { redFlag: false, bestPractice: false },
-              }), {});
-            }
-          });
         });
-        setData({
-          paymentFlows: updatedFlows,
-          answerMetadata: updatedMetadata,
-        });
+        setData({ paymentFlows: updatedFlows });
       }
     } catch (error) {
       console.error('Failed to load scamCheckerData:', error);
@@ -103,7 +79,7 @@ function ScamCheckerEditor() {
   };
 
   const handleCancel = () => {
-    setData({ paymentFlows: initializedPaymentFlows, answerMetadata: defaultAnswerMetadata });
+    setData({ paymentFlows: initializedPaymentFlows });
     setSelectedCategory(null);
     localStorage.removeItem('scamCheckerData');
   };
@@ -117,63 +93,37 @@ function ScamCheckerEditor() {
     });
   };
 
-  const updateAnswer = useCallback((category, qIndex, aIndex, field, value) => {
+  const updateAnswer = (category, qIndex, aIndex, field, value) => {
     setData((prev) => {
       const newFlows = { ...prev.paymentFlows };
       newFlows[category] = [...newFlows[category]];
-      const currentOption = newFlows[category][qIndex].options[aIndex];
-      const newValue = field === 'label' ? value.toLowerCase().replace(/\s+/g, '-') : currentOption.value;
-
-      // Update options
       newFlows[category][qIndex] = {
         ...newFlows[category][qIndex],
         options: newFlows[category][qIndex].options.map((opt, idx) =>
-          idx === aIndex ? { ...opt, [field]: value, value: newValue } : opt
+          idx === aIndex
+            ? {
+                ...opt,
+                [field]: value,
+                value: field === 'text' ? value.toLowerCase().replace(/\s+/g, '-') : opt.value,
+              }
+            : opt
         ),
       };
-
-      // Update metadata if label changed
-      let newMetadata = prev.answerMetadata;
-      if (field === 'label' && currentOption.value !== newValue) {
-        newMetadata = { ...prev.answerMetadata };
-        const qId = `q${qIndex}`;
-        newMetadata[category] = { ...newMetadata[category] };
-        newMetadata[category][qId] = { ...newMetadata[category][qId] };
-        newMetadata[category][qId][newValue] = newMetadata[category][qId][currentOption.value] || {
-          redFlag: false,
-          bestPractice: false,
-        };
-        delete newMetadata[category][qId][currentOption.value];
-      }
-
-      return { ...prev, paymentFlows: newFlows, answerMetadata: newMetadata };
+      return { ...prev, paymentFlows: newFlows };
     });
-  }, []);
+  };
 
-  const toggleMetadata = (category, qIndex, answerValue, field) => {
+  const handleToggle = (category, qIndex, optionId, field) => {
     setData((prev) => {
-      const newMetadata = { ...prev.answerMetadata };
-      const qId = `q${qIndex}`;
-      newMetadata[category][qId] = newMetadata[category][qId] || {};
-      newMetadata[category][qId][answerValue] = newMetadata[category][qId][answerValue] || {
-        redFlag: false,
-        bestPractice: false,
-      };
-      newMetadata[category][qId][answerValue][field] = !newMetadata[category][qId][answerValue][field];
       const newFlows = { ...prev.paymentFlows };
-      newFlows[category] = newFlows[category].map((q, idx) => {
-        if (idx === qIndex) {
-          return {
-            ...q,
-            options: q.options.map((opt) => ({
-              ...opt,
-              [field]: opt.value === answerValue ? newMetadata[category][qId][answerValue][field] : opt[field],
-            })),
-          };
-        }
-        return q;
-      });
-      return { ...prev, paymentFlows: newFlows, answerMetadata: newMetadata };
+      newFlows[category] = [...newFlows[category]];
+      newFlows[category][qIndex] = {
+        ...newFlows[category][qIndex],
+        options: newFlows[category][qIndex].options.map((opt) =>
+          opt.id === optionId ? { ...opt, [field]: !opt[field] } : opt
+        ),
+      };
+      return { ...prev, paymentFlows: newFlows };
     });
   };
 
@@ -187,21 +137,20 @@ function ScamCheckerEditor() {
         ...newFlows[category][qIndex],
         options: [
           ...newFlows[category][qIndex].options,
-          { label: 'New Answer', value: newValue, id: newOptionId, risk: 0, redFlag: false, bestPractice: false },
+          {
+            id: newOptionId,
+            text: 'New Answer',
+            value: newValue,
+            isRedFlag: false,
+            isBestPractice: false,
+          },
         ],
       };
-      const newMetadata = { ...prev.answerMetadata };
-      const qId = `q${qIndex}`;
-      newMetadata[category][qId] = newMetadata[category][qId] || {};
-      newMetadata[category][qId][newValue] = { redFlag: false, bestPractice: false };
-
-      // Auto-scroll to new answer
       setTimeout(() => {
         const lastAnswer = questionRefs.current[`${qIndex}-${newFlows[category][qIndex].options.length - 1}`];
         lastAnswer?.scrollIntoView({ behavior: 'smooth' });
       }, 0);
-
-      return { ...prev, paymentFlows: newFlows, answerMetadata: newMetadata };
+      return { ...prev, paymentFlows: newFlows };
     });
   };
 
@@ -209,15 +158,11 @@ function ScamCheckerEditor() {
     setData((prev) => {
       const newFlows = { ...prev.paymentFlows };
       newFlows[category] = [...newFlows[category]];
-      const removedValue = newFlows[category][qIndex].options[aIndex].value;
       newFlows[category][qIndex] = {
         ...newFlows[category][qIndex],
         options: newFlows[category][qIndex].options.filter((_, idx) => idx !== aIndex),
       };
-      const newMetadata = { ...prev.answerMetadata };
-      const qId = `q${qIndex}`;
-      delete newMetadata[category][qId][removedValue];
-      return { ...prev, paymentFlows: newFlows, answerMetadata: newMetadata };
+      return { ...prev, paymentFlows: newFlows };
     });
   };
 
@@ -225,15 +170,16 @@ function ScamCheckerEditor() {
     setData((prev) => {
       const newFlows = { ...prev.paymentFlows };
       const newQuestionIndex = newFlows[category].length;
+      const newQuestionId = `q${newQuestionIndex}`;
       newFlows[category] = [
         ...newFlows[category],
         {
-          id: `q${newQuestionIndex}`,
+          id: newQuestionId,
           question: 'New Question',
           type: 'multi',
           options: [
-            { id: 'opt0', label: 'Yes', value: 'yes', risk: 0, redFlag: false, bestPractice: false },
-            { id: 'opt1', label: 'No', value: 'no', risk: 0, redFlag: false, bestPractice: false },
+            { id: 'opt0', text: 'Yes', value: 'yes', isRedFlag: false, isBestPractice: false },
+            { id: 'opt1', text: 'No', value: 'no', isRedFlag: false, isBestPractice: false },
           ],
           resultCard: newFlows[category][0]?.resultCard || {
             title: `${category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Risk`,
@@ -244,20 +190,11 @@ function ScamCheckerEditor() {
           },
         },
       ];
-      const newMetadata = { ...prev.answerMetadata };
-      const qId = `q${newQuestionIndex}`;
-      newMetadata[category][qId] = {
-        yes: { redFlag: false, bestPractice: false },
-        no: { redFlag: false, bestPractice: false },
-      };
-
-      // Auto-scroll to new question
       setTimeout(() => {
         const newQuestionRef = questionRefs.current[newQuestionIndex];
         newQuestionRef?.scrollIntoView({ behavior: 'smooth' });
       }, 0);
-
-      return { ...prev, paymentFlows: newFlows, answerMetadata: newMetadata };
+      return { ...prev, paymentFlows: newFlows };
     });
   };
 
@@ -265,18 +202,7 @@ function ScamCheckerEditor() {
     setData((prev) => {
       const newFlows = { ...prev.paymentFlows };
       newFlows[category] = newFlows[category].filter((_, idx) => idx !== qIndex);
-      const newMetadata = { ...prev.answerMetadata };
-      const qId = `q${qIndex}`;
-      delete newMetadata[category][qId];
-      Object.keys(newMetadata[category]).forEach((key) => {
-        const match = key.match(/^q(\d+)$/);
-        if (match && parseInt(match[1]) > qIndex) {
-          const newKey = `q${parseInt(match[1]) - 1}`;
-          newMetadata[category][newKey] = newMetadata[category][key];
-          delete newMetadata[category][key];
-        }
-      });
-      return { ...prev, paymentFlows: newFlows, answerMetadata: newMetadata };
+      return { ...prev, paymentFlows: newFlows };
     });
   };
 
@@ -300,8 +226,15 @@ function ScamCheckerEditor() {
 
   return (
     <div className="min-h-screen p-6 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
+      <style>
+        {`
+          .checkbox-container {
+            position: relative;
+            pointer-events: auto;
+          }
+        `}
+      </style>
       <div className="max-w-screen-xl mx-auto px-4 py-8 space-y-8">
-        {/* Back Button */}
         <Link
           to="/admin/dashboard"
           className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500"
@@ -313,7 +246,6 @@ function ScamCheckerEditor() {
         <h1 className="text-3xl font-bold">Scam Checker Editor</h1>
 
         <div className="flex flex-col md:flex-row gap-8">
-          {/* Category Selector */}
           {!selectedCategory ? (
             <div className="w-full">
               <h2 className="text-2xl font-semibold mb-4">Scam Categories</h2>
@@ -334,7 +266,6 @@ function ScamCheckerEditor() {
             </div>
           ) : (
             <div className="w-full">
-              {/* Header */}
               <div className="flex items-center mb-6">
                 <button
                   onClick={() => setSelectedCategory(null)}
@@ -347,7 +278,6 @@ function ScamCheckerEditor() {
                 </h2>
               </div>
 
-              {/* Questions Editor */}
               <div className="space-y-6">
                 {data.paymentFlows[selectedCategory].map((question, qIndex) => (
                   <div
@@ -376,60 +306,34 @@ function ScamCheckerEditor() {
                         >
                           <input
                             type="text"
-                            value={option.label}
-                            onChange={(e) => updateAnswer(selectedCategory, qIndex, aIndex, 'label', e.target.value)}
+                            value={option.text}
+                            onChange={(e) => updateAnswer(selectedCategory, qIndex, aIndex, 'text', e.target.value)}
                             className="flex-1 px-4 py-2 rounded-full bg-gradient-to-r from-cyan-700 to-cyan-600 text-white border border-cyan-800 focus:ring-2 focus:ring-cyan-500 text-sm"
                             placeholder="Answer text"
                           />
-                          <div className="flex items-center gap-4">
-                            <label className="flex items-center text-sm">
+                          <div className="flex items-center gap-4 checkbox-container">
+                            <label className="flex items-center text-sm cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.redFlag || false}
-                                onChange={() => toggleMetadata(selectedCategory, qIndex, option.value, 'redFlag')}
-                                className="hidden"
+                                checked={option.isRedFlag}
+                                onChange={() => handleToggle(selectedCategory, qIndex, option.id, 'isRedFlag')}
+                                className="h-4 w-4 text-red-500 border-gray-300 rounded focus:ring-red-500"
                               />
-                              <span
-                                className={`relative inline-block w-10 h-6 rounded-full transition-colors duration-200 ease-in-out ${
-                                  data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.redFlag
-                                    ? 'bg-red-500'
-                                    : 'bg-gray-300 dark:bg-slate-600'
-                                }`}
-                                title="Marks this answer as a potential scam indicator"
-                              >
-                                <span
-                                  className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ease-in-out ${
-                                    data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.redFlag ? 'translate-x-4' : ''
-                                  }`}
-                                />
-                                {data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.redFlag && (
-                                  <ExclamationTriangleIcon className="w-4 h-4 text-white absolute left-5 top-1" />
-                                )}
+                              <span className="ml-2 text-sm text-gray-700 dark:text-slate-300 flex items-center">
+                                Red Flag
+                                {option.isRedFlag && <ExclamationTriangleIcon className="w-4 h-4 text-red-500 ml-1" />}
                               </span>
                             </label>
-                            <label className="flex items-center text-sm">
+                            <label className="flex items-center text-sm cursor-pointer">
                               <input
                                 type="checkbox"
-                                checked={data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.bestPractice || false}
-                                onChange={() => toggleMetadata(selectedCategory, qIndex, option.value, 'bestPractice')}
-                                className="hidden"
+                                checked={option.isBestPractice}
+                                onChange={() => handleToggle(selectedCategory, qIndex, option.id, 'isBestPractice')}
+                                className="h-4 w-4 text-green-500 border-gray-300 rounded focus:ring-green-500"
                               />
-                              <span
-                                className={`relative inline-block w-10 h-6 rounded-full transition-colors duration-200 ease-in-out ${
-                                  data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.bestPractice
-                                    ? 'bg-green-500'
-                                    : 'bg-gray-300 dark:bg-slate-600'
-                                }`}
-                                title="Marks this answer as a recommended practice"
-                              >
-                                <span
-                                  className={`absolute left-1 top-1 w-4 h-4 bg-white rounded-full transition-transform duration-200 ease-in-out ${
-                                    data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.bestPractice ? 'translate-x-4' : ''
-                                  }`}
-                                />
-                                {data.answerMetadata[selectedCategory][`q${qIndex}`]?.[option.value]?.bestPractice && (
-                                  <CheckCircleIcon className="w-4 h-4 text-white absolute left-5 top-1" />
-                                )}
+                              <span className="ml-2 text-sm text-gray-700 dark:text-slate-300 flex items-center">
+                                Best Practice
+                                {option.isBestPractice && <CheckCircleIcon className="w-4 h-4 text-green-500 ml-1" />}
                               </span>
                             </label>
                             <button
@@ -466,7 +370,6 @@ function ScamCheckerEditor() {
                 </button>
               </div>
 
-              {/* Result Card Editor */}
               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 mt-8">
                 <h2 className="text-2xl font-semibold mb-4">Result Card</h2>
                 <div className="space-y-4">
@@ -529,7 +432,6 @@ function ScamCheckerEditor() {
                 </div>
               </div>
 
-              {/* Live Preview */}
               <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 mt-8">
                 <h2 className="text-2xl font-semibold mb-4">Live Preview</h2>
                 <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 min-h-[400px]">
@@ -552,22 +454,17 @@ function ScamCheckerEditor() {
                               </p>
                             </div>
                             <div className="mt-2 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2">
-                              {data.paymentFlows[selectedCategory][previewQuestionIndex].options.map((opt, idx) => (
+                              {data.paymentFlows[selectedCategory][previewQuestionIndex].options.map((opt) => (
                                 <button
                                   key={opt.id}
                                   className="flex items-center justify-between bg-gradient-to-r from-cyan-700 to-cyan-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full shadow-md hover:bg-cyan-500 hover:shadow-lg transition-all duration-200 border border-cyan-800"
                                   disabled
                                 >
-                                  {opt.label}
-                                  {(data.answerMetadata[selectedCategory][`q${previewQuestionIndex}`]?.[opt.value]?.redFlag ||
-                                    data.answerMetadata[selectedCategory][`q${previewQuestionIndex}`]?.[opt.value]?.bestPractice) && (
+                                  {opt.text}
+                                  {(opt.isRedFlag || opt.isBestPractice) && (
                                     <div className="flex gap-1 ml-2">
-                                      {data.answerMetadata[selectedCategory][`q${previewQuestionIndex}`]?.[opt.value]?.redFlag && (
-                                        <ExclamationTriangleIcon className="w-4 h-4 text-red-500" />
-                                      )}
-                                      {data.answerMetadata[selectedCategory][`q${previewQuestionIndex}`]?.[opt.value]?.bestPractice && (
-                                        <CheckCircleIcon className="w-4 h-4 text-green-500" />
-                                      )}
+                                      {opt.isRedFlag && <ExclamationTriangleIcon className="w-4 h-4 text-red-500" />}
+                                      {opt.isBestPractice && <CheckCircleIcon className="w-4 h-4 text-green-500" />}
                                     </div>
                                   )}
                                 </button>
@@ -606,7 +503,6 @@ function ScamCheckerEditor() {
                 </div>
               </div>
 
-              {/* Save/Cancel Buttons */}
               <div className="flex justify-end space-x-4 mt-8">
                 <button
                   onClick={handleCancel}

@@ -56,11 +56,11 @@ const ArticleEditor = () => {
           .order('date', { ascending: false });
         if (error) throw error;
         setArticles(data || []);
-        setLoading(false);
       } catch (err) {
         console.error('Fetch articles error:', err);
         setError(`Failed to load articles: ${err.message}`);
         setArticles([]);
+      } finally {
         setLoading(false);
       }
     };
@@ -389,7 +389,7 @@ const ArticleEditor = () => {
                     {newArticle.image && (
                       <img
                         src={newArticle.image}
-                        alt="Article Image Preview"
+                        alt="Article Preview"
                         className="mt-2 max-w-xs rounded"
                         onError={() => setNewArticle({ ...newArticle, image: '' })}
                       />
@@ -464,7 +464,7 @@ const ArticleEditor = () => {
                     {newArticle.image && (
                       <img
                         src={newArticle.image}
-                        alt="Article"
+                        alt="Article Preview"
                         className="w-full max-w-md rounded-lg mb-6"
                         onError={() => setNewArticle({ ...newArticle, image: '' })}
                       />
@@ -531,80 +531,23 @@ const ArticleEditor = () => {
                 )}
               </section>
 
-              <footer className="bg-slate-900 text-slate-300 pt-10 pb-6 px-4 sm:px-6 mt-12">
-                <div className="max-w-7xl mx-auto grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 text-white">Quick Links</h3>
-                    <ul className="space-y-2">
-                      <li>
-                        <a href="/scam-checker" className="hover:text-white">
-                          Scam Checker
-                        </a>
-                      </li>
-                      <li>
-                        <a href="/scam-trends" className="hover:text-white">
-                          Trends & Reports
-                        </a>
-                      </li>
-                      <li>
-                        <a href="/help-advice" className="hover:text-white">
-                          Advice
-                        </a>
-                      </li>
-                      <li>
-                        <a href="/contacts" className="hover:text-white">
-                          Contacts
-                        </a>
-                      </li>
-                      <li>
-                        <a href="/about" className="hover:text-white">
-                          About
-                        </a>
-                      </li>
-                    </ul>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 text-white">About Fraud Check</h3>
-                    <p className="text-sm">
-                      Fraud Check is your free tool for staying safe online. Built by fraud experts to
-                      help real people avoid modern scams.
-                    </p>
-                  </div>
-                  <div>
-                    <h3 className="text-lg font-semibold mb-4 text-white">Stay Updated</h3>
-                    <form className="flex flex-col sm:flex-row gap-2">
-                      <input
-                        type="email"
-                        placeholder="Your email"
-                        className="flex-1 px-4 py-2 rounded-lg bg-slate-800 text-white border-none focus:outline-none focus:ring-2 focus:ring-cyan-700"
-                        aria-label="Email for newsletter"
-                      />
-                      <button
-                        type="submit"
-                        className="bg-cyan-700 text-white px-4 py-2 rounded-lg hover:bg-cyan-800 transition-all"
-                        aria-label="Subscribe to newsletter"
-                      >
-                        Subscribe
-                      </button>
-                    </form>
-                    <div className="flex gap-4 mt-4">
-                      <a href="https://twitter.com" className="hover:text-white">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-                        </svg>
-                      </a>
-                      <a href="https://linkedin.com" className="hover:text-white">
-                        <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 24 24">
-                          <path d="M19 3a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 0 0 1 2-2h14m-.5 15.5v-5.3a3.26 3.26 0 0 0-3.26-3.26c-.85 0-1.84.52-2.32 1.3v-1.11h-2.79v8.37h2.79v-4.93c0-.77.62-1.4 1.39-1.4a1.4 1.4 0 0 1 1.4 1.4v4.93h2.79M6.88 8.56a1.68 1.68 0 0 0 1.68-1.68c0-.93-.75-1.69-1.68-1.69a1.69 1.69 0 0 0-1.69 1.69c0 .93.76 1.68 1.69 1.68m1.39 9.94v-8.37H5.5v8.37h2.77z" />
-                        </svg>
-                      </a>
-                    </div>
-                  </div>
-                </div>
-                <div className="max-w-7xl mx-auto mt-8 text-center text-sm">
-                  © 2025 Fraud Check. All rights reserved.
-                </div>
-              </footer>
+              {/* New "Support Us" Section with Buy Me a Coffee Button */}
+              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
+                  Support FraudCheck
+                </h3>
+                <p className="text-gray-600 dark:text-slate-300 mb-6">
+                  Your contributions help us keep FraudCheck running and continue providing valuable resources to combat scams. If you find this platform helpful, please consider supporting us!
+                </p>
+                <a
+                  href="https://buymeacoffee.com/fraudcheck"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg"
+                >
+                  Buy Me a Coffee
+                </a>
+              </section>
             </>
           )}
         </div>

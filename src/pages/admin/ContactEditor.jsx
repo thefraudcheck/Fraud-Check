@@ -1,5 +1,8 @@
-import React, { useState, useEffect } from 'react';
-import axios from 'axios';
+import React, { useState, useEffect, useMemo } from 'react';
+import { Link } from 'react-router-dom';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { supabase } from '../../utils/supabase';
+import toast from 'react-hot-toast';
 
 function ContactEditor() {
   const [content, setContent] = useState({
@@ -21,19 +24,102 @@ function ContactEditor() {
     availability: '',
     notes: '',
   });
-  const [editingIndex, setEditingIndex] = useState(null);
+  const [editingContactId, setEditingContactId] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const [searchTerm, setSearchTerm] = useState(''); // State for search term
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        const response = await axios.get('http://localhost:5000/api/contacts');
-        setContent(response.data);
+        setLoading(true);
+
+        // Fetch all records from fraud_contacts
+        const { data, error } = await supabase
+          .from('fraud_contacts')
+          .select('*')
+          .order('institution', { ascending: true });
+
+        if (error) {
+          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies are set to allow SELECT for the anon role.`);
+        }
+
+        // Separate settings and contacts
+        let settingsRecord = data.find((record) => record.institution === '__SETTINGS__');
+        const contactsData = data.filter((record) => record.institution !== '__SETTINGS__');
+
+        // If no settings record exists, create one
+        if (!settingsRecord) {
+          const defaultSettings = {
+            logo: content.logo,
+            backgroundImage: content.backgroundImage,
+            title: content.title,
+            disclaimer: content.disclaimer,
+            footerAbout: content.footerAbout,
+            footerCopyright: content.footerCopyright,
+          };
+          const { data: newSettings, error: settingsError } = await supabase
+            .from('fraud_contacts')
+            .insert({
+              institution: '__SETTINGS__',
+              team: '',
+              region: '',
+              contact_number: '',
+              availability: '',
+              notes: JSON.stringify(defaultSettings),
+            })
+            .select()
+            .single();
+
+          if (settingsError) {
+            throw new Error(`Supabase settings insert error: ${settingsError.message} (Code: ${settingsError.code || 'Unknown'}). Ensure RLS policies allow INSERT for the anon role.`);
+          }
+          settingsRecord = newSettings;
+        }
+
+        // Parse settings
+        const settings = settingsRecord?.notes ? JSON.parse(settingsRecord.notes) : {};
+
+        // Format contacts
+        const formattedContacts = contactsData.map((contact) => ({
+          id: contact.id,
+          institution: contact.institution,
+          team: contact.team,
+          region: contact.region,
+          contactNumber: contact.contact_number,
+          availability: contact.availability,
+          notes: contact.notes,
+        }));
+
+        // Set content with fetched data
+        setContent({
+          logo: settings.logo || content.logo,
+          backgroundImage: settings.backgroundImage || content.backgroundImage,
+          title: settings.title || content.title,
+          disclaimer: settings.disclaimer || content.disclaimer,
+          footerAbout: settings.footerAbout || content.footerAbout,
+          footerCopyright: settings.footerCopyright || content.footerCopyright,
+          fraudContacts: formattedContacts,
+        });
+
+        toast.success('Content loaded successfully!', {
+          duration: 3000,
+          style: {
+            background: '#10B981',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
       } catch (err) {
         console.error('Error fetching content:', err);
-        setError('Failed to load content. Using defaults.');
+        toast.error(`Failed to load content: ${err.message}. Using defaults. Check Supabase RLS policies if the issue persists.`, {
+          duration: 5000,
+          style: {
+            background: '#EF4444',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
       } finally {
         setLoading(false);
       }
@@ -49,74 +135,319 @@ function ContactEditor() {
     setNewContact({ ...newContact, [field]: e.target.value });
   };
 
-  const addContact = () => {
+  const addContact = async () => {
     if (
       newContact.institution &&
       newContact.team &&
       newContact.region &&
       newContact.contactNumber
     ) {
-      setContent({
-        ...content,
-        fraudContacts: [...content.fraudContacts, newContact],
-      });
-      setNewContact({
-        institution: '',
-        team: '',
-        region: '',
-        contactNumber: '',
-        availability: '',
-        notes: '',
-      });
+      try {
+        const { data, error } = await supabase
+          .from('fraud_contacts')
+          .insert({
+            institution: newContact.institution,
+            team: newContact.team,
+            region: newContact.region,
+            contact_number: newContact.contactNumber,
+            availability: newContact.availability || 'Not specified',
+            notes: newContact.notes || '',
+          })
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error(`Supabase insert error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow INSERT for the anon role.`);
+        }
+
+        setContent({
+          ...content,
+          fraudContacts: [
+            ...content.fraudContacts,
+            {
+              id: data.id,
+              institution: data.institution,
+              team: data.team,
+              region: data.region,
+              contactNumber: data.contact_number,
+              availability: data.availability,
+              notes: data.notes,
+            },
+          ],
+        });
+        setNewContact({
+          institution: '',
+          team: '',
+          region: '',
+          contactNumber: '',
+          availability: '',
+          notes: '',
+        });
+        toast.success('Contact added successfully!', {
+          duration: 3000,
+          style: {
+            background: '#10B981',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
+      } catch (err) {
+        console.error('Error adding contact:', err);
+        toast.error(`Failed to add contact: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+          duration: 5000,
+          style: {
+            background: '#EF4444',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
+      }
     } else {
-      setError('Please fill in all required fields.');
+      toast.error('Please fill in all required fields (Institution, Team, Region, Contact Number).', {
+        duration: 4000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
     }
   };
 
-  const editContact = (index) => {
-    setEditingIndex(index);
-    setNewContact(content.fraudContacts[index]);
+  const editContact = (contact) => {
+    setEditingContactId(contact.id);
+    setNewContact({
+      institution: contact.institution,
+      team: contact.team,
+      region: contact.region,
+      contactNumber: contact.contactNumber,
+      availability: contact.availability,
+      notes: contact.notes,
+    });
   };
 
-  const updateContact = () => {
+  const updateContact = async () => {
     if (
       newContact.institution &&
       newContact.team &&
       newContact.region &&
       newContact.contactNumber
     ) {
-      const updatedContacts = [...content.fraudContacts];
-      updatedContacts[editingIndex] = newContact;
+      try {
+        const { data, error } = await supabase
+          .from('fraud_contacts')
+          .update({
+            institution: newContact.institution,
+            team: newContact.team,
+            region: newContact.region,
+            contact_number: newContact.contactNumber,
+            availability: newContact.availability || 'Not specified',
+            notes: newContact.notes || '',
+          })
+          .eq('id', editingContactId)
+          .select()
+          .single();
+
+        if (error) {
+          throw new Error(`Supabase update error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow UPDATE for the anon role.`);
+        }
+
+        const updatedContacts = content.fraudContacts.map((contact) =>
+          contact.id === editingContactId
+            ? {
+                id: data.id,
+                institution: data.institution,
+                team: data.team,
+                region: data.region,
+                contactNumber: data.contact_number,
+                availability: data.availability,
+                notes: data.notes,
+              }
+            : contact
+        );
+
+        setContent({ ...content, fraudContacts: updatedContacts });
+        setEditingContactId(null);
+        setNewContact({
+          institution: '',
+          team: '',
+          region: '',
+          contactNumber: '',
+          availability: '',
+          notes: '',
+        });
+        toast.success('Contact updated successfully!', {
+          duration: 3000,
+          style: {
+            background: '#10B981',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
+      } catch (err) {
+        console.error('Error updating contact:', err);
+        toast.error(`Failed to update contact: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+          duration: 5000,
+          style: {
+            background: '#EF4444',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
+      }
+    } else {
+      toast.error('Please fill in all required fields (Institution, Team, Region, Contact Number).', {
+        duration: 4000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
+    }
+  };
+
+  const deleteContact = async (id) => {
+    try {
+      const { error } = await supabase.from('fraud_contacts').delete().eq('id', id);
+
+      if (error) {
+        throw new Error(`Supabase delete error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow DELETE for the anon role.`);
+      }
+
+      const updatedContacts = content.fraudContacts.filter((contact) => contact.id !== id);
       setContent({ ...content, fraudContacts: updatedContacts });
-      setEditingIndex(null);
-      setNewContact({
-        institution: '',
-        team: '',
-        region: '',
-        contactNumber: '',
-        availability: '',
-        notes: '',
+      toast.success('Contact deleted successfully!', {
+        duration: 3000,
+        style: {
+          background: '#10B981',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
       });
-    } else {
-      setError('Please fill in all required fields.');
+    } catch (err) {
+      console.error('Error deleting contact:', err);
+      toast.error(`Failed to delete contact: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+        duration: 5000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
     }
-  };
-
-  const deleteContact = (index) => {
-    const updatedContacts = content.fraudContacts.filter((_, i) => i !== index);
-    setContent({ ...content, fraudContacts: updatedContacts });
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError(null);
-    setSuccess(null);
+    setIsSaving(true);
     try {
-      await axios.post('http://localhost:5000/api/contacts', content);
-      setSuccess('Content saved successfully!');
+      // Check if __SETTINGS__ record exists
+      const { data: settingsData, error: fetchError } = await supabase
+        .from('fraud_contacts')
+        .select('*')
+        .eq('institution', '__SETTINGS__')
+        .single();
+
+      if (fetchError && fetchError.code !== 'PGRST116') {
+        throw new Error(`Supabase settings fetch error: ${fetchError.message} (Code: ${fetchError.code || 'Unknown'}). Ensure RLS policies allow SELECT for the anon role.`);
+      }
+
+      const settingsPayload = {
+        institution: '__SETTINGS__',
+        team: '',
+        region: '',
+        contact_number: '',
+        availability: '',
+        notes: JSON.stringify({
+          logo: content.logo,
+          backgroundImage: content.backgroundImage,
+          title: content.title,
+          disclaimer: content.disclaimer,
+          footerAbout: content.footerAbout,
+          footerCopyright: content.footerCopyright,
+        }),
+      };
+
+      let error;
+      if (settingsData) {
+        // Update existing settings
+        ({ error } = await supabase
+          .from('fraud_contacts')
+          .update(settingsPayload)
+          .eq('institution', '__SETTINGS__'));
+      } else {
+        // Insert new settings
+        ({ error } = await supabase.from('fraud_contacts').insert(settingsPayload));
+      }
+
+      if (error) {
+        throw new Error(`Supabase settings save error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow INSERT/UPDATE for the anon role.`);
+      }
+
+      toast.success('Content saved successfully!', {
+        duration: 3000,
+        style: {
+          background: '#10B981',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
     } catch (err) {
       console.error('Error saving content:', err);
-      setError('Failed to save content.');
+      toast.error(`Failed to save content: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+        duration: 5000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleResetToDefault = () => {
+    setContent({
+      logo: '/assets/fraud-check-logo.png',
+      backgroundImage: '/assets/fraud-checker-background.png',
+      title: 'Fraud Contact Database',
+      disclaimer:
+        'This database provides publicly available fraud contact numbers for informational purposes. Numbers may change, so please verify with the institution. We are not affiliated with these organizations. Always report fraud to your bank first, then to Action Fraud (0300 123 2040 in the UK).',
+      footerAbout:
+        'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+      footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+      fraudContacts: content.fraudContacts, // Preserve existing contacts
+    });
+    toast.success('Settings reset to default!', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+      },
+    });
+  };
+
+  // Filter contacts based on search term
+  const filteredContacts = useMemo(() => {
+    let filtered = [...content.fraudContacts];
+
+    if (searchTerm) {
+      filtered = filtered.filter(
+        (contact) =>
+          contact.institution.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          contact.region.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    return filtered;
+  }, [searchTerm, content.fraudContacts]);
+
+  const handleSearchKeyDown = (e) => {
+    if (e.key === 'Enter') {
+      setSearchTerm(e.target.value);
     }
   };
 
@@ -129,250 +460,294 @@ function ContactEditor() {
   }
 
   return (
-    <div className="p-6 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-gray-100">
-      <h1 className="text-3xl font-bold mb-6 text-[#01355B] dark:text-[#01355B]">
-        Contact Page Editor
-      </h1>
+    <div className="min-h-screen p-6 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <Link
+          to="/admin/dashboard"
+          className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500"
+        >
+          <ArrowLeftIcon className="w-5 h-5 mr-2" />
+          Back to Dashboard
+        </Link>
 
-      {error && (
-        <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">{error}</div>
-      )}
-      {success && (
-        <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg">
-          {success}
-        </div>
-      )}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
+          <h1 className="text-3xl font-bold mb-6 text-[#01355B] dark:text-[#01355B]">
+            Contact Page Editor
+          </h1>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        {/* Static Content Fields */}
-        <div>
-          <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-            Logo URL
-          </label>
-          <input
-            type="text"
-            value={content.logo}
-            onChange={(e) => handleInputChange(e, 'logo')}
-            className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-            placeholder="Enter logo URL"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-            Background Image URL
-          </label>
-          <input
-            type="text"
-            value={content.backgroundImage}
-            onChange={(e) => handleInputChange(e, 'backgroundImage')}
-            className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-            placeholder="Enter background image URL"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-            Title
-          </label>
-          <input
-            type="text"
-            value={content.title}
-            onChange={(e) => handleInputChange(e, 'title')}
-            className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-            placeholder="Enter page title"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-            Disclaimer
-          </label>
-          <textarea
-            value={content.disclaimer}
-            onChange={(e) => handleInputChange(e, 'disclaimer')}
-            className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-            rows="4"
-            placeholder="Enter disclaimer text"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-            Footer About Text
-          </label>
-          <textarea
-            value={content.footerAbout}
-            onChange={(e) => handleInputChange(e, 'footerAbout')}
-            className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-            rows="3"
-            placeholder="Enter footer about text"
-          />
-        </div>
-        <div>
-          <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-            Footer Copyright
-          </label>
-          <input
-            type="text"
-            value={content.footerCopyright}
-            onChange={(e) => handleInputChange(e, 'footerCopyright')}
-            className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-            placeholder="Enter footer copyright text"
-          />
-        </div>
-
-        {/* Fraud Contacts Editor */}
-        <div>
-          <h2 className="text-xl font-semibold mb-4 text-[#01355B] dark:text-[#01355B]">
-            Fraud Contacts
-          </h2>
-          <div className="space-y-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <form onSubmit={handleSubmit} className="space-y-6">
+            <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-                  Institution
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Logo URL
                 </label>
                 <input
                   type="text"
-                  value={newContact.institution}
-                  onChange={(e) => handleContactInputChange(e, 'institution')}
-                  className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-                  placeholder="Enter institution"
+                  value={content.logo}
+                  onChange={(e) => handleInputChange(e, 'logo')}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                  placeholder="Enter logo URL"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-                  Team
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Background Image URL
                 </label>
                 <input
                   type="text"
-                  value={newContact.team}
-                  onChange={(e) => handleContactInputChange(e, 'team')}
-                  className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-                  placeholder="Enter team"
+                  value={content.backgroundImage}
+                  onChange={(e) => handleInputChange(e, 'backgroundImage')}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                  placeholder="Enter background image URL"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-                  Region
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Title
                 </label>
                 <input
                   type="text"
-                  value={newContact.region}
-                  onChange={(e) => handleContactInputChange(e, 'region')}
-                  className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-                  placeholder="Enter region"
+                  value={content.title}
+                  onChange={(e) => handleInputChange(e, 'title')}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                  placeholder="Enter page title"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-                  Contact Number
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Disclaimer
                 </label>
-                <input
-                  type="text"
-                  value={newContact.contactNumber}
-                  onChange={(e) => handleContactInputChange(e, 'contactNumber')}
-                  className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-                  placeholder="Enter contact number"
+                <textarea
+                  value={content.disclaimer}
+                  onChange={(e) => handleInputChange(e, 'disclaimer')}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                  rows="4"
+                  placeholder="Enter disclaimer text"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-                  Availability
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Footer About Text
                 </label>
-                <input
-                  type="text"
-                  value={newContact.availability}
-                  onChange={(e) => handleContactInputChange(e, 'availability')}
-                  className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-                  placeholder="Enter availability"
+                <textarea
+                  value={content.footerAbout}
+                  onChange={(e) => handleInputChange(e, 'footerAbout')}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                  rows="3"
+                  placeholder="Enter footer about text"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-[#01355B] dark:text-[#01355B]">
-                  Notes
+                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                  Footer Copyright
                 </label>
                 <input
                   type="text"
-                  value={newContact.notes}
-                  onChange={(e) => handleContactInputChange(e, 'notes')}
-                  className="mt-1 w-full p-2 rounded-md bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-slate-100 border-2 border-[#01355B] focus:outline-none text-sm"
-                  placeholder="Enter notes"
+                  value={content.footerCopyright}
+                  onChange={(e) => handleInputChange(e, 'footerCopyright')}
+                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                  placeholder="Enter footer copyright text"
                 />
               </div>
             </div>
-            <button
-              type="button"
-              onClick={editingIndex !== null ? updateContact : addContact}
-              className="px-4 py-2 bg-cyan-700 text-white rounded-lg hover:bg-cyan-800 transition-all text-sm"
-            >
-              {editingIndex !== null ? 'Update Contact' : 'Add Contact'}
-            </button>
-          </div>
 
-          {/* Contacts List */}
-          <div className="mt-6">
-            <h3 className="text-lg font-medium mb-2 text-[#01355B] dark:text-[#01355B]">
-              Current Contacts
-            </h3>
-            {content.fraudContacts.length === 0 ? (
-              <p className="text-sm text-[#01355B] dark:text-[#01355B]">
-                No contacts added.
-              </p>
-            ) : (
-              <ul className="space-y-2">
-                {content.fraudContacts.map((contact, index) => (
-                  <li
-                    key={index}
-                    className="p-4 bg-slate-100 dark:bg-slate-800 rounded-lg flex justify-between items-center"
-                  >
-                    <div className="text-sm">
-                      <p>
-                        <strong>Institution:</strong> {contact.institution}
-                      </p>
-                      <p>
-                        <strong>Team:</strong> {contact.team}
-                      </p>
-                      <p>
-                        <strong>Region:</strong> {contact.region}
-                      </p>
-                      <p>
-                        <strong>Contact Number:</strong> {contact.contactNumber}
-                      </p>
-                      <p>
-                        <strong>Availability:</strong> {contact.availability}
-                      </p>
-                      <p>
-                        <strong>Notes:</strong> {contact.notes}
-                      </p>
-                    </div>
-                    <div className="space-x-2">
-                      <button
-                        type="button"
-                        onClick={() => editContact(index)}
-                        className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+            <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 mt-6">
+              <h2 className="text-2xl font-semibold mb-4">Fraud Contacts</h2>
+              <div className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Institution
+                    </label>
+                    <input
+                      type="text"
+                      value={newContact.institution}
+                      onChange={(e) => handleContactInputChange(e, 'institution')}
+                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      placeholder="Enter institution"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Team
+                    </label>
+                    <input
+                      type="text"
+                      value={newContact.team}
+                      onChange={(e) => handleContactInputChange(e, 'team')}
+                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      placeholder="Enter team"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Region
+                    </label>
+                    <input
+                      type="text"
+                      value={newContact.region}
+                      onChange={(e) => handleContactInputChange(e, 'region')}
+                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      placeholder="Enter region"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Contact Number
+                    </label>
+                    <input
+                      type="text"
+                      value={newContact.contactNumber}
+                      onChange={(e) => handleContactInputChange(e, 'contactNumber')}
+                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      placeholder="Enter contact number"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Availability
+                    </label>
+                    <input
+                      type="text"
+                      value={newContact.availability}
+                      onChange={(e) => handleContactInputChange(e, 'availability')}
+                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      placeholder="Enter availability"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">
+                      Notes
+                    </label>
+                    <input
+                      type="text"
+                      value={newContact.notes}
+                      onChange={(e) => handleContactInputChange(e, 'notes')}
+                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                      placeholder="Enter notes"
+                    />
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={editingContactId !== null ? updateContact : addContact}
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all"
+                >
+                  {editingContactId !== null ? 'Update Contact' : 'Add Contact'}
+                </button>
+              </div>
+
+              <div className="mt-6">
+                <h3 className="text-lg font-medium mb-2 text-gray-900 dark:text-white">
+                  Current Contacts
+                </h3>
+                <div className="max-w-md mb-4">
+                  <input
+                    type="text"
+                    placeholder="Search by Institution or Region..."
+                    className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                    onKeyDown={handleSearchKeyDown}
+                    aria-label="Search contacts"
+                  />
+                </div>
+                {filteredContacts.length === 0 ? (
+                  <p className="text-sm text-gray-600 dark:text-gray-400">
+                    {searchTerm ? 'No contacts match your search.' : 'No contacts added.'}
+                  </p>
+                ) : (
+                  <ul className="space-y-2">
+                    {filteredContacts.map((contact) => (
+                      <li
+                        key={contact.id}
+                        className="p-4 bg-gray-50 dark:bg-slate-700 rounded-lg flex justify-between items-center border border-gray-200 dark:border-slate-600"
                       >
-                        Edit
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => deleteContact(index)}
-                        className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
-                      >
-                        Delete
-                      </button>
-                    </div>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
+                        <div className="text-sm text-gray-900 dark:text-slate-100">
+                          <p>
+                            <strong>Institution:</strong> {contact.institution}
+                          </p>
+                          <p>
+                            <strong>Team:</strong> {contact.team}
+                          </p>
+                          <p>
+                            <strong>Region:</strong> {contact.region}
+                          </p>
+                          <p>
+                            <strong>Contact Number:</strong> {contact.contactNumber}
+                          </p>
+                          <p>
+                            <strong>Availability:</strong> {contact.availability}
+                          </p>
+                          <p>
+                            <strong>Notes:</strong> {contact.notes}
+                          </p>
+                        </div>
+                        <div className="space-x-2">
+                          <button
+                            type="button"
+                            onClick={() => editContact(contact)}
+                            className="px-3 py-1 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm"
+                          >
+                            Edit
+                          </button>
+                          <button
+                            type="button"
+                            onClick={() => deleteContact(contact.id)}
+                            className="px-3 py-1 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                          >
+                            Delete
+                          </button>
+                        </div>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            </div>
+
+            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 py-4 px-6 shadow-lg">
+              <div className="max-w-7xl mx-auto flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={handleResetToDefault}
+                  className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-all"
+                  disabled={isSaving}
+                >
+                  Reset to Default
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all flex items-center"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save All Changes'
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
         </div>
-
-        <button
-          type="submit"
-          className="px-6 py-3 bg-cyan-700 text-white rounded-lg font-semibold hover:bg-cyan-800 transition-all duration-200 text-sm"
-        >
-          Save Changes
-        </button>
-      </form>
+      </div>
     </div>
   );
 }

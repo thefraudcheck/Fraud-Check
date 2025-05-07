@@ -22,7 +22,7 @@ function Hero({ onStartScamCheck, heroData }) {
       style={{
         backgroundImage: `url(${heroData.image})`,
         backgroundSize: 'cover',
-        backgroundPosition: 'center 20%', // Shifted down further to show "FRAUD CHECK"
+        backgroundPosition: 'center 20%',
         backgroundRepeat: 'no-repeat',
         height: heroData.height ? `${heroData.height}px` : `calc(100vh - 60px)`,
         margin: 0,
@@ -30,11 +30,11 @@ function Hero({ onStartScamCheck, heroData }) {
         top: 0,
       }}
     >
-      <div className="absolute inset-0 bg-black/40 z-0"></div>
+      <div className={heroData.overlay || 'bg-black/60'} />
       <div className={`absolute z-10 ${getAlignmentClasses(heroData.textAlignment)}`}>
         <div className="text-left max-w-xl">
           <h1
-            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2"
+            className="text-2xl sm:text-3xl md:text-4xl font-bold mb-2 font-inter"
             style={{
               color: heroData.textColor || '#FFFFFF',
               textShadow: '2px 2px 4px rgba(0, 0, 0, 0.7)',
@@ -43,30 +43,33 @@ function Hero({ onStartScamCheck, heroData }) {
             {heroData.title || 'Stay Scam Safe'}
           </h1>
           <p
-            className="text-sm sm:text-base md:text-lg font-semibold mb-4"
+            className="text-sm sm:text-base md:text-lg font-semibold mb-4 font-inter"
             style={{
               color: heroData.textColor || '#FFFFFF',
               textShadow: '2px 2px 4px rgba(0, 0, 0, 0.7)',
             }}
           >
-            {heroData.subtitle || 'Use our tools to identify, report, and stay informed about fraud.'}
+            {heroData.subtitle || 'Fast, free tools to help you spot scams before it’s too late.'}
           </p>
           <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 mt-4">
             <button
               onClick={onStartScamCheck}
-              className="bg-cyan-700 text-white px-6 py-3 rounded-md font-semibold shadow hover:bg-cyan-800 transition-all text-sm sm:text-base"
+              className="bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter"
+              aria-label="Start Scam Checker"
             >
               Scam Checker
             </button>
             <Link
               to="/scam-trends"
-              className="bg-white text-black px-6 py-3 rounded-md font-semibold shadow hover:bg-gray-100 transition-all text-sm sm:text-base"
+              className="bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter"
+              aria-label="View Community Reports"
             >
               Community Reports
             </Link>
             <Link
               to="/contacts"
-              className="bg-cyan-700 text-white px-6 py-3 rounded-md font-semibold shadow hover:bg-cyan-800 transition-all text-sm sm:text-base"
+              className="bg-gradient-to-r from-white to-cyan-100 text-[#002E5D] px-6 py-3 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:text-white hover:shadow-md active:scale-95 transition-all duration-100 text-sm sm:text-base font-inter"
+              aria-label="Access Contact Database"
             >
               Contact Database
             </Link>

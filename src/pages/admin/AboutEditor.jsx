@@ -1,331 +1,427 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
-import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
+import { ArrowLeftIcon } from '@heroicons/react/24/outline';
+import { supabase } from '../../utils/supabase';
+import toast from 'react-hot-toast';
 
 function AboutEditor() {
   const navigate = useNavigate();
   const [content, setContent] = useState({
-    logo: '',
-    backgroundImage: '',
-    title: 'About Fraud Check',
-    intro: 'Fraud Check is your trusted ally in the fight against financial fraud. Built by fraud prevention experts, our platform empowers you with cutting-edge tools, real-time scam detection, and actionable advice to safeguard your finances and identity.',
-    precision: 'Precision protection, powered by expertise. Whether you’re transferring funds, evaluating an investment, or responding to a suspicious contact, Fraud Check delivers insights drawn from the latest UK fraud trends, FCA data, and Action Fraud intelligence.',
-    community: 'Lead the charge against fraud. Join a community dedicated to staying ahead of scammers. Explore our Help & Advice resources, assess risks with our Scam Checker, and share your experiences to protect others.',
-    trustedText: 'Trusted by thousands • Backed by FCA-aligned data • Committed to your financial security',
-    missionTitle: 'Our Mission',
-    missionText1: 'At Fraud Check, we’re dedicated to equipping you with the knowledge and tools to navigate today’s complex fraud landscape. Inspired by world-class banking standards, our mission is to reduce fraud’s impact on individuals and communities across the UK and beyond.',
-    missionText2: 'We combine advanced analytics, real-world scam reports, and expert guidance to deliver a proactive defense system — because staying safe shouldn’t be a guessing game.',
-    footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
-    footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+    title: '',
+    intro: '',
+    precision: '',
+    community: '',
+    trustedText: '',
+    missionTitle: '',
+    missionText1: '',
+    missionText2: '',
+    footerAbout: '',
+    footerCopyright: '',
   });
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isSaving, setIsSaving] = useState(false);
+  const [recordId, setRecordId] = useState(null);
 
-  // Fetch content from backend on mount
   useEffect(() => {
     const fetchContent = async () => {
       try {
         setLoading(true);
-        // Replace with your backend API endpoint
-        const response = await axios.get('http://localhost:5000/api/about');
-        setContent(response.data);
-        setLoading(false);
+        const { data, error } = await supabase
+          .from('about_content')
+          .select('*')
+          .single(); // We expect only one record
+
+        if (error) {
+          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow SELECT for the anon role.`);
+        }
+
+        if (!data) {
+          throw new Error('No content found in about_content table.');
+        }
+
+        setContent({
+          title: data.title,
+          intro: data.intro,
+          precision: data.precision,
+          community: data.community,
+          trustedText: data.trusted_text,
+          missionTitle: data.mission_title,
+          missionText1: data.mission_text1,
+          missionText2: data.mission_text2,
+          footerAbout: data.footer_about,
+          footerCopyright: data.footer_copyright,
+        });
+        setRecordId(data.id);
+
+        toast.success('Content loaded successfully!', {
+          duration: 3000,
+          style: {
+            background: '#10B981',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
       } catch (err) {
-        setError('Failed to load content. Please try again.');
+        console.error('Error loading about data:', err);
+        toast.error(`Failed to load content: ${err.message}. Using defaults. Check Supabase RLS policies if the issue persists.`, {
+          duration: 5000,
+          style: {
+            background: '#EF4444',
+            color: '#FFFFFF',
+            borderRadius: '8px',
+          },
+        });
+      } finally {
         setLoading(false);
       }
     };
     fetchContent();
   }, []);
 
-  // Handle input changes
   const handleChange = (e) => {
     const { name, value } = e.target;
     setContent((prev) => ({ ...prev, [name]: value }));
   };
 
-  // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setIsSaving(true);
     try {
-      setLoading(true);
-      setError(null);
-      // Replace with your backend API endpoint
-      await axios.post('http://localhost:5000/api/about', content);
-      alert('Content updated successfully!');
-      navigate('/about'); // Redirect to About page
+      const payload = {
+        title: content.title,
+        intro: content.intro,
+        precision: content.precision,
+        community: content.community,
+        trusted_text: content.trustedText,
+        mission_title: content.missionTitle,
+        mission_text1: content.missionText1,
+        mission_text2: content.missionText2,
+        footer_about: content.footerAbout,
+        footer_copyright: content.footerCopyright,
+      };
+
+      const { error } = await supabase
+        .from('about_content')
+        .update(payload)
+        .eq('id', recordId);
+
+      if (error) {
+        throw new Error(`Supabase update error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow UPDATE for the anon role.`);
+      }
+
+      toast.success('Content updated successfully!', {
+        duration: 3000,
+        style: {
+          background: '#10B981',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
+      navigate('/about');
     } catch (err) {
-      setError('Failed to save content. Please try again.');
-      setLoading(false);
+      console.error('Error saving about data:', err);
+      toast.error(`Failed to save content: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+        duration: 5000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
+    } finally {
+      setIsSaving(false);
     }
   };
 
-  // Handle cancel
   const handleCancel = () => {
-    navigate('/dashboard'); // Redirect to dashboard or another page
+    navigate('/admin/dashboard');
   };
 
+  const handleResetToDefault = () => {
+    setContent({
+      title: 'About Fraud Check',
+      intro: 'Fraud Check is an independent platform. We help people avoid scams with real expertise, free tools, and real-time advice.',
+      precision: 'Precision protection, powered by expertise. We provide scam detection, red flag tips, weekly updates, and smart question flows.',
+      community: 'Lead the charge against fraud. Join our community to share your scam stories and help others stay safe.',
+      trustedText: 'Trusted by thousands to stay safe online.',
+      missionTitle: 'Our Mission',
+      missionText1: 'Fraud Check is an independent platform. We’re here to help people avoid scams with real expertise, free tools, and real-time advice.',
+      missionText2: 'Together we can stop scams before they start. Share Fraud Check or send us your scam story.',
+      footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+      footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+    });
+    toast.success('Settings reset to default!', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+      },
+    });
+  };
+
+  if (loading) {
+    return <div className="text-center py-10 font-inter text-gray-600 dark:text-slate-300">Loading...</div>;
+  }
+
   return (
-    <div className="min-h-screen bg-gray-100 dark:bg-slate-900 py-8">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white mb-6">
-          Edit About Page
-        </h1>
+    <div className="min-h-screen p-6 bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
+      <div className="max-w-7xl mx-auto space-y-8">
+        <Link
+          to="/admin/dashboard"
+          className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500"
+        >
+          <ArrowLeftIcon className="w-5 h-5 mr-2" />
+          Back to Dashboard
+        </Link>
 
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-            {error}
-          </div>
-        )}
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
+          <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">
+            Edit About Page
+          </h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Logo URL */}
-          <div>
-            <label
-              htmlFor="logo"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Logo URL
-            </label>
-            <input
-              type="url"
-              id="logo"
-              name="logo"
-              value={content.logo}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-              placeholder="https://example.com/logo.png"
-            />
-          </div>
+          <form onSubmit={handleSubmit} className="space-y-6">
+            {/* Title */}
+            <div>
+              <label
+                htmlFor="title"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Title
+              </label>
+              <input
+                type="text"
+                id="title"
+                name="title"
+                value={content.title}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Background Image URL */}
-          <div>
-            <label
-              htmlFor="backgroundImage"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Background Image URL
-            </label>
-            <input
-              type="url"
-              id="backgroundImage"
-              name="backgroundImage"
-              value={content.backgroundImage}
-              onChange={handleChange}
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-              placeholder="https://example.com/background.png"
-            />
-          </div>
+            {/* Intro Paragraph */}
+            <div>
+              <label
+                htmlFor="intro"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Intro Paragraph
+              </label>
+              <textarea
+                id="intro"
+                name="intro"
+                value={content.intro}
+                onChange={handleChange}
+                rows="4"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Title */}
-          <div>
-            <label
-              htmlFor="title"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Title
-            </label>
-            <input
-              type="text"
-              id="title"
-              name="title"
-              value={content.title}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Precision Paragraph */}
+            <div>
+              <label
+                htmlFor="precision"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Precision Paragraph
+              </label>
+              <textarea
+                id="precision"
+                name="precision"
+                value={content.precision}
+                onChange={handleChange}
+                rows="4"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Intro Paragraph */}
-          <div>
-            <label
-              htmlFor="intro"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Intro Paragraph
-            </label>
-            <textarea
-              id="intro"
-              name="intro"
-              value={content.intro}
-              onChange={handleChange}
-              rows="4"
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Community Paragraph */}
+            <div>
+              <label
+                htmlFor="community"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Community Paragraph
+              </label>
+              <textarea
+                id="community"
+                name="community"
+                value={content.community}
+                onChange={handleChange}
+                rows="4"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Precision Paragraph */}
-          <div>
-            <label
-              htmlFor="precision"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Precision Paragraph
-            </label>
-            <textarea
-              id="precision"
-              name="precision"
-              value={content.precision}
-              onChange={handleChange}
-              rows="4"
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Trusted Text */}
+            <div>
+              <label
+                htmlFor="trustedText"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Trusted Text
+              </label>
+              <input
+                type="text"
+                id="trustedText"
+                name="trustedText"
+                value={content.trustedText}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Community Paragraph */}
-          <div>
-            <label
-              htmlFor="community"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Community Paragraph
-            </label>
-            <textarea
-              id="community"
-              name="community"
-              value={content.community}
-              onChange={handleChange}
-              rows="4"
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Mission Title */}
+            <div>
+              <label
+                htmlFor="missionTitle"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Mission Title
+              </label>
+              <input
+                type="text"
+                id="missionTitle"
+                name="missionTitle"
+                value={content.missionTitle}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Trusted Text */}
-          <div>
-            <label
-              htmlFor="trustedText"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Trusted Text
-            </label>
-            <input
-              type="text"
-              id="trustedText"
-              name="trustedText"
-              value={content.trustedText}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Mission Text 1 */}
+            <div>
+              <label
+                htmlFor="missionText1"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Mission Paragraph 1
+              </label>
+              <textarea
+                id="missionText1"
+                name="missionText1"
+                value={content.missionText1}
+                onChange={handleChange}
+                rows="4"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Mission Title */}
-          <div>
-            <label
-              htmlFor="missionTitle"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Mission Title
-            </label>
-            <input
-              type="text"
-              id="missionTitle"
-              name="missionTitle"
-              value={content.missionTitle}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Mission Text 2 */}
+            <div>
+              <label
+                htmlFor="missionText2"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Mission Paragraph 2
+              </label>
+              <textarea
+                id="missionText2"
+                name="missionText2"
+                value={content.missionText2}
+                onChange={handleChange}
+                rows="4"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Mission Text 1 */}
-          <div>
-            <label
-              htmlFor="missionText1"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Mission Paragraph 1
-            </label>
-            <textarea
-              id="missionText1"
-              name="missionText1"
-              value={content.missionText1}
-              onChange={handleChange}
-              rows="4"
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Footer About */}
+            <div>
+              <label
+                htmlFor="footerAbout"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Footer About Text
+              </label>
+              <textarea
+                id="footerAbout"
+                name="footerAbout"
+                value={content.footerAbout}
+                onChange={handleChange}
+                rows="3"
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Mission Text 2 */}
-          <div>
-            <label
-              htmlFor="missionText2"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Mission Paragraph 2
-            </label>
-            <textarea
-              id="missionText2"
-              name="missionText2"
-              value={content.missionText2}
-              onChange={handleChange}
-              rows="4"
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
+            {/* Footer Copyright */}
+            <div>
+              <label
+                htmlFor="footerCopyright"
+                className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1"
+              >
+                Footer Copyright
+              </label>
+              <input
+                type="text"
+                id="footerCopyright"
+                name="footerCopyright"
+                value={content.footerCopyright}
+                onChange={handleChange}
+                required
+                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+              />
+            </div>
 
-          {/* Footer About */}
-          <div>
-            <label
-              htmlFor="footerAbout"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Footer About Text
-            </label>
-            <textarea
-              id="footerAbout"
-              name="footerAbout"
-              value={content.footerAbout}
-              onChange={handleChange}
-              rows="3"
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
-
-          {/* Footer Copyright */}
-          <div>
-            <label
-              htmlFor="footerCopyright"
-              className="block text-sm font-medium text-gray-700 dark:text-slate-300"
-            >
-              Footer Copyright
-            </label>
-            <input
-              type="text"
-              id="footerCopyright"
-              name="footerCopyright"
-              value={content.footerCopyright}
-              onChange={handleChange}
-              required
-              className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-cyan-500 focus:border-cyan-500 dark:bg-slate-800 dark:border-slate-600 dark:text-white"
-            />
-          </div>
-
-          {/* Buttons */}
-          <div className="flex justify-end gap-4">
-            <button
-              type="button"
-              onClick={handleCancel}
-              className="px-4 py-2 bg-gray-300 text-gray-700 rounded-lg hover:bg-gray-400 transition-all dark:bg-slate-700 dark:text-slate-300 dark:hover:bg-slate-600"
-              disabled={loading}
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="px-4 py-2 bg-cyan-700 text-white rounded-lg hover:bg-cyan-800 transition-all focus:outline-none focus:ring-2 focus:ring-cyan-500"
-              disabled={loading}
-            >
-              {loading ? 'Saving...' : 'Save Changes'}
-            </button>
-          </div>
-        </form>
+            {/* Buttons */}
+            <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 py-4 px-6 shadow-lg">
+              <div className="max-w-7xl mx-auto flex justify-end space-x-4">
+                <button
+                  type="button"
+                  onClick={handleResetToDefault}
+                  className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-all"
+                  disabled={isSaving}
+                >
+                  Reset to Default
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCancel}
+                  className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-all"
+                  disabled={isSaving}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 transition-all flex items-center"
+                  disabled={isSaving}
+                >
+                  {isSaving ? (
+                    <>
+                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                        <circle
+                          className="opacity-25"
+                          cx="12"
+                          cy="12"
+                          r="10"
+                          stroke="currentColor"
+                          strokeWidth="4"
+                        />
+                        <path
+                          className="opacity-75"
+                          fill="currentColor"
+                          d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                        />
+                      </svg>
+                      Saving...
+                    </>
+                  ) : (
+                    'Save Changes'
+                  )}
+                </button>
+              </div>
+            </div>
+          </form>
+        </div>
       </div>
     </div>
   );

@@ -1,53 +1,70 @@
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
-function ArticleCard({ article, index }) {
+function ArticleCard({ article, index, isEditorsPick }) {
   const { slug, title, summary, date, author, category } = article || {};
 
-  console.log('ArticleCard props:', { slug, title });
+  if (process.env.NODE_ENV !== 'production') {
+    console.log('ArticleCard props:', { slug, title });
+  }
+
+  // Format date
+  const formattedDate = date
+    ? new Date(date).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'Unknown Date';
 
   return (
     <Link
       to={`/articles/${slug || 'unknown'}`}
-      className="block bg-white dark:bg-slate-800 rounded-xl shadow-lg hover:shadow-xl hover:-translate-y-1 transition-all duration-300 w-full overflow-hidden border border-gray-200 dark:border-slate-700"
+      className={`block bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden font-inter ${
+        isEditorsPick ? 'col-span-full' : ''
+      } card-hover`}
       style={{ animationDelay: `${index * 0.1}s` }}
-      onClick={() => console.log('Navigating to article:', slug)}
+      onClick={() => {
+        if (process.env.NODE_ENV !== 'production') {
+          console.log('Navigating to article:', slug);
+        }
+      }}
     >
-      <div className="p-6 flex flex-col relative">
-        {/* Gradient Accent Line */}
-        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-cyan-500 to-cyan-700" />
-        
-        {/* Category Tag */}
-        <div className="flex items-center mb-4">
-          {category && (
-            <span className="text-xs font-semibold text-cyan-800 dark:text-cyan-200 bg-cyan-100 dark:bg-cyan-900 px-3 py-1 rounded-full">
-              {category}
-            </span>
-          )}
-        </div>
-
-        {/* Title */}
-        <h3 className="text-xl font-semibold text-gray-900 dark:text-white line-clamp-2 mb-2">
+      <div className="relative">
+        {/* Placeholder Image */}
+        <div
+          className="w-full h-48 bg-gradient-to-r from-cyan-200 to-blue-200 rounded-t-xl"
+          style={{ aspectRatio: '16/9' }}
+        />
+        {isEditorsPick && (
+          <span className="absolute top-4 left-4 bg-red-200 text-red-800 text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
+            🔥 Editor’s Pick
+          </span>
+        )}
+      </div>
+      <div className={`${isEditorsPick ? 'p-8' : 'p-6'} space-y-4`}>
+        {category && (
+          <span className="inline-block bg-cyan-100 text-cyan-800 text-xs font-semibold px-2 py-1 rounded-full">
+            {category}
+          </span>
+        )}
+        <h3
+          className={`${
+            isEditorsPick ? 'text-2xl' : 'text-xl'
+          } font-bold text-[#002E5D] dark:text-white line-clamp-2`}
+        >
           {title || 'Untitled'}
         </h3>
-
-        {/* Summary */}
-        <p className="text-sm text-gray-600 dark:text-slate-300 line-clamp-3 mb-4 flex-grow">
+        <p className="text-sm text-gray-600 dark:text-slate-300 line-clamp-3 flex-grow">
           {summary || 'No summary available.'}
         </p>
-
-        {/* Author and Date */}
-        <div className="flex justify-between items-center text-sm text-gray-500 dark:text-slate-400">
+        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-slate-400">
           <span>{author || 'Unknown Author'}</span>
-          <span>
-            {date
-              ? new Date(date).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : 'Unknown Date'}
-          </span>
+          <span>{formattedDate}</span>
+        </div>
+        <div className="flex items-center gap-1 text-blue-600 font-medium text-sm hover:underline">
+          Read More <ArrowRightIcon className="w-4 h-4" />
         </div>
       </div>
     </Link>
