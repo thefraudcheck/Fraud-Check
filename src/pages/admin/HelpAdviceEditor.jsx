@@ -27,7 +27,7 @@ import {
 } from '@heroicons/react/24/outline';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import { supabase } from '../../utils/supabase'; // Corrected path
+import { supabase } from '../../utils/supabase';
 import { debounce } from 'lodash';
 import { toast, Toaster } from 'react-hot-toast';
 
@@ -90,6 +90,34 @@ const renderIcon = (iconName) => {
   return icon ? icon.component : <ShieldCheckIcon className="w-6 h-6 text-cyan-700" />;
 };
 
+// Validate data structure
+const validateData = (data) => {
+  if (!data || typeof data !== 'object') return false;
+  if (!data.tipOfTheWeek || !data.categories || !data.tipArchive) return false;
+  if (!Array.isArray(data.categories) || !Array.isArray(data.tipArchive)) return false;
+  return data.categories.every(
+    (cat) =>
+      cat &&
+      typeof cat === 'object' &&
+      typeof cat.category === 'string' &&
+      Array.isArray(cat.tips) &&
+      cat.tips.every(
+        (tip) =>
+          tip &&
+          typeof tip === 'object' &&
+          typeof tip.title === 'string' &&
+          typeof tip.preview === 'string' &&
+          typeof tip.icon === 'string' &&
+          tip.details &&
+          typeof tip.details.why === 'string' &&
+          Array.isArray(tip.details.examples) &&
+          Array.isArray(tip.details.whatToDo) &&
+          Array.isArray(tip.details.signs) &&
+          Array.isArray(tip.details.protect)
+      )
+  );
+};
+
 function HelpAdviceEditor() {
   const navigate = useNavigate();
   const [data, setData] = useState(null);
@@ -127,18 +155,14 @@ function HelpAdviceEditor() {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const { data: fetchedData, error } = await supabase
-          .from('help_advice')
-          .select('data')
-          .eq('id', 1)
-          .maybeSingle();
-
+        const { data: fetchedData, error } = await supabase.rpc('get_advice_data');
         if (error) {
-          throw new Error(`Supabase fetch error: ${error.message}`);
+          console.error('Supabase fetch error:', error);
+          throw new Error(`Failed to fetch data: ${error.message}`);
         }
 
-        if (!fetchedData || !fetchedData.data) {
-          // Insert minimal initial structure
+        if (!fetchedData) {
+          console.warn('No data returned from Supabase, initializing empty structure.');
           const initialData = {
             tipOfTheWeek: {
               title: '🛡️ New Tip of the Week',
@@ -156,22 +180,39 @@ function HelpAdviceEditor() {
             tipArchive: [],
             categories: [newCategoryTemplate],
           };
-          const { error: insertError } = await supabase
-            .from('help_advice')
-            .insert([{ id: 1, data: initialData }]);
-
+          const { error: insertError } = await supabase.rpc('save_advice_data', { p_data: initialData });
           if (insertError) {
             throw new Error(`Failed to initialize data: ${insertError.message}`);
           }
           setData(initialData);
+        } else if (!validateData(fetchedData)) {
+          console.warn('Invalid data structure from Supabase:', fetchedData);
+          throw new Error('Invalid data structure received from Supabase.');
         } else {
-          setData(fetchedData.data);
-          setHistory([fetchedData.data]);
+          setData(fetchedData);
+          setHistory([fetchedData]);
           setHistoryIndex(0);
         }
       } catch (err) {
-        setError(`Failed to load content from Supabase: ${err.message}`);
-        console.error(err);
+        console.error('Fetch error:', err);
+        setError(`Failed to load content: ${err.message}`);
+        setData({
+          tipOfTheWeek: {
+            title: '🛡️ New Tip of the Week',
+            text: '<p>Enter the new tip description.</p>',
+            link: '/help-advice',
+            icon: 'ShieldCheckIcon',
+            details: {
+              why: '<p>Explain why this tip is important.</p>',
+              examples: ['Example 1'],
+              whatToDo: ['Step 1'],
+              signs: ['Sign 1'],
+              protect: ['Protection 1'],
+            },
+          },
+          tipArchive: [],
+          categories: [newCategoryTemplate],
+        });
       } finally {
         setLoading(false);
       }
@@ -185,16 +226,20 @@ function HelpAdviceEditor() {
     debounce(async (newData) => {
       setIsSaving(true);
       try {
-        const { error } = await supabase
-          .from('help_advice')
-          .update({ data: newData })
-          .eq('id', 1);
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) {
+          throw new Error('User not authenticated');
+        }
 
-        if (error) throw error;
+        const { error } = await supabase.rpc('save_advice_data', { p_data: newData });
+        if (error) {
+          console.error('Auto-save error:', error);
+          throw error;
+        }
         toast.success('Changes auto-saved!', { duration: 2000 });
       } catch (err) {
-        toast.error('Auto-save failed.', { duration: 2000 });
-        console.error('Auto-save error:', err);
+        console.error('Auto-save failed:', err);
+        toast.error(`Auto-save failed: ${err.message}`, { duration: 2000 });
       } finally {
         setIsSaving(false);
       }
@@ -204,6 +249,11 @@ function HelpAdviceEditor() {
 
   // Update data and history
   const updateData = (newData) => {
+    if (!validateData(newData)) {
+      console.warn('Invalid data structure for update:', newData);
+      toast.error('Invalid data structure, cannot update.');
+      return;
+    }
     setData(newData);
     const newHistory = [...history.slice(0, historyIndex + 1), newData];
     if (newHistory.length > 50) newHistory.shift();
@@ -243,18 +293,33 @@ function HelpAdviceEditor() {
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      const { error } = await supabase
-        .from('help_advice')
-        .update({ data })
-        .eq('id', 1);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated. Please log in.');
+      }
 
-      if (error) throw error;
+      if (!validateData(data)) {
+        throw new Error('Invalid data structure. Please check your inputs.');
+      }
+
+      try {
+        JSON.parse(JSON.stringify(data));
+      } catch (e) {
+        throw new Error(`Invalid JSON syntax: ${e.message}`);
+      }
+
+      const { error } = await supabase.rpc('save_advice_data', { p_data: data });
+      if (error) {
+        console.error('Save error:', error);
+        throw new Error(`Failed to save data: ${error.message}`);
+      }
+
       toast.success('Content saved successfully!');
       navigate('/help-advice');
     } catch (err) {
-      toast.error('Failed to save content.');
-      setError('Failed to save content to Supabase.');
-      console.error(err);
+      console.error('Save error:', err);
+      toast.error(`Failed to save content: ${err.message}`);
+      setError(`Failed to save content: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -551,946 +616,546 @@ function HelpAdviceEditor() {
     );
   }
 
-  const categories = data.categories.map((cat) => cat.category).sort();
-
   return (
-    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100 font-inter">
-      <Toaster position="top-right" />
-      <style>
-        {`
-          .ql-container {
-            background: #f9fafb !important;
-            border-bottom-left-radius: 0.5rem;
-            border-bottom-right-radius: 0.5rem;
-            min-height: 100px;
-          }
-          .dark .ql-container {
-            background: #1e293b !important;
-            border-color: #475569 !important;
-          }
-          .ql-toolbar {
-            background: #f9fafb !important;
-            border-top-left-radius: 0.5rem;
-            border-top-right-radius: 0.5rem;
-            border-color: #e5e7eb !important;
-          }
-          .dark .ql-toolbar {
-            background: #1e293b !important;
-            border-color: #475569 !important;
-          }
-          .ql-editor {
-            color: #111827 !important;
-          }
-          .dark .ql-editor {
-            color: #f3f4f6 !important;
-          }
-          .scrollbar-thin::-webkit-scrollbar { width: 6px; }
-          .scrollbar-thin::-webkit-scrollbar-track { background: #e5e7eb; }
-          .scrollbar-thin::-webkit-scrollbar-thumb { background: #0ea5e9; border-radius: 3px; }
-          .card-hover:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2);
-            border-color: #0ea5e9;
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.5s ease-out forwards;
-          }
-          @keyframes fadeIn {
-            0% { opacity: 0; transform: translateY(8px); }
-            100% { opacity: 1; transform: translateY(0); }
-          }
-        `}
-      </style>
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        <section className="text-center animate-fadeIn">
-          <h2 className="text-4xl font-bold text-gray-900 dark:text-white">
-            Help & Advice Editor
-          </h2>
-          <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto">
-            Manage content for the Help & Advice page with real-time previews and auto-save.
-          </p>
-        </section>
-
-        <section className="mt-8 flex justify-between items-center">
-          <Link
-            to="/admin/dashboard"
-            className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500"
-          >
-            <ArrowLeftIcon className="w-5 h-5 mr-2" />
-            Back to Dashboard
-          </Link>
-          <div className="flex space-x-2">
+    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+      <Toaster position="top-center" toastOptions={{ duration: 2000 }} />
+      <header className="bg-white dark:bg-slate-800 shadow-sm">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <Link to="/admin/dashboard" className="text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white">
+              <ArrowLeftIcon className="w-6 h-6" />
+            </Link>
+            <h1 className="text-2xl font-bold font-inter">Help & Advice Editor</h1>
+          </div>
+          <div className="flex gap-3">
             <button
               onClick={undo}
-              className="px-3 py-1 bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 disabled:opacity-50"
               disabled={historyIndex <= 0}
+              className="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg font-medium disabled:opacity-50 font-inter"
             >
-              <ArrowPathIcon className="w-5 h-5" />
+              Undo
             </button>
             <button
               onClick={redo}
-              className="px-3 py-1 bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-300 dark:hover:bg-slate-600 disabled:opacity-50"
               disabled={historyIndex >= history.length - 1}
+              className="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg font-medium disabled:opacity-50 font-inter"
             >
-              <ArrowPathIcon className="w-5 h-5 transform rotate-180" />
+              Redo
+            </button>
+            <button
+              onClick={handleCancel}
+              className="px-4 py-2 bg-gray-200 dark:bg-slate-700 text-gray-900 dark:text-gray-100 rounded-lg font-medium font-inter"
+            >
+              Cancel
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={isSaving}
+              className="px-4 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 disabled:opacity-50 font-inter"
+            >
+              {isSaving ? 'Saving...' : 'Save Changes'}
             </button>
           </div>
-        </section>
+        </div>
+      </header>
 
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
         {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg animate-fadeIn">
+          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
             <span>{error}</span>
           </div>
         )}
 
-        {/* Tip of the Week Editor */}
-        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 mb-8 animate-fadeIn card-hover">
-          <h2 className="text-2xl font-semibold mb-4">Tip of the Week</h2>
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                Tip Title
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 font-inter">Tip of the Week</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                Title
               </label>
               <input
                 type="text"
                 value={data.tipOfTheWeek.title}
                 onChange={(e) => updateTipOfTheWeek('title', e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                placeholder="Enter tip title"
+                className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                Tip Text
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                Text
               </label>
               <ReactQuill
                 theme="snow"
                 value={data.tipOfTheWeek.text}
-                onChange={(content) => updateTipOfTheWeek('text', content)}
+                onChange={(value) => updateTipOfTheWeek('text', value)}
                 modules={quillModules}
                 formats={quillFormats}
-                className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                placeholder="Enter tip description"
+                className="bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                Link (Optional)
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                Link
               </label>
               <input
                 type="text"
                 value={data.tipOfTheWeek.link}
                 onChange={(e) => updateTipOfTheWeek('link', e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                placeholder="Enter link URL (e.g., /help-advice)"
+                className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
               />
             </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                 Icon
               </label>
-              <select
-                value={data.tipOfTheWeek.icon}
-                onChange={(e) => updateTipOfTheWeek('icon', e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-              >
-                {iconOptions.map((opt) => (
-                  <option key={opt.name} value={opt.name}>
-                    {opt.name}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Why It’s Important
-                </label>
-                <ReactQuill
-                  theme="snow"
-                  value={data.tipOfTheWeek.details.why}
-                  onChange={(content) => updateTipOfTheWeekDetail('why', content)}
-                  modules={quillModules}
-                  formats={quillFormats}
-                  className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                  placeholder="Explain why this tip is important"
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Examples
-                </label>
-                {data.tipOfTheWeek.details.examples.map((example, exIndex) => (
-                  <div key={exIndex} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={example}
-                      onChange={(e) => updateTipOfTheWeekDetail('examples', e.target.value, exIndex)}
-                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                      placeholder={`Example ${exIndex + 1}`}
-                    />
-                    <button
-                      onClick={() => removeTipOfTheWeekDetailItem('examples', exIndex)}
-                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                    >
-                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => addTipOfTheWeekDetailItem('examples')}
-                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
+              <div className="flex items-center gap-3">
+                {renderIcon(data.tipOfTheWeek.icon)}
+                <select
+                  value={data.tipOfTheWeek.icon}
+                  onChange={(e) => updateTipOfTheWeek('icon', e.target.value)}
+                  className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                 >
-                  <PlusIcon className="w-4 h-4 mr-1" /> Add Example
-                </button>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  What To Do
-                </label>
-                {data.tipOfTheWeek.details.whatToDo.map((step, stepIndex) => (
-                  <div key={stepIndex} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={step}
-                      onChange={(e) => updateTipOfTheWeekDetail('whatToDo', e.target.value, stepIndex)}
-                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                      placeholder={`Step ${stepIndex + 1}`}
-                    />
-                    <button
-                      onClick={() => removeTipOfTheWeekDetailItem('whatToDo', stepIndex)}
-                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                    >
-                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => addTipOfTheWeekDetailItem('whatToDo')}
-                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                >
-                  <PlusIcon className="w-4 h-4 mr-1" /> Add Step
-                </button>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  Signs to Watch For
-                </label>
-                {data.tipOfTheWeek.details.signs.map((sign, signIndex) => (
-                  <div key={signIndex} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={sign}
-                      onChange={(e) => updateTipOfTheWeekDetail('signs', e.target.value, signIndex)}
-                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                      placeholder={`Sign ${signIndex + 1}`}
-                    />
-                    <button
-                      onClick={() => removeTipOfTheWeekDetailItem('signs', signIndex)}
-                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                    >
-                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => addTipOfTheWeekDetailItem('signs')}
-                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                >
-                  <PlusIcon className="w-4 h-4 mr-1" /> Add Sign
-                </button>
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                  How to Protect Yourself
-                </label>
-                {data.tipOfTheWeek.details.protect.map((protection, protIndex) => (
-                  <div key={protIndex} className="flex items-center gap-2 mb-2">
-                    <input
-                      type="text"
-                      value={protection}
-                      onChange={(e) => updateTipOfTheWeekDetail('protect', e.target.value, protIndex)}
-                      className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                      placeholder={`Protection ${protIndex + 1}`}
-                    />
-                    <button
-                      onClick={() => removeTipOfTheWeekDetailItem('protect', protIndex)}
-                      className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                    >
-                      <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                    </button>
-                  </div>
-                ))}
-                <button
-                  onClick={() => addTipOfTheWeekDetailItem('protect')}
-                  className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                >
-                  <PlusIcon className="w-4 h-4 mr-1" /> Add Protection Tip
-                </button>
+                  {iconOptions.map((opt) => (
+                    <option key={opt.name} value={opt.name}>
+                      {opt.name}
+                    </option>
+                  ))}
+                </select>
               </div>
             </div>
-            <div className="flex space-x-4">
-              <button
-                onClick={archiveCurrentTip}
-                className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm"
-                disabled={!data.tipOfTheWeek.title || !data.tipOfTheWeek.text}
-              >
-                Archive Current Tip
-              </button>
-            </div>
-          </div>
-          {data.tipArchive.length > 0 && (
-            <div className="mt-6">
-              <h3 className="text-lg font-semibold mb-4">Previous Tips of the Week</h3>
-              <div className="space-y-4">
-                {data.tipArchive.map((tip, index) => (
-                  <div
-                    key={index}
-                    className="bg-gray-50 dark:bg-slate-700 rounded-lg p-4 flex justify-between items-center"
+            <div className="mb-4">
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+                Details
+              </h3>
+              <div className="ml-4">
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                    Why It Matters
+                  </label>
+                  <ReactQuill
+                    theme="snow"
+                    value={data.tipOfTheWeek.details.why}
+                    onChange={(value) => updateTipOfTheWeekDetail('why', value)}
+                    modules={quillModules}
+                    formats={quillFormats}
+                    className="bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                  />
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                    Examples
+                  </label>
+                  {data.tipOfTheWeek.details.examples.map((example, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={example}
+                        onChange={(e) => updateTipOfTheWeekDetail('examples', e.target.value, idx)}
+                        className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                      />
+                      <button
+                        onClick={() => removeTipOfTheWeekDetailItem('examples', idx)}
+                        className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addTipOfTheWeekDetailItem('examples')}
+                    className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
                   >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        {renderIcon(tip.icon)}
-                        <h4 className="text-sm font-medium text-gray-900 dark:text-white">
-                          {tip.title}
-                        </h4>
-                      </div>
-                      <div className="prose text-xs text-gray-600 dark:text-slate-300 mt-1">
-                        <div dangerouslySetInnerHTML={{ __html: tip.text.slice(0, 100) + '...' }} />
-                      </div>
-                      <p className="text-xs text-gray-500 dark:text-slate-400 mt-1">
-                        Archived: {new Date(tip.archivedAt).toLocaleDateString('en-US', {
-                          month: 'short',
-                          day: 'numeric',
-                          year: 'numeric',
-                        })}
-                      </p>
-                    </div>
-                    <div className="flex space-x-2">
+                    <PlusIcon className="w-4 h-4" /> Add Example
+                  </button>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                    What To Do
+                  </label>
+                  {data.tipOfTheWeek.details.whatToDo.map((action, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={action}
+                        onChange={(e) => updateTipOfTheWeekDetail('whatToDo', e.target.value, idx)}
+                        className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                      />
                       <button
-                        onClick={() => restoreArchivedTip(index)}
-                        className="text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
+                        onClick={() => removeTipOfTheWeekDetailItem('whatToDo', idx)}
+                        className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
                       >
-                        <ArrowPathIcon className="w-4 h-4 mr-1" /> Restore
-                      </button>
-                      <button
-                        onClick={() => deleteArchivedTip(index)}
-                        className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                      >
-                        <TrashIcon className="w-4 h-4 mr-1" /> Delete
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </div>
-                  </div>
-                ))}
+                  ))}
+                  <button
+                    onClick={() => addTipOfTheWeekDetailItem('whatToDo')}
+                    className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                  >
+                    <PlusIcon className="w-4 h-4" /> Add Action
+                  </button>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                    Signs to Watch For
+                  </label>
+                  {data.tipOfTheWeek.details.signs.map((sign, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={sign}
+                        onChange={(e) => updateTipOfTheWeekDetail('signs', e.target.value, idx)}
+                        className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                      />
+                      <button
+                        onClick={() => removeTipOfTheWeekDetailItem('signs', idx)}
+                        className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addTipOfTheWeekDetailItem('signs')}
+                    className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                  >
+                    <PlusIcon className="w-4 h-4" /> Add Sign
+                  </button>
+                </div>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                    How to Protect Yourself
+                  </label>
+                  {data.tipOfTheWeek.details.protect.map((protection, idx) => (
+                    <div key={idx} className="flex items-center gap-2 mb-2">
+                      <input
+                        type="text"
+                        value={protection}
+                        onChange={(e) => updateTipOfTheWeekDetail('protect', e.target.value, idx)}
+                        className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                      />
+                      <button
+                        onClick={() => removeTipOfTheWeekDetailItem('protect', idx)}
+                        className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  ))}
+                  <button
+                    onClick={() => addTipOfTheWeekDetailItem('protect')}
+                    className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                  >
+                    <PlusIcon className="w-4 h-4" /> Add Protection
+                  </button>
+                </div>
               </div>
             </div>
-          )}
-        </div>
+            <button
+              onClick={archiveCurrentTip}
+              className="px-4 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+            >
+              Archive Current Tip
+            </button>
+          </div>
+        </section>
 
-        <div className="flex flex-col md:flex-row gap-8">
-          {!selectedCategory ? (
-            <div className="w-full">
-              <h2 className="text-2xl font-semibold mb-4">Advice Categories</h2>
-              <div className="space-y-2">
-                {categories.map((category, index) => (
-                  <div key={category} className="flex items-center justify-between">
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 font-inter">Tip Archive</h2>
+          {data.tipArchive.length > 0 ? (
+            <div className="space-y-4">
+              {data.tipArchive.map((tip, idx) => (
+                <div key={idx} className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 flex justify-between items-center">
+                  <div>
+                    <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">{tip.title}</h3>
+                    <p className="text-sm text-gray-600 dark:text-slate-300 font-inter">
+                      Archived on: {new Date(tip.archivedAt).toLocaleDateString()}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
                     <button
-                      onClick={() => {
-                        setSelectedCategory(category);
-                        setPreviewTipIndex(0);
-                      }}
-                      className="flex-1 text-left px-4 py-2 rounded-lg text-sm font-medium transition-all bg-white dark:bg-slate-800 text-gray-900 dark:text-white hover:bg-cyan-100 dark:hover:bg-cyan-900"
+                      onClick={() => restoreArchivedTip(idx)}
+                      className="px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
                     >
-                      {category}
+                      Restore
                     </button>
                     <button
-                      onClick={() => removeCategory(data.categories.findIndex((cat) => cat.category === category))}
-                      className="ml-2 text-red-600 hover:text-red-800 text-sm flex items-center"
+                      onClick={() => deleteArchivedTip(idx)}
+                      className="px-3 py-1 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all duration-200 font-inter"
                     >
-                      <TrashIcon className="w-4 h-4 mr-1" /> Delete
+                      Delete
                     </button>
                   </div>
-                ))}
-                <button
-                  onClick={addCategory}
-                  className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm font-semibold"
-                >
-                  <PlusIcon className="w-4 h-4 inline mr-2" /> Add New Category
-                </button>
-              </div>
+                </div>
+              ))}
             </div>
           ) : (
-            <div className="w-full">
-              {data.categories.some((cat) => cat.category === selectedCategory) ? (
-                <>
-                  <div className="flex items-center mb-6">
-                    <button
-                      onClick={() => {
-                        setSelectedCategory(null);
-                        setPreviewTipIndex(0);
-                      }}
-                      className="mr-4 p-2 rounded-full bg-gray-200 dark:bg-slate-700 hover:bg-gray-300 dark:hover:bg-slate-600"
-                    >
-                      <ArrowLeftIcon className="w-5 h-5 text-gray-900 dark:text-white" />
-                    </button>
-                    <h2 className="text-2xl font-semibold">Editing: {selectedCategory}</h2>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 mb-6 card-hover">
-                    <h3 className="text-lg font-semibold mb-4">Category Name</h3>
+            <p className="text-gray-600 dark:text-slate-300 font-inter">No archived tips.</p>
+          )}
+        </section>
+
+        <section>
+          <h2 className="text-2xl font-semibold mb-4 font-inter">Categories</h2>
+          <div className="flex gap-4 mb-6">
+            <select
+              value={selectedCategory || ''}
+              onChange={(e) => {
+                setSelectedCategory(e.target.value || null);
+                setPreviewTipIndex(0);
+              }}
+              className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+            >
+              <option value="">All Categories</option>
+              {data.categories.map((cat, idx) => (
+                <option key={idx} value={cat.category}>
+                  {cat.category}
+                </option>
+              ))}
+            </select>
+            <button
+              onClick={addCategory}
+              className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+            >
+              <PlusIcon className="w-4 h-4" /> Add Category
+            </button>
+          </div>
+
+          {data.categories
+            .filter((cat) => !selectedCategory || cat.category === selectedCategory)
+            .map((category, catIdx) => (
+              <div key={catIdx} className="mb-8 bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
+                <div className="flex justify-between items-center mb-4">
+                  <div className="flex items-center gap-3">
                     <input
                       type="text"
-                      value={selectedCategory}
-                      onChange={(e) => {
-                        const newCategoryName = e.target.value;
-                        const catIndex = data.categories.findIndex((cat) => cat.category === selectedCategory);
-                        if (catIndex >= 0) {
-                          updateCategory(catIndex, 'category', newCategoryName);
-                          setSelectedCategory(newCategoryName);
-                        }
-                      }}
-                      className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                      placeholder="Enter category name"
+                      value={category.category}
+                      onChange={(e) => updateCategory(catIdx, 'category', e.target.value)}
+                      className="text-xl font-semibold p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                     />
                   </div>
-                  <div className="space-y-6">
-                    {data.categories
-                      .find((cat) => cat.category === selectedCategory)
-                      .tips.map((tip, tipIndex) => (
-                        <div
-                          key={tipIndex}
-                          ref={(el) => (tipRefs.current[`${selectedCategory}-${tipIndex}`] = el)}
-                          className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 card-hover"
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => addTip(catIdx)}
+                      className="flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                    >
+                      <PlusIcon className="w-4 h-4" /> Add Tip
+                    </button>
+                    <button
+                      onClick={() => removeCategory(catIdx)}
+                      className="px-3 py-1 bg-red-600 text-white rounded-lg font-medium hover:bg-red-700 transition-all duration-200 font-inter"
+                    >
+                      Delete Category
+                    </button>
+                  </div>
+                </div>
+                <div className="space-y-6">
+                  {category.tips.map((tip, tipIdx) => (
+                    <div
+                      key={tipIdx}
+                      ref={(el) => (tipRefs.current[`${catIdx}-${tipIdx}`] = el)}
+                      className="border border-gray-200 dark:border-slate-600 rounded-lg p-4"
+                    >
+                      <div className="flex justify-between items-center mb-2">
+                        <button
+                          onClick={() => toggleTip(tipIdx)}
+                          className="flex items-center gap-2 text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter"
                         >
-                          <div className="flex justify-between items-center mb-4">
-                            <h4 className="text-lg font-semibold">
-                              Tip {tipIndex + 1}: {tip.title}
-                            </h4>
-                            <button
-                              onClick={() => toggleTip(tipIndex)}
-                              className="text-cyan-600 hover:text-cyan-800"
-                            >
-                              {expandedTips[tipIndex] ? (
-                                <ChevronUpIcon className="w-5 h-5" />
-                              ) : (
-                                <ChevronDownIcon className="w-5 h-5" />
-                              )}
-                            </button>
+                          {expandedTips[tipIdx] ? (
+                            <ChevronUpIcon className="w-5 h-5" />
+                          ) : (
+                            <ChevronDownIcon className="w-5 h-5" />
+                          )}
+                          {tip.title}
+                        </button>
+                        <button
+                          onClick={() => removeTip(catIdx, tipIdx)}
+                          className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                        >
+                          <TrashIcon className="w-5 h-5" />
+                        </button>
+                      </div>
+                      {expandedTips[tipIdx] && (
+                        <div className="ml-4">
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                              Title
+                            </label>
+                            <input
+                              type="text"
+                              value={tip.title}
+                              onChange={(e) => updateTip(catIdx, tipIdx, 'title', e.target.value)}
+                              className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                            />
                           </div>
-                          {expandedTips[tipIndex] && (
-                            <>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                              Preview
+                            </label>
+                            <ReactQuill
+                              theme="snow"
+                              value={tip.preview}
+                              onChange={(value) => updateTip(catIdx, tipIdx, 'preview', value)}
+                              modules={quillModules}
+                              formats={quillFormats}
+                              className="bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                            />
+                          </div>
+                          <div className="mb-4">
+                            <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                              Icon
+                            </label>
+                            <div className="flex items-center gap-3">
+                              {renderIcon(tip.icon)}
+                              <select
+                                value={tip.icon}
+                                onChange={(e) => updateTip(catIdx, tipIdx, 'icon', e.target.value)}
+                                className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                              >
+                                {iconOptions.map((opt) => (
+                                  <option key={opt.name} value={opt.name}>
+                                    {opt.name}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                          </div>
+                          <div className="mb-4">
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
+                              Details
+                            </h4>
+                            <div className="ml-4">
                               <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                  Title
-                                </label>
-                                <input
-                                  type="text"
-                                  value={tip.title}
-                                  onChange={(e) =>
-                                    updateTip(
-                                      data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                      tipIndex,
-                                      'title',
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                                  placeholder="Enter tip title"
-                                />
-                              </div>
-                              <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                  Preview
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                                  Why It Matters
                                 </label>
                                 <ReactQuill
                                   theme="snow"
-                                  value={tip.preview}
-                                  onChange={(content) =>
-                                    updateTip(
-                                      data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                      tipIndex,
-                                      'preview',
-                                      content
-                                    )
-                                  }
+                                  value={tip.details.why}
+                                  onChange={(value) => updateTipDetail(catIdx, tipIdx, 'why', value)}
                                   modules={quillModules}
                                   formats={quillFormats}
-                                  className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                                  placeholder="Enter tip preview"
+                                  className="bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
                                 />
                               </div>
                               <div className="mb-4">
-                                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                  Icon
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                                  Examples
                                 </label>
-                                <select
-                                  value={tip.icon}
-                                  onChange={(e) =>
-                                    updateTip(
-                                      data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                      tipIndex,
-                                      'icon',
-                                      e.target.value
-                                    )
-                                  }
-                                  className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                                >
-                                  {iconOptions.map((opt) => (
-                                    <option key={opt.name} value={opt.name}>
-                                      {opt.name}
-                                    </option>
-                                  ))}
-                                </select>
-                              </div>
-                              <div className="space-y-4">
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                    Why It’s Important
-                                  </label>
-                                  <ReactQuill
-                                    theme="snow"
-                                    value={tip.details.why}
-                                    onChange={(content) =>
-                                      updateTipDetail(
-                                        data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                        tipIndex,
-                                        'why',
-                                        content
-                                      )
-                                    }
-                                    modules={quillModules}
-                                    formats={quillFormats}
-                                    className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100"
-                                    placeholder="Explain why this tip is important"
-                                  />
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                    Examples
-                                  </label>
-                                  {tip.details.examples.map((example, exIndex) => (
-                                    <div key={exIndex} className="flex items-center gap-2 mb-2">
-                                      <input
-                                        type="text"
-                                        value={example}
-                                        onChange={(e) =>
-                                          updateTipDetail(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'examples',
-                                            e.target.value,
-                                            exIndex
-                                          )
-                                        }
-                                        className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                                        placeholder={`Example ${exIndex + 1}`}
-                                      />
-                                      <button
-                                        onClick={() =>
-                                          removeDetailItem(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'examples',
-                                            exIndex
-                                          )
-                                        }
-                                        className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                                      >
-                                        <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                                      </button>
-                                    </div>
-                                  ))}
-                                  <button
-                                    onClick={() =>
-                                      addDetailItem(
-                                        data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                        tipIndex,
-                                        'examples'
-                                      )
-                                    }
-                                    className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                                  >
-                                    <PlusIcon className="w-4 h-4 mr-1" /> Add Example
-                                  </button>
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                    What To Do
-                                  </label>
-                                  {tip.details.whatToDo.map((step, stepIndex) => (
-                                    <div key={stepIndex} className="flex items-center gap-2 mb-2">
-                                      <input
-                                        type="text"
-                                        value={step}
-                                        onChange={(e) =>
-                                          updateTipDetail(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'whatToDo',
-                                            e.target.value,
-                                            stepIndex
-                                          )
-                                        }
-                                        className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                                        placeholder={`Step ${stepIndex + 1}`}
-                                      />
-                                      <button
-                                        onClick={() =>
-                                          removeDetailItem(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'whatToDo',
-                                            stepIndex
-                                          )
-                                        }
-                                        className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                                      >
-                                        <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                                      </button>
-                                    </div>
-                                  ))}
-                                  <button
-                                    onClick={() =>
-                                      addDetailItem(
-                                        data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                        tipIndex,
-                                        'whatToDo'
-                                      )
-                                    }
-                                    className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                                  >
-                                    <PlusIcon className="w-4 h-4 mr-1" /> Add Step
-                                  </button>
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                    Signs to Watch For
-                                  </label>
-                                  {tip.details.signs.map((sign, signIndex) => (
-                                    <div key={signIndex} className="flex items-center gap-2 mb-2">
-                                      <input
-                                        type="text"
-                                        value={sign}
-                                        onChange={(e) =>
-                                          updateTipDetail(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'signs',
-                                            e.target.value,
-                                            signIndex
-                                          )
-                                        }
-                                        className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                                        placeholder={`Sign ${signIndex + 1}`}
-                                      />
-                                      <button
-                                        onClick={() =>
-                                          removeDetailItem(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'signs',
-                                            signIndex
-                                          )
-                                        }
-                                        className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                                      >
-                                        <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                                      </button>
-                                    </div>
-                                  ))}
-                                  <button
-                                    onClick={() =>
-                                      addDetailItem(
-                                        data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                        tipIndex,
-                                        'signs'
-                                      )
-                                    }
-                                    className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                                  >
-                                    <PlusIcon className="w-4 h-4 mr-1" /> Add Sign
-                                  </button>
-                                </div>
-                                <div>
-                                  <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-2">
-                                    How to Protect Yourself
-                                  </label>
-                                  {tip.details.protect.map((protection, protIndex) => (
-                                    <div key={protIndex} className="flex items-center gap-2 mb-2">
-                                      <input
-                                        type="text"
-                                        value={protection}
-                                        onChange={(e) =>
-                                          updateTipDetail(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'protect',
-                                            e.target.value,
-                                            protIndex
-                                          )
-                                        }
-                                        className="flex-1 px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100 text-sm"
-                                        placeholder={`Protection ${protIndex + 1}`}
-                                      />
-                                      <button
-                                        onClick={() =>
-                                          removeDetailItem(
-                                            data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                            tipIndex,
-                                            'protect',
-                                            protIndex
-                                          )
-                                        }
-                                        className="text-red-600 hover:text-red-800 text-sm flex items-center"
-                                      >
-                                        <TrashIcon className="w-4 h-4 mr-1" /> Remove
-                                      </button>
-                                    </div>
-                                  ))}
-                                  <button
-                                    onClick={() =>
-                                      addDetailItem(
-                                        data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                        tipIndex,
-                                        'protect'
-                                      )
-                                    }
-                                    className="mt-2 text-cyan-600 hover:text-cyan-800 text-sm flex items-center"
-                                  >
-                                    <PlusIcon className="w-4 h-4 mr-1" /> Add Protection Tip
-                                  </button>
-                                </div>
-                              </div>
-                              <div className="flex justify-end mt-4">
+                                {tip.details.examples.map((example, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 mb-2">
+                                    <input
+                                      type="text"
+                                      value={example}
+                                      onChange={(e) => updateTipDetail(catIdx, tipIdx, 'examples', e.target.value, idx)}
+                                      className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                                    />
+                                    <button
+                                      onClick={() => removeDetailItem(catIdx, tipIdx, 'examples', idx)}
+                                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                                    >
+                                      <TrashIcon className="w-5 h-5" />
+                                    </button>
+                                  </div>
+                                ))}
                                 <button
-                                  onClick={() =>
-                                    removeTip(
-                                      data.categories.findIndex((cat) => cat.category === selectedCategory),
-                                      tipIndex
-                                    )
-                                  }
-                                  className="flex items-center px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 text-sm"
+                                  onClick={() => addDetailItem(catIdx, tipIdx, 'examples')}
+                                  className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
                                 >
-                                  <TrashIcon className="w-4 h-4 mr-2" /> Remove Tip
+                                  <PlusIcon className="w-4 h-4" /> Add Example
                                 </button>
                               </div>
-                            </>
-                          )}
-                        </div>
-                      ))}
-                    <button
-                      onClick={() =>
-                        addTip(data.categories.findIndex((cat) => cat.category === selectedCategory))
-                      }
-                      className="w-full px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm font-semibold"
-                    >
-                      <PlusIcon className="w-4 h-4 inline mr-2" /> Add New Tip
-                    </button>
-                  </div>
-                  <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700 mt-8 card-hover">
-                    <h2 className="text-2xl font-semibold mb-4">Live Preview</h2>
-                    <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 min-h-[400px]">
-                      <div className="p-6 border-b border-gray-200 dark:border-slate-700 bg-white dark:bg-slate-850">
-                        <h2 className="text-2xl font-semibold text-gray-900 dark:text-white">
-                          {selectedCategory}
-                        </h2>
-                      </div>
-                      <div className="px-4 sm:px-6 py-6 space-y-6">
-                        {data.categories
-                          .find((cat) => cat.category === selectedCategory)
-                          .tips[previewTipIndex] ? (
-                          <div className="bg-white dark:bg-slate-800 rounded-xl shadow-md p-6 border border-gray-200 dark:border-slate-600">
-                            <div className="flex items-start gap-4">
-                              {renderIcon(
-                                data.categories.find((cat) => cat.category === selectedCategory).tips[
-                                  previewTipIndex
-                                ].icon
-                              )}
-                              <div>
-                                <h3 className="text-xl font-semibold text-gray-900 dark:text-white mb-2">
-                                  {
-                                    data.categories.find((cat) => cat.category === selectedCategory).tips[
-                                      previewTipIndex
-                                    ].title
-                                  }
-                                </h3>
-                                <div className="prose text-gray-600 dark:text-slate-300 mb-4">
-                                  <div
-                                    dangerouslySetInnerHTML={{
-                                      __html: data.categories.find((cat) => cat.category === selectedCategory).tips[
-                                        previewTipIndex
-                                      ].preview,
-                                    }}
-                                  />
-                                </div>
-                                <div className="space-y-4">
-                                  <div>
-                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                      Why It’s Important
-                                    </h4>
-                                    <div className="prose text-gray-600 dark:text-slate-300 mt-2">
-                                      <div
-                                        dangerouslySetInnerHTML={{
-                                          __html: data.categories.find((cat) => cat.category === selectedCategory)
-                                            .tips[previewTipIndex].details.why,
-                                        }}
-                                      />
-                                    </div>
+                              <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                                  What To Do
+                                </label>
+                                {tip.details.whatToDo.map((action, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 mb-2">
+                                    <input
+                                      type="text"
+                                      value={action}
+                                      onChange={(e) => updateTipDetail(catIdx, tipIdx, 'whatToDo', e.target.value, idx)}
+                                      className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                                    />
+                                    <button
+                                      onClick={() => removeDetailItem(catIdx, tipIdx, 'whatToDo', idx)}
+                                      className="p-2 text-red-600 hover:text                                      red-800 dark:text-red-400 dark:hover:text-red-600"
+                                    >
+                                      <TrashIcon className="w-5 h-5" />
+                                    </button>
                                   </div>
-                                  <div>
-                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                      Examples
-                                    </h4>
-                                    <div className="pl-5 space-y-2 mt-2">
-                                      {data.categories
-                                        .find((cat) => cat.category === selectedCategory)
-                                        .tips[previewTipIndex].details.examples.map((example, idx) => (
-                                          <p key={idx} className="flex items-start text-gray-600 dark:text-slate-300">
-                                            <span className="mr-2">•</span>
-                                            {example}
-                                          </p>
-                                        ))}
-                                    </div>
+                                ))}
+                                <button
+                                  onClick={() => addDetailItem(catIdx, tipIdx, 'whatToDo')}
+                                  className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                                >
+                                  <PlusIcon className="w-4 h-4" /> Add Action
+                                </button>
+                              </div>
+                              <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                                  Signs to Watch For
+                                </label>
+                                {tip.details.signs.map((sign, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 mb-2">
+                                    <input
+                                      type="text"
+                                      value={sign}
+                                      onChange={(e) => updateTipDetail(catIdx, tipIdx, 'signs', e.target.value, idx)}
+                                      className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                                    />
+                                    <button
+                                      onClick={() => removeDetailItem(catIdx, tipIdx, 'signs', idx)}
+                                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                                    >
+                                      <TrashIcon className="w-5 h-5" />
+                                    </button>
                                   </div>
-                                  <div>
-                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                      What To Do
-                                    </h4>
-                                    <div className="pl-5 space-y-2 mt-2">
-                                      {data.categories
-                                        .find((cat) => cat.category === selectedCategory)
-                                        .tips[previewTipIndex].details.whatToDo.map((step, idx) => (
-                                          <p key={idx} className="flex items-start text-gray-600 dark:text-slate-300">
-                                            <span className="mr-2">•</span>
-                                            {step}
-                                          </p>
-                                        ))}
-                                    </div>
+                                ))}
+                                <button
+                                  onClick={() => addDetailItem(catIdx, tipIdx, 'signs')}
+                                  className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                                >
+                                  <PlusIcon className="w-4 h-4" /> Add Sign
+                                </button>
+                              </div>
+                              <div className="mb-4">
+                                <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                                  How to Protect Yourself
+                                </label>
+                                {tip.details.protect.map((protection, idx) => (
+                                  <div key={idx} className="flex items-center gap-2 mb-2">
+                                    <input
+                                      type="text"
+                                      value={protection}
+                                      onChange={(e) => updateTipDetail(catIdx, tipIdx, 'protect', e.target.value, idx)}
+                                      className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                                    />
+                                    <button
+                                      onClick={() => removeDetailItem(catIdx, tipIdx, 'protect', idx)}
+                                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                                    >
+                                      <TrashIcon className="w-5 h-5" />
+                                    </button>
                                   </div>
-                                  <div>
-                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                      Signs to Watch For
-                                    </h4>
-                                    <div className="pl-5 space-y-2 mt-2">
-                                      {data.categories
-                                        .find((cat) => cat.category === selectedCategory)
-                                        .tips[previewTipIndex].details.signs.map((sign, idx) => (
-                                          <p key={idx} className="flex items-start text-gray-600 dark:text-slate-300">
-                                            <span className="mr-2">•</span>
-                                            {sign}
-                                          </p>
-                                        ))}
-                                    </div>
-                                  </div>
-                                  <div>
-                                    <h4 className="text-lg font-medium text-gray-900 dark:text-white">
-                                      How to Protect Yourself
-                                    </h4>
-                                    <div className="pl-5 space-y-2 mt-2">
-                                      {data.categories
-                                        .find((cat) => cat.category === selectedCategory)
-                                        .tips[previewTipIndex].details.protect.map((protection, idx) => (
-                                          <p key={idx} className="flex items-start text-gray-600 dark:text-slate-300">
-                                            <span className="mr-2">•</span>
-                                            {protection}
-                                          </p>
-                                        ))}
-                                    </div>
-                                  </div>
-                                </div>
+                                ))}
+                                <button
+                                  onClick={() => addDetailItem(catIdx, tipIdx, 'protect')}
+                                  className="mt-2 flex items-center gap-1 px-3 py-1 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+                                >
+                                  <PlusIcon className="w-4 h-4" /> Add Protection
+                                </button>
                               </div>
                             </div>
                           </div>
-                        ) : (
-                          <p className="text-gray-500 dark:text-slate-400">No tips available.</p>
-                        )}
-                        <div className="flex justify-between">
-                          <button
-                            onClick={() => setPreviewTipIndex((prev) => Math.max(0, prev - 1))}
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
-                            disabled={previewTipIndex === 0}
-                          >
-                            Previous
-                          </button>
-                          <button
-                            onClick={() =>
-                              setPreviewTipIndex((prev) =>
-                                Math.min(
-                                  data.categories.find((cat) => cat.category === selectedCategory).tips
-                                    .length - 1,
-                                  prev + 1
-                                )
-                              )
-                            }
-                            className="px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 text-sm"
-                            disabled={
-                              previewTipIndex ===
-                              data.categories.find((cat) => cat.category === selectedCategory).tips
-                                .length - 1
-                            }
-                          >
-                            Next
-                          </button>
                         </div>
-                      </div>
+                      )}
                     </div>
-                  </div>
-                </>
-              ) : (
-                <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
-                  <p className="text-gray-500 dark:text-slate-400">
-                    Category "{selectedCategory}" not found. Please select a category.
-                  </p>
-                  <button
-                    onClick={() => {
-                      setSelectedCategory(null);
-                      setPreviewTipIndex(0);
-                    }}
-                    className="mt-4 px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm"
-                  >
-                    Back to Categories
-                  </button>
+                  ))}
                 </div>
-              )}
-            </div>
-          )}
-        </div>
-        <div className="flex justify-end space-x-4 mt-8">
-          <button
-            onClick={handleCancel}
-            className="px-4 py-2 bg-gray-300 dark:bg-slate-600 text-gray-900 dark:text-slate-100 rounded-lg hover:bg-gray-400 dark:hover:bg-slate-500 transition-all text-sm"
-            disabled={isSaving}
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleSave}
-            className="px-4 py-2 bg-cyan-600 text-white rounded-lg hover:bg-cyan-700 text-sm flex items-center transition-all"
-            disabled={isSaving}
-          >
-            {isSaving ? (
-              <svg
-                className="animate-spin h-5 w-5 mr-2 text-white"
-                viewBox="0 0 24 24"
-              >
-                <circle
-                  className="opacity-25"
-                  cx="12"
-                  cy="12"
-                  r="10"
-                  stroke="currentColor"
-                  strokeWidth="4"
-                />
-                <path
-                  className="opacity-75"
-                  fill="currentColor"
-                  d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-                />
-              </svg>
-            ) : null}
-            {isSaving ? 'Saving...' : 'Save & Exit'}
-          </button>
-        </div>
-      </div>
+              </div>
+            ))}
+        </section>
+      </main>
     </div>
   );
 }

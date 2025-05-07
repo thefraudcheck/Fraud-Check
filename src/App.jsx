@@ -1,5 +1,6 @@
-import React, { useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Link } from 'react-router-dom';
+import React, { useEffect, useState } from 'react';
+import { BrowserRouter, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
+import { supabase } from './utils/supabase';
 import Home from './pages/Home';
 import Articles from './pages/Articles';
 import ArticleDetail from './pages/ArticleDetail';
@@ -56,6 +57,47 @@ class ErrorBoundary extends React.Component {
   }
 }
 
+// Protected Route Component
+const ProtectedRoute = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const checkUser = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        setUser(user);
+      } catch (error) {
+        console.error('Auth check error:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    checkUser();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+        <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
+          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+          <path
+            className="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          />
+        </svg>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return <Navigate to="/" replace />;
+  }
+
+  return children;
+};
+
 function AppContent() {
   const location = useLocation();
 
@@ -77,15 +119,78 @@ function AppContent() {
         <Route path="/help-advice" element={<Advice />} />
         <Route path="/about" element={<About />} />
         <Route path="/contacts" element={<Contacts />} />
-        <Route path="/admin" element={<AdminDashboard />} />
-        <Route path="/admin/dashboard" element={<AdminDashboard />} />
-        <Route path="/admin/home" element={<AdminHomeEditor />} />
-        <Route path="/admin/articles" element={<ArticleEditor />} />
-        <Route path="/admin/scam-trends" element={<ScamTrendsEditor />} />
-        <Route path="/admin/scam-checker" element={<ScamCheckerEditor />} />
-        <Route path="/admin/about" element={<AboutEditor />} />
-        <Route path="/admin/help-advice" element={<HelpAdviceEditor />} />
-        <Route path="/admin/contacts" element={<ContactEditor />} />
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/dashboard"
+          element={
+            <ProtectedRoute>
+              <AdminDashboard />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/home"
+          element={
+            <ProtectedRoute>
+              <AdminHomeEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/articles"
+          element={
+            <ProtectedRoute>
+              <ArticleEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/scam-trends"
+          element={
+            <ProtectedRoute>
+              <ScamTrendsEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/scam-checker"
+          element={
+            <ProtectedRoute>
+              <ScamCheckerEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/about"
+          element={
+            <ProtectedRoute>
+              <AboutEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/help-advice"
+          element={
+            <ProtectedRoute>
+              <HelpAdviceEditor />
+            </ProtectedRoute>
+          }
+        />
+        <Route
+          path="/admin/contacts"
+          element={
+            <ProtectedRoute>
+              <ContactEditor />
+            </ProtectedRoute>
+          }
+        />
         <Route
           path="*"
           element={
