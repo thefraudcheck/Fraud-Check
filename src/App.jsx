@@ -61,15 +61,23 @@ class ErrorBoundary extends React.Component {
 const ProtectedRoute = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const checkUser = async () => {
       try {
-        const { data: { user } } = await supabase.auth.getUser();
+        const { data: { user }, error } = await supabase.auth.getUser();
+        if (error) {
+          console.error('Auth check error:', error);
+          setError('Authentication failed. Please log in.');
+          setLoading(false);
+          return;
+        }
         setUser(user);
-      } catch (error) {
-        console.error('Auth check error:', error);
-      } finally {
+        setLoading(false);
+      } catch (err) {
+        console.error('Auth check error:', err);
+        setError('An unexpected error occurred during authentication.');
         setLoading(false);
       }
     };
@@ -87,6 +95,23 @@ const ProtectedRoute = ({ children }) => {
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
+        <div className="text-center">
+          <h1 className="text-2xl font-bold mb-4 font-inter">Authentication Error</h1>
+          <p className="text-lg mb-4 font-inter">{error}</p>
+          <Link
+            to="/"
+            className="px-6 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter"
+          >
+            Go to Home
+          </Link>
+        </div>
       </div>
     );
   }

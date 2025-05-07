@@ -50,17 +50,20 @@ function AdminDashboard() {
       try {
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
-          console.error('Supabase auth error:', error);
-          throw new Error('Failed to authenticate user');
+          console.error('Supabase auth error in AdminDashboard:', error);
+          setError(`Authentication failed: ${error.message}`);
+          navigate('/');
+          return;
         }
         if (!user) {
+          console.log('No user found, redirecting to home page');
           navigate('/');
           return;
         }
         setUser(user);
       } catch (err) {
-        console.error('AdminDashboard auth error:', err);
-        setError(err.message || 'An unexpected error occurred.');
+        console.error('Unexpected error during auth check:', err);
+        setError(`Unexpected error: ${err.message}`);
         navigate('/');
       } finally {
         setLoading(false);
@@ -71,11 +74,16 @@ function AdminDashboard() {
 
   const handleSignOut = async () => {
     try {
-      await supabase.auth.signOut();
+      const { error } = await supabase.auth.signOut();
+      if (error) {
+        console.error('Sign out error:', error);
+        setError(`Sign out failed: ${error.message}`);
+        return;
+      }
       navigate('/');
-    } catch (error) {
-      console.error('Sign out error:', error);
-      setError(`Sign out failed: ${error.message}`);
+    } catch (err) {
+      console.error('Unexpected error during sign out:', err);
+      setError(`Unexpected error: ${err.message}`);
     }
   };
 
@@ -110,6 +118,10 @@ function AdminDashboard() {
         </button>
       </div>
     );
+  }
+
+  if (!user) {
+    return null; // ProtectedRoute should handle the redirect, but we ensure no render happens
   }
 
   return (
