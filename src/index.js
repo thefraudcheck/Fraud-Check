@@ -1,17 +1,19 @@
 import React from 'react';
-import { createRoot } from 'react-dom/client';
+import ReactDOM from 'react-dom'; // Use react-dom for React 17
 import App from './App.jsx';
 import './styles.css';
 
 if (process.env.NODE_ENV !== 'production') {
   console.log('index.js: Starting render');
 }
-const root = createRoot(document.getElementById('root'));
-root.render(
+
+ReactDOM.render(
   <React.StrictMode>
     <App />
-  </React.StrictMode>
+  </React.StrictMode>,
+  document.getElementById('root')
 );
+
 if (process.env.NODE_ENV !== 'production') {
   console.log('index.js: Render complete');
 }
