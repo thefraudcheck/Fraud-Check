@@ -601,8 +601,7 @@ function AdminHomeEditor() {
               <ReactQuill theme="snow" value={data.tipOfTheWeek.text || ''} onChange={(value) => updateTipOfTheWeek('text', value)} modules={quillModules} formats={quillFormats} className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100" placeholder="Enter tip text" />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-7
-              00 dark:text-slate-300 mb-1">What To Do</label>
+              <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">What To Do</label>
               {data.tipOfTheWeek.whatToDo?.map((action, index) => (
                 <div key={index} className="flex items-center space-x-2 mb-2">
                   <input type="text" value={action} onChange={(e) => updateTipWhatToDo(index, e.target.value)} className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100" placeholder={`Action ${index + 1}`} />
@@ -656,7 +655,7 @@ function AdminHomeEditor() {
                 <>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Title</label>
-                    <input type="text" value={scenario.title} onChange={(e) => updateWhatToDoIf(index, 'title', e.target.value)} className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-                    off-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100" placeholder="Enter scenario title" />
+                    <input type="text" value={scenario.title} onChange={(e) => updateWhatToDoIf(index, 'title', e.target.value)} className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 text-gray-900 dark:text-slate-100" placeholder="Enter scenario title" />
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Preview</label>

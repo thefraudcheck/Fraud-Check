@@ -23,7 +23,7 @@ function ScamTrendsEditor() {
       redFlags: [],
       action: '',
       reportDate: '',
-      headings: { redFlags: 'Red Flags (comma-separated)', action: 'Action' },
+      headings: { redFlags: 'Red Flags', action: 'Action' },
     },
     pastScamOfTheWeek: [],
     scamCategories: [],
@@ -34,7 +34,7 @@ function ScamTrendsEditor() {
       highRiskScamsDetected: '',
       redFlags: [],
       reportDate: '',
-      headings: { redFlags: 'Red Flags (comma-separated)' },
+      headings: { redFlags: 'Red Flags' },
     },
     quickAlerts: [],
   });
@@ -58,11 +58,11 @@ function ScamTrendsEditor() {
   const quillFormats = ['font', 'size', 'bold', 'italic', 'underline', 'color', 'background'];
 
   const defaultHeadings = {
-    redFlags: 'Red Flags (comma-separated)',
+    redFlags: 'Red Flags',
     action: 'Action',
   };
   const defaultWeeklyStatsHeadings = {
-    redFlags: 'Red Flags (comma-separated)',
+    redFlags: 'Red Flags',
   };
 
   useEffect(() => {
@@ -79,7 +79,14 @@ function ScamTrendsEditor() {
 
         const initialData = fetchedData?.data || {
           hero: { title: '', subtitle: '', logo: '', textColor: '#000000' },
-          scamOfTheWeek: { name: '', description: '', redFlags: [], action: '', reportDate: '', headings: { ...defaultHeadings } },
+          scamOfTheWeek: {
+            name: '',
+            description: '',
+            redFlags: [],
+            action: '',
+            reportDate: '',
+            headings: { ...defaultHeadings },
+          },
           pastScamOfTheWeek: [],
           scamCategories: [],
           userReportedScams: [],
@@ -164,7 +171,7 @@ function ScamTrendsEditor() {
             mostReported: mostCommon,
             headings: { ...defaultWeeklyStatsHeadings, ...(initialData.weeklyStats.headings || {}) },
           },
-          quickAlerts: initialData.quickAlerts,
+          quickAlerts: initialData.quickAlerts || [],
         };
 
         setData(cleanedData);
@@ -198,20 +205,51 @@ function ScamTrendsEditor() {
         })),
       };
 
-      const { error } = await supabase
+      const { data: existingData, error: fetchError } = await supabase
         .from('scam_trends')
-        .update({ data: dataToSave })
-        .eq('id', 1);
+        .select('id')
+        .eq('id', 1)
+        .maybeSingle();
+
+      if (fetchError) throw new Error(`Supabase fetch error: ${fetchError.message}`);
+
+      let error;
+      if (existingData) {
+        ({ error } = await supabase
+          .from('scam_trends')
+          .update({ data: dataToSave })
+          .eq('id', 1));
+      } else {
+        ({ error } = await supabase
+          .from('scam_trends')
+          .insert({ id: 1, data: dataToSave }));
+      }
 
       if (error) throw new Error(`Supabase save error: ${error.message}`);
 
       setSavedData(dataToSave);
       setSaveSuccess(true);
-      toast.success('Changes saved successfully!');
+      toast.success('Changes saved successfully!', {
+        duration: 3000,
+        style: {
+          background: '#10B981',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+          maxWidth: '500px',
+        },
+      });
       setTimeout(() => setSaveSuccess(false), 3000);
     } catch (error) {
       setSaveError('Failed to save changes to Supabase. Please try again.');
-      toast.error('Failed to save changes to Supabase.');
+      toast.error('Failed to save changes to Supabase.', {
+        duration: 5000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+          maxWidth: '500px',
+        },
+      });
     } finally {
       setIsSaving(false);
     }
@@ -223,6 +261,15 @@ function ScamTrendsEditor() {
     setOpenPastScamSections(new Array(savedData.pastScamOfTheWeek?.length || 0).fill(false));
     setSaveError(null);
     setSaveSuccess(false);
+    toast.success('Changes reset to last saved state.', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+        maxWidth: '500px',
+      },
+    });
   };
 
   const updateHero = (field, value) => {
@@ -287,9 +334,35 @@ function ScamTrendsEditor() {
           ...(prevData.pastScamOfTheWeek || []),
           { ...prevData.scamOfTheWeek, id: uuidv4() },
         ],
-        scamOfTheWeek: { name: '', description: '', redFlags: [], action: '', reportDate: '', headings: { ...defaultHeadings } },
+        scamOfTheWeek: {
+          name: '',
+          description: '',
+          redFlags: [],
+          action: '',
+          reportDate: '',
+          headings: { ...defaultHeadings },
+        },
       }));
       setOpenPastScamSections((prev) => [...prev, false]);
+      toast.success('Scam moved to Past Scams.', {
+        duration: 3000,
+        style: {
+          background: '#10B981',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+          maxWidth: '500px',
+        },
+      });
+    } else {
+      toast.error('Please enter a scam name before moving.', {
+        duration: 4000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+          maxWidth: '500px',
+        },
+      });
     }
   };
 
@@ -324,6 +397,15 @@ function ScamTrendsEditor() {
       pastScamOfTheWeek: (prevData.pastScamOfTheWeek || []).filter((_, i) => i !== index),
     }));
     setOpenPastScamSections((prev) => prev.filter((_, i) => i !== index));
+    toast.success('Past scam removed.', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+        maxWidth: '500px',
+      },
+    });
   };
 
   const togglePastScamSection = (index) => {
@@ -352,6 +434,15 @@ function ScamTrendsEditor() {
       scamCategories: [...(prevData.scamCategories || []), newCategory],
     }));
     setOpenSections((prev) => [...prev, true]);
+    toast.success('New scam category added.', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+        maxWidth: '500px',
+      },
+    });
   };
 
   const updateCategory = (index, field, value) => {
@@ -406,6 +497,15 @@ function ScamTrendsEditor() {
       scamCategories: (prevData.scamCategories || []).filter((_, i) => i !== index),
     }));
     setOpenSections((prev) => prev.filter((_, i) => i !== index));
+    toast.success('Scam category removed.', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+        maxWidth: '500px',
+      },
+    });
   };
 
   const toggleSection = (index) => {
@@ -461,6 +561,15 @@ function ScamTrendsEditor() {
           mostReported: mostCommon,
         },
       };
+    });
+    toast.success('New user report added.', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+        maxWidth: '500px',
+      },
     });
   };
 
@@ -563,6 +672,15 @@ function ScamTrendsEditor() {
           mostReported: mostCommon,
         },
       };
+    });
+    toast.success('User report removed.', {
+      duration: 3000,
+      style: {
+        background: '#10B981',
+        color: '#FFFFFF',
+        borderRadius: '8px',
+        maxWidth: '500px',
+      },
     });
   };
 
@@ -668,7 +786,7 @@ function ScamTrendsEditor() {
                 <img
                   src={data.hero.logo}
                   alt="Logo Preview"
-                  className="mt-2 h- for-16 w-auto rounded-md border border-gray-200 dark:border-slate-600"
+                  className="mt-2 h-16 w-auto rounded-md border border-gray-200 dark:border-slate-600"
                   onError={(e) => (e.target.style.display = 'none')}
                 />
               )}
@@ -714,7 +832,7 @@ function ScamTrendsEditor() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Red Flags Heading</label>
               <input
                 type="text"
-                value={data.scamOfTheWeek.headings.redFlags || 'Red Flags (comma-separated)'}
+                value={data.scamOfTheWeek.headings.redFlags || 'Red Flags'}
                 onChange={(e) => updateScamOfTheWeekHeading('redFlags', e.target.value)}
                 className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2"
                 placeholder="Enter heading"
@@ -738,11 +856,13 @@ function ScamTrendsEditor() {
                 placeholder="Enter heading"
               />
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Action</label>
-              <input
-                type="text"
+              <ReactQuill
+                theme="snow"
                 value={data.scamOfTheWeek.action || ''}
-                onChange={(e) => updateScamOfTheWeek('action', e.target.value)}
-                className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                onChange={(content) => updateScamOfTheWeek('action', content)}
+                modules={quillModules}
+                formats={quillFormats}
+                className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                 placeholder="Enter recommended action"
               />
             </div>
@@ -802,7 +922,7 @@ function ScamTrendsEditor() {
               <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Red Flags Heading</label>
               <input
                 type="text"
-                value={data.weeklyStats.headings.redFlags || 'Red Flags (comma-separated)'}
+                value={data.weeklyStats.headings.redFlags || 'Red Flags'}
                 onChange={(e) => updateWeeklyStatsHeading('redFlags', e.target.value)}
                 className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2"
                 placeholder="Enter heading"
@@ -879,7 +999,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Red Flags Heading</label>
                       <input
                         type="text"
-                        value={pastScam.headings.redFlags || 'Red Flags (comma-separated)'}
+                        value={pastScam.headings.redFlags || 'Red Flags'}
                         onChange={(e) => updatePastScamHeading(index, 'redFlags', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2"
                         placeholder="Enter heading"
@@ -903,11 +1023,13 @@ function ScamTrendsEditor() {
                         placeholder="Enter heading"
                       />
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Action</label>
-                      <input
-                        type="text"
+                      <ReactQuill
+                        theme="snow"
                         value={pastScam.action || ''}
-                        onChange={(e) => updatePastScam(index, 'action', e.target.value)}
-                        className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
+                        onChange={(content) => updatePastScam(index, 'action', content)}
+                        modules={quillModules}
+                        formats={quillFormats}
+                        className="bg-gray-50 dark:bg-slate-700 text-gray-900 dark:text-slate-100"
                         placeholder="Enter recommended action"
                       />
                     </div>
@@ -986,7 +1108,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Red Flags Heading</label>
                       <input
                         type="text"
-                        value={category.headings.redFlags || 'Red Flags (comma-separated)'}
+                        value={category.headings.redFlags || 'Red Flags'}
                         onChange={(e) => updateCategoryHeading(index, 'redFlags', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2"
                         placeholder="Enter heading"
@@ -1142,7 +1264,7 @@ function ScamTrendsEditor() {
                     <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Red Flags Heading</label>
                     <input
                       type="text"
-                      value={report.headings.redFlags || 'Red Flags (comma-separated)'}
+                      value={report.headings.redFlags || 'Red Flags'}
                       onChange={(e) => updateReportHeading(index, 'redFlags', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2"
                       placeholder="Enter heading"
@@ -1166,15 +1288,15 @@ function ScamTrendsEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">What to Do Heading</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Action Heading</label>
                     <input
                       type="text"
-                      value={report.headings.action || 'What to Do'}
+                      value={report.headings.action || 'Action'}
                       onChange={(e) => updateReportHeading(index, 'action', e.target.value)}
                       className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2"
                       placeholder="Enter heading"
                     />
-                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">What to Do</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Action</label>
                     <ReactQuill
                       theme="snow"
                       value={report.action || ''}
@@ -1186,7 +1308,7 @@ function ScamTrendsEditor() {
                     />
                   </div>
                   <div>
-                    <label className="block text-sm font-medium text-gray-7 dark:text-slate-300 mb-1">Related URL</label>
+                    <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1">Related URL</label>
                     <input
                       type="url"
                       value={report.url || ''}
@@ -1202,13 +1324,17 @@ function ScamTrendsEditor() {
                       dangerouslySetInnerHTML={{ __html: report.description || 'No description provided.' }}
                     />
                     {report.redFlags?.length > 0 && (
-                      <div className="mt-2">
-                        <strong>{report.headings.redFlags || 'Red Flags'}:</strong> {report.redFlags.join(', ')}
+                      <div className="mt-2 scam-preview">
+                        <span className="bg-red-100 text-red-700 text-sm rounded-full px-3 py-1 font-medium inline-block">
+                          🚩 <span className="scam-preview">{report.headings.redFlags || 'Red Flags'}</span>: {report.redFlags.join(', ')}
+                        </span>
                       </div>
                     )}
                     {report.action && (
-                      <div className="mt-2 scam-preview">
-                        <strong>{report.headings.action || 'What to Do'}:</strong>{' '}
+                      <div className="text-sm text-gray-600 dark:text-slate-300 mt-2 scam-preview">
+                        <strong>
+                          <span className="scam-preview">{report.headings.action || 'Action'}</span>:
+                        </strong>{' '}
                         <span
                           className="scam-preview"
                           dangerouslySetInnerHTML={{ __html: report.action || 'No action provided.' }}

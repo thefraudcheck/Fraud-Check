@@ -1,11 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../../utils/supabase';
 import toast from 'react-hot-toast';
 
 function AboutEditor() {
-  const navigate = useNavigate();
   const [content, setContent] = useState({
     title: '',
     intro: '',
@@ -29,29 +28,42 @@ function AboutEditor() {
         const { data, error } = await supabase
           .from('about_content')
           .select('*')
-          .single(); // We expect only one record
+          .maybeSingle();
 
         if (error) {
-          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow SELECT for the anon role.`);
+          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'})`);
         }
+
+        const defaultContent = {
+          title: 'About Fraud Check',
+          intro: 'Fraud Check is an independent platform. We help people avoid scams with real expertise, free tools, and real-time advice.',
+          precision: 'Precision protection, powered by expertise. We provide scam detection, red flag tips, weekly updates, and smart question flows.',
+          community: 'Lead the charge against fraud. Join our community to share your scam stories and help others stay safe.',
+          trustedText: 'Trusted by thousands to stay safe online.',
+          missionTitle: 'Our Mission',
+          missionText1: 'Fraud Check is an independent platform. We’re here to help people avoid scams with real expertise, free tools, and real-time advice.',
+          missionText2: 'Together we can stop scams before they start. Share Fraud Check or send us your scam story.',
+          footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+          footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+        };
 
         if (!data) {
-          throw new Error('No content found in about_content table.');
+          setContent(defaultContent);
+        } else {
+          setContent({
+            title: data.title || defaultContent.title,
+            intro: data.intro || defaultContent.intro,
+            precision: data.precision || defaultContent.precision,
+            community: data.community || defaultContent.community,
+            trustedText: data.trusted_text || defaultContent.trustedText,
+            missionTitle: data.mission_title || defaultContent.missionTitle,
+            missionText1: data.mission_text1 || defaultContent.missionText1,
+            missionText2: data.mission_text2 || defaultContent.missionText2,
+            footerAbout: data.footer_about || defaultContent.footerAbout,
+            footerCopyright: data.footer_copyright || defaultContent.footerCopyright,
+          });
+          setRecordId(data.id);
         }
-
-        setContent({
-          title: data.title,
-          intro: data.intro,
-          precision: data.precision,
-          community: data.community,
-          trustedText: data.trusted_text,
-          missionTitle: data.mission_title,
-          missionText1: data.mission_text1,
-          missionText2: data.mission_text2,
-          footerAbout: data.footer_about,
-          footerCopyright: data.footer_copyright,
-        });
-        setRecordId(data.id);
 
         toast.success('Content loaded successfully!', {
           duration: 3000,
@@ -63,7 +75,7 @@ function AboutEditor() {
         });
       } catch (err) {
         console.error('Error loading about data:', err);
-        toast.error(`Failed to load content: ${err.message}. Using defaults. Check Supabase RLS policies if the issue persists.`, {
+        toast.error(`Failed to load content: ${err.message}`, {
           duration: 5000,
           style: {
             background: '#EF4444',
@@ -100,13 +112,29 @@ function AboutEditor() {
         footer_copyright: content.footerCopyright,
       };
 
-      const { error } = await supabase
-        .from('about_content')
-        .update(payload)
-        .eq('id', recordId);
+      if (!recordId) {
+        // Insert new record if no ID exists
+        const { data, error } = await supabase
+          .from('about_content')
+          .insert(payload)
+          .select()
+          .single();
 
-      if (error) {
-        throw new Error(`Supabase update error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow UPDATE for the anon role.`);
+        if (error) {
+          throw new Error(`Supabase insert error: ${error.message} (Code: ${error.code || 'Unknown'})`);
+        }
+
+        setRecordId(data.id);
+      } else {
+        // Update existing record
+        const { error } = await supabase
+          .from('about_content')
+          .update(payload)
+          .eq('id', recordId);
+
+        if (error) {
+          throw new Error(`Supabase update error: ${error.message} (Code: ${error.code || 'Unknown'})`);
+        }
       }
 
       toast.success('Content updated successfully!', {
@@ -117,10 +145,9 @@ function AboutEditor() {
           borderRadius: '8px',
         },
       });
-      navigate('/about');
     } catch (err) {
       console.error('Error saving about data:', err);
-      toast.error(`Failed to save content: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+      toast.error(`Failed to save content: ${err.message}`, {
         duration: 5000,
         style: {
           background: '#EF4444',
@@ -134,7 +161,7 @@ function AboutEditor() {
   };
 
   const handleCancel = () => {
-    navigate('/admin/dashboard');
+    window.history.back();
   };
 
   const handleResetToDefault = () => {
@@ -181,7 +208,6 @@ function AboutEditor() {
           </h1>
 
           <form onSubmit={handleSubmit} className="space-y-6">
-            {/* Title */}
             <div>
               <label
                 htmlFor="title"
@@ -200,7 +226,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Intro Paragraph */}
             <div>
               <label
                 htmlFor="intro"
@@ -219,7 +244,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Precision Paragraph */}
             <div>
               <label
                 htmlFor="precision"
@@ -238,7 +262,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Community Paragraph */}
             <div>
               <label
                 htmlFor="community"
@@ -257,7 +280,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Trusted Text */}
             <div>
               <label
                 htmlFor="trustedText"
@@ -276,7 +298,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Mission Title */}
             <div>
               <label
                 htmlFor="missionTitle"
@@ -295,7 +316,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Mission Text 1 */}
             <div>
               <label
                 htmlFor="missionText1"
@@ -314,7 +334,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Mission Text 2 */}
             <div>
               <label
                 htmlFor="missionText2"
@@ -333,7 +352,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Footer About */}
             <div>
               <label
                 htmlFor="footerAbout"
@@ -352,7 +370,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Footer Copyright */}
             <div>
               <label
                 htmlFor="footerCopyright"
@@ -371,7 +388,6 @@ function AboutEditor() {
               />
             </div>
 
-            {/* Buttons */}
             <div className="fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-800 border-t border-gray-200 dark:border-slate-700 py-4 px-6 shadow-lg">
               <div className="max-w-7xl mx-auto flex justify-end space-x-4">
                 <button
@@ -397,7 +413,10 @@ function AboutEditor() {
                 >
                   {isSaving ? (
                     <>
-                      <svg className="animate-spin h-5 w-5 mr-2 text-white" viewBox="0 0 24 24">
+                      <svg
+                        className="animate-spin h-5 w-5 mr-2 text-white"
+                        viewBox="0 0 24 24"
+                      >
                         <circle
                           className="opacity-25"
                           cx="12"

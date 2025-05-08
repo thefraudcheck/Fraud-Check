@@ -1,13 +1,10 @@
-// src/components/ScamCheckerCategories.jsx
 import { useState, useEffect, useRef } from 'react';
-import PropTypes from 'prop-types';
 import paymentFlows from '../data/paymentFlows';
 import calculateRisk from '../utils/scamLogic';
 import Header from '../components/Header';
 import ResultCard from '../components/ResultCard';
 import botImage from '../assets/bot-image.png';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
-import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import {
   TruckIcon,
   CurrencyDollarIcon,
@@ -343,15 +340,7 @@ function ScamCheckerCategories() {
   };
 
   return (
-    <div
-      className="min-h-screen flex flex-col"
-      style={{
-        backgroundImage: `url(${fraudCheckerBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
       <Header />
       <section className="flex-grow flex flex-col px-4 sm:px-6 py-8">
         <div className="w-full max-w-6xl mx-auto flex flex-col flex-grow">
@@ -575,7 +564,5 @@ function ScamCheckerCategories() {
     </div>
   );
 }
-
-ScamCheckerCategories.propTypes = {};
 
 export default ScamCheckerCategories;

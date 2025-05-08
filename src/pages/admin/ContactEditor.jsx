@@ -27,61 +27,25 @@ function ContactEditor() {
   const [editingContactId, setEditingContactId] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
-  const [searchTerm, setSearchTerm] = useState(''); // State for search term
+  const [searchTerm, setSearchTerm] = useState('');
 
   useEffect(() => {
     const fetchContent = async () => {
       try {
         setLoading(true);
 
-        // Fetch all records from fraud_contacts
         const { data, error } = await supabase
           .from('fraud_contacts')
           .select('*')
           .order('institution', { ascending: true });
 
         if (error) {
-          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies are set to allow SELECT for the anon role.`);
+          throw new Error(`Supabase fetch error: ${error.message}`);
         }
 
-        // Separate settings and contacts
-        let settingsRecord = data.find((record) => record.institution === '__SETTINGS__');
-        const contactsData = data.filter((record) => record.institution !== '__SETTINGS__');
+        console.log('Supabase response:', { data });
 
-        // If no settings record exists, create one
-        if (!settingsRecord) {
-          const defaultSettings = {
-            logo: content.logo,
-            backgroundImage: content.backgroundImage,
-            title: content.title,
-            disclaimer: content.disclaimer,
-            footerAbout: content.footerAbout,
-            footerCopyright: content.footerCopyright,
-          };
-          const { data: newSettings, error: settingsError } = await supabase
-            .from('fraud_contacts')
-            .insert({
-              institution: '__SETTINGS__',
-              team: '',
-              region: '',
-              contact_number: '',
-              availability: '',
-              notes: JSON.stringify(defaultSettings),
-            })
-            .select()
-            .single();
-
-          if (settingsError) {
-            throw new Error(`Supabase settings insert error: ${settingsError.message} (Code: ${settingsError.code || 'Unknown'}). Ensure RLS policies allow INSERT for the anon role.`);
-          }
-          settingsRecord = newSettings;
-        }
-
-        // Parse settings
-        const settings = settingsRecord?.notes ? JSON.parse(settingsRecord.notes) : {};
-
-        // Format contacts
-        const formattedContacts = contactsData.map((contact) => ({
+        const formattedContacts = data.map((contact) => ({
           id: contact.id,
           institution: contact.institution,
           team: contact.team,
@@ -91,16 +55,10 @@ function ContactEditor() {
           notes: contact.notes,
         }));
 
-        // Set content with fetched data
-        setContent({
-          logo: settings.logo || content.logo,
-          backgroundImage: settings.backgroundImage || content.backgroundImage,
-          title: settings.title || content.title,
-          disclaimer: settings.disclaimer || content.disclaimer,
-          footerAbout: settings.footerAbout || content.footerAbout,
-          footerCopyright: settings.footerCopyright || content.footerCopyright,
+        setContent((prev) => ({
+          ...prev,
           fraudContacts: formattedContacts,
-        });
+        }));
 
         toast.success('Content loaded successfully!', {
           duration: 3000,
@@ -112,7 +70,7 @@ function ContactEditor() {
         });
       } catch (err) {
         console.error('Error fetching content:', err);
-        toast.error(`Failed to load content: ${err.message}. Using defaults. Check Supabase RLS policies if the issue persists.`, {
+        toast.error(`Failed to load content: ${err.message}`, {
           duration: 5000,
           style: {
             background: '#EF4444',
@@ -157,7 +115,7 @@ function ContactEditor() {
           .single();
 
         if (error) {
-          throw new Error(`Supabase insert error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow INSERT for the anon role.`);
+          throw new Error(`Supabase insert error: ${error.message}`);
         }
 
         setContent({
@@ -193,7 +151,7 @@ function ContactEditor() {
         });
       } catch (err) {
         console.error('Error adding contact:', err);
-        toast.error(`Failed to add contact: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+        toast.error(`Failed to add contact: ${err.message}`, {
           duration: 5000,
           style: {
             background: '#EF4444',
@@ -203,7 +161,7 @@ function ContactEditor() {
         });
       }
     } else {
-      toast.error('Please fill in all required fields (Institution, Team, Region, Contact Number).', {
+      toast.error('Please fill in all required fields.', {
         duration: 4000,
         style: {
           background: '#EF4444',
@@ -249,7 +207,7 @@ function ContactEditor() {
           .single();
 
         if (error) {
-          throw new Error(`Supabase update error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow UPDATE for the anon role.`);
+          throw new Error(`Supabase update error: ${error.message}`);
         }
 
         const updatedContacts = content.fraudContacts.map((contact) =>
@@ -286,7 +244,7 @@ function ContactEditor() {
         });
       } catch (err) {
         console.error('Error updating contact:', err);
-        toast.error(`Failed to update contact: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+        toast.error(`Failed to update contact: ${err.message}`, {
           duration: 5000,
           style: {
             background: '#EF4444',
@@ -296,7 +254,7 @@ function ContactEditor() {
         });
       }
     } else {
-      toast.error('Please fill in all required fields (Institution, Team, Region, Contact Number).', {
+      toast.error('Please fill in all required fields.', {
         duration: 4000,
         style: {
           background: '#EF4444',
@@ -312,7 +270,7 @@ function ContactEditor() {
       const { error } = await supabase.from('fraud_contacts').delete().eq('id', id);
 
       if (error) {
-        throw new Error(`Supabase delete error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow DELETE for the anon role.`);
+        throw new Error(`Supabase delete error: ${error.message}`);
       }
 
       const updatedContacts = content.fraudContacts.filter((contact) => contact.id !== id);
@@ -323,16 +281,18 @@ function ContactEditor() {
           background: '#10B981',
           color: '#FFFFFF',
           borderRadius: '8px',
+          maxWidth: '500px',
         },
       });
     } catch (err) {
       console.error('Error deleting contact:', err);
-      toast.error(`Failed to delete contact: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+      toast.error(`Failed to delete contact: ${err.message}`, {
         duration: 5000,
         style: {
           background: '#EF4444',
           color: '#FFFFFF',
           borderRadius: '8px',
+          maxWidth: '500px',
         },
       });
     }
@@ -342,65 +302,24 @@ function ContactEditor() {
     e.preventDefault();
     setIsSaving(true);
     try {
-      // Check if __SETTINGS__ record exists
-      const { data: settingsData, error: fetchError } = await supabase
-        .from('fraud_contacts')
-        .select('*')
-        .eq('institution', '__SETTINGS__')
-        .single();
-
-      if (fetchError && fetchError.code !== 'PGRST116') {
-        throw new Error(`Supabase settings fetch error: ${fetchError.message} (Code: ${fetchError.code || 'Unknown'}). Ensure RLS policies allow SELECT for the anon role.`);
-      }
-
-      const settingsPayload = {
-        institution: '__SETTINGS__',
-        team: '',
-        region: '',
-        contact_number: '',
-        availability: '',
-        notes: JSON.stringify({
-          logo: content.logo,
-          backgroundImage: content.backgroundImage,
-          title: content.title,
-          disclaimer: content.disclaimer,
-          footerAbout: content.footerAbout,
-          footerCopyright: content.footerCopyright,
-        }),
-      };
-
-      let error;
-      if (settingsData) {
-        // Update existing settings
-        ({ error } = await supabase
-          .from('fraud_contacts')
-          .update(settingsPayload)
-          .eq('institution', '__SETTINGS__'));
-      } else {
-        // Insert new settings
-        ({ error } = await supabase.from('fraud_contacts').insert(settingsPayload));
-      }
-
-      if (error) {
-        throw new Error(`Supabase settings save error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow INSERT/UPDATE for the anon role.`);
-      }
-
-      toast.success('Content saved successfully!', {
+      toast.success('Settings saved successfully!', {
         duration: 3000,
         style: {
           background: '#10B981',
           color: '#FFFFFF',
           borderRadius: '8px',
+          maxWidth: '500px',
         },
       });
     } catch (err) {
       console.error('Error saving content:', err);
-      toast.error(`Failed to save content: ${err.message}. Check Supabase RLS policies if the issue persists.`, {
+      toast.error(`Failed to save content: ${err.message}`, {
         duration: 5000,
         style: {
           background: '#EF4444',
           color: '#FFFFFF',
           borderRadius: '8px',
+          maxWidth: '500px',
         },
       });
     } finally {
@@ -418,7 +337,7 @@ function ContactEditor() {
       footerAbout:
         'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
       footerCopyright: '© 2025 Fraud Check. All rights reserved.',
-      fraudContacts: content.fraudContacts, // Preserve existing contacts
+      fraudContacts: content.fraudContacts,
     });
     toast.success('Settings reset to default!', {
       duration: 3000,
@@ -426,11 +345,11 @@ function ContactEditor() {
         background: '#10B981',
         color: '#FFFFFF',
         borderRadius: '8px',
+        maxWidth: '500px',
       },
     });
   };
 
-  // Filter contacts based on search term
   const filteredContacts = useMemo(() => {
     let filtered = [...content.fraudContacts];
 
@@ -444,12 +363,6 @@ function ContactEditor() {
 
     return filtered;
   }, [searchTerm, content.fraudContacts]);
-
-  const handleSearchKeyDown = (e) => {
-    if (e.key === 'Enter') {
-      setSearchTerm(e.target.value);
-    }
-  };
 
   if (loading) {
     return (
@@ -471,7 +384,7 @@ function ContactEditor() {
         </Link>
 
         <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
-          <h1 className="text-3xl font-bold mb-6 text-[#01355B] dark:text-[#01355B]">
+          <h1 className="text-3xl font-bold mb-6 text-[#01355B] dark:text-white">
             Contact Page Editor
           </h1>
 
@@ -647,7 +560,6 @@ function ContactEditor() {
                     placeholder="Search by Institution or Region..."
                     className="w-full px-4 py-2 rounded-lg bg-gray-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100"
                     onChange={(e) => setSearchTerm(e.target.value)}
-                    onKeyDown={handleSearchKeyDown}
                     aria-label="Search contacts"
                   />
                 </div>
@@ -679,7 +591,7 @@ function ContactEditor() {
                             <strong>Availability:</strong> {contact.availability}
                           </p>
                           <p>
-                            <strong>Notes:</strong> {contact.notes}
+                            <strong>Notes:</strong> {contact.notes || 'None'}
                           </p>
                         </div>
                         <div className="space-x-2">

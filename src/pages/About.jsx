@@ -1,9 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import Header from '../components/Header';
 import Footer from '../components/Footer';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
-import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import { supabase } from '../utils/supabase';
 import {
   ShieldCheckIcon,
@@ -12,7 +10,6 @@ import {
 } from '@heroicons/react/24/outline';
 
 function About() {
-  const navigate = useNavigate();
   const [content, setContent] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,14 +22,27 @@ function About() {
         const { data, error } = await supabase
           .from('about_content')
           .select('*')
-          .single(); // We expect only one record
+          .maybeSingle();
 
         if (error) {
-          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'}). Ensure RLS policies allow SELECT for the anon role.`);
+          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'})`);
         }
 
         if (!data) {
-          throw new Error('No content found in about_content table.');
+          // Fallback content if no data is found
+          setContent({
+            title: 'About Fraud Check',
+            intro: 'Fraud Check is an independent platform. We help people avoid scams with real expertise, free tools, and real-time advice.',
+            precision: 'Precision protection, powered by expertise. We provide scam detection, red flag tips, weekly updates, and smart question flows.',
+            community: 'Lead the charge against fraud. Join our community to share your scam stories and help others stay safe.',
+            trustedText: 'Trusted by thousands to stay safe online.',
+            missionTitle: 'Our Mission',
+            missionText1: 'Fraud Check is an independent platform. We’re here to help people avoid scams with real expertise, free tools, and real-time advice.',
+            missionText2: 'Together we can stop scams before they start. Share Fraud Check or send us your scam story.',
+            footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+            footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+          });
+          return;
         }
 
         setContent({
@@ -49,7 +59,7 @@ function About() {
         });
       } catch (err) {
         console.error('Error loading about data:', err);
-        setError('Failed to load content. Please try again.');
+        setError('Failed to load content. Please try again later.');
       } finally {
         setLoading(false);
       }
@@ -70,15 +80,7 @@ function About() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100"
-      style={{
-        backgroundImage: `url(${fraudCheckerBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
       <style>
         {`
           @keyframes fadeIn {
@@ -88,10 +90,6 @@ function About() {
           @keyframes slideUp {
             0% { opacity: 0; transform: translateY(16px); }
             100% { opacity: 1; transform: translateY(0); }
-          }
-          @keyframes cardHoverGlow {
-            0% { box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05); border-color: #e5e7eb; }
-            100% { box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2); border-color: #0ea5e9; }
           }
           .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
           .animate-slideUp { animation: slideUp 0.6s ease-out forwards; }
@@ -138,7 +136,6 @@ function About() {
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
       <Header />
       <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {/* Hero Section */}
         <section className="text-center animate-fadeIn">
           <img
             src={fraudCheckLogo}
@@ -156,10 +153,8 @@ function About() {
           </p>
         </section>
 
-        {/* Info Cards Section */}
         <section className="mt-8 animate-slideUp">
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-            {/* Card 1: Why We Exist */}
             <div className="relative bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 flex items-start gap-4 border border-gray-200 dark:border-slate-700 card-hover transition-all duration-200">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200 rounded-3xl pointer-events-none"></div>
               <ShieldCheckIcon className="w-6 h-6 text-cyan-700" />
@@ -170,7 +165,6 @@ function About() {
                 </p>
               </div>
             </div>
-            {/* Card 2: How We Help */}
             <div className="relative bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 flex items-start gap-4 border border-gray-200 dark:border-slate-700 card-hover transition-all duration-200">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200 rounded-3xl pointer-events-none"></div>
               <MagnifyingGlassIcon className="w-6 h-6 text-cyan-700" />
@@ -181,7 +175,6 @@ function About() {
                 </p>
               </div>
             </div>
-            {/* Card 3: Our Values */}
             <div className="relative bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 flex items-start gap-4 border border-gray-200 dark:border-slate-700 card-hover transition-all duration-200">
               <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200 rounded-3xl pointer-events-none"></div>
               <HandThumbUpIcon className="w-6 h-6 text-cyan-700" />
@@ -195,7 +188,6 @@ function About() {
           </div>
         </section>
 
-        {/* Body Content Section */}
         <section className="mt-8 animate-slideUp">
           <div className="max-w-3xl mx-auto space-y-8 text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter text-base">
             <div>
@@ -230,7 +222,6 @@ function About() {
           </div>
         </section>
 
-        {/* Support Section (CTA) */}
         <section className="mt-8 tip-card animate-slideUp">
           <div className="relative z-10 p-6 text-center">
             <h2 className="text-2xl font-bold text-white font-inter">

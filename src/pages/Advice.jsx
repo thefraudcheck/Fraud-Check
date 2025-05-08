@@ -15,13 +15,12 @@ import {
   ClipboardDocumentCheckIcon,
   BuildingLibraryIcon,
   ShieldExclamationIcon,
-  ArrowRightIcon,
-  XMarkIcon,
   LockClosedIcon,
   UserIcon,
   MagnifyingGlassIcon,
+  ArrowRightIcon,
+  XMarkIcon,
 } from '@heroicons/react/24/outline';
-import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import logo from '../assets/fraud-check-logo.png';
 import { supabase } from '../utils/supabase.js';
 import Header from '../components/Header';
@@ -123,13 +122,9 @@ function Advice() {
   const [error, setError] = useState(null);
   const searchRef = useRef(null);
 
-  // Scroll to top on page load
+  // Scroll to top and fetch data
   useEffect(() => {
     window.scrollTo(0, 0);
-  }, []);
-
-  // Fetch data from Supabase
-  useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
@@ -228,16 +223,7 @@ function Advice() {
     <div className="min-h-screen text-gray-900 dark:text-gray-100">
       <Header />
 
-      <div
-        className="max-w-7xl mx-auto px-4 sm:px-6 py-6 bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900"
-        style={{
-          backgroundImage: `url(${fraudCheckerBackground})`,
-          backgroundSize: 'cover',
-          backgroundPosition: 'center',
-          backgroundRepeat: 'no-repeat',
-          textSizeAdjust: '100%',
-        }}
-      >
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6 bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
         <style>
           {`
             @keyframes fadeIn {
@@ -320,7 +306,8 @@ function Advice() {
             </h2>
           </div>
           <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto font-weight-400 leading-relaxed font-inter">
-            Stay one step ahead of fraudsters with our expert guidance. Learn how to spot scams, protect your accounts, and recover if something goes wrong.
+            Stay one step ahead of fraudsters with our expert guidance. Learn how to spot scams, protect your accounts, and
+            recover if something goes wrong.
           </p>
           <div className="mt-4 flex justify-center">
             <div className="relative w-full max-w-3xl">
@@ -360,9 +347,7 @@ function Advice() {
               <span className="absolute top-4 left-4 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white text-xs font-semibold px-2 py-1 rounded-full font-inter">
                 Featured
               </span>
-              <h2 className="text-2xl font-bold text-white mt-8 font-inter">
-                {tipOfTheWeek.title}
-              </h2>
+              <h2 className="text-2xl font-bold text-white mt-8 font-inter">{tipOfTheWeek.title}</h2>
               <div className="prose text-gray-300 mt-2 mb-4 italic font-weight-400 leading-relaxed font-inter">
                 <div dangerouslySetInnerHTML={{ __html: tipOfTheWeek.text || '' }} />
               </div>
@@ -445,7 +430,9 @@ function Advice() {
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6">Examples</h4>
                         <ul className="list-disc pl-5">
                           {selectedTip.details.examples.map((example, i) => (
-                            <li key={i} className="mb-2">{example}</li>
+                            <li key={i} className="mb-2">
+                              {example}
+                            </li>
                           ))}
                         </ul>
                       </>
@@ -455,7 +442,9 @@ function Advice() {
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6">What To Do</h4>
                         <ul className="list-disc pl-5">
                           {selectedTip.details.whatToDo.map((action, i) => (
-                            <li key={i} className="mb-2">{action}</li>
+                            <li key={i} className="mb-2">
+                              {action}
+                            </li>
                           ))}
                         </ul>
                       </>
@@ -465,17 +454,23 @@ function Advice() {
                         <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6">Signs to Watch For</h4>
                         <ul className="list-disc pl-5">
                           {selectedTip.details.signs.map((sign, i) => (
-                            <li key={i} className="mb-2">{sign}</li>
+                            <li key={i} className="mb-2">
+                              {sign}
+                            </li>
                           ))}
                         </ul>
                       </>
                     )}
                     {selectedTip.details.protect && selectedTip.details.protect.length > 0 && (
                       <>
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6">How to Protect Yourself</h4>
+                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mt-6">
+                          How to Protect Yourself
+                        </h4>
                         <ul className="list-disc pl-5">
                           {selectedTip.details.protect.map((protection, i) => (
-                            <li key={i} className="mb-2">{protection}</li>
+                            <li key={i} className="mb-2">
+                              {protection}
+                            </li>
                           ))}
                         </ul>
                       </>
@@ -491,9 +486,7 @@ function Advice() {
       <footer className="bg-gray-800 dark:bg-slate-900 text-white py-6">
         <div className="max-w-7xl mx-auto px-4 sm:px-6">
           <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm font-inter">
-              © {new Date().getFullYear()} Scam Checker. All rights reserved.
-            </p>
+            <p className="text-sm font-inter">© {new Date().getFullYear()} Scam Checker. All rights reserved.</p>
             <div className="flex space-x-4 mt-4 md:mt-0">
               <a href="/privacy" className="text-gray-300 hover:text-cyan-500 font-inter">
                 Privacy Policy

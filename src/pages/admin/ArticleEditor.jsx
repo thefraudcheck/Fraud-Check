@@ -67,7 +67,7 @@ const ArticleEditor = () => {
     fetchArticles();
   }, []);
 
-  const handleFileUpload = (e) => {
+  const handleFileUpload = async (e) => {
     const file = e.target.files[0];
     if (!file) {
       setError('No file selected.');
@@ -82,12 +82,18 @@ const ArticleEditor = () => {
       return;
     }
 
-    const reader = new FileReader();
-    reader.onload = () => {
-      setNewArticle({ ...newArticle, image: reader.result });
-    };
-    reader.onerror = () => setError('Failed to read image file.');
-    reader.readAsDataURL(file);
+    try {
+      const fileName = `${Date.now()}_${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from('article-images')
+        .upload(fileName, file);
+      if (uploadError) throw uploadError;
+
+      const { data } = supabase.storage.from('article-images').getPublicUrl(fileName);
+      setNewArticle({ ...newArticle, image: data.publicUrl });
+    } catch (err) {
+      setError(`Failed to upload image: ${err.message}`);
+    }
   };
 
   const handleAddOrUpdateArticle = async () => {
@@ -229,9 +235,7 @@ const ArticleEditor = () => {
             </Link>
           </section>
 
-          {error && (
-            <p className="text-center text-red-600 p-4 bg-red-100 rounded-lg mb-4">{error}</p>
-          )}
+          {error && <p className="text-center text-red-600 p-4 bg-red-100 rounded-lg mb-4">{error}</p>}
           {success && (
             <p className="text-center text-green-600 p-4 bg-green-100 rounded-lg mb-4">{success}</p>
           )}
@@ -261,6 +265,7 @@ const ArticleEditor = () => {
                       onChange={(e) => setNewArticle({ ...newArticle, slug: e.target.value })}
                       placeholder="e.g., new-scam-005"
                       className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
+                      required
                     />
                   </div>
                   <div>
@@ -277,6 +282,7 @@ const ArticleEditor = () => {
                       onChange={(e) => setNewArticle({ ...newArticle, title: e.target.value })}
                       placeholder="e.g., New Scam Alert"
                       className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 focus:ring-2 focus:ring-cyan-600"
+                      required
                     />
                   </div>
                   <div>
@@ -307,6 +313,7 @@ const ArticleEditor = () => {
                       onChange={(e) => setNewArticle({ ...newArticle, content: e.target.value })}
                       placeholder="Full article content"
                       className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700 min-h-[150px] focus:ring-2 focus:ring-cyan-600"
+                      required
                     />
                   </div>
                   <div>
@@ -431,13 +438,9 @@ const ArticleEditor = () => {
 
               {newArticle.title && (
                 <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
-                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                    Article Preview
-                  </h3>
+                  <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Article Preview</h3>
                   <div className="max-w-7xl mx-auto">
-                    <h4 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">
-                      {newArticle.title}
-                    </h4>
+                    <h4 className="text-4xl font-bold text-gray-900 dark:text-white mb-2">{newArticle.title}</h4>
                     <div className="flex gap-4 text-gray-500 dark:text-gray-400 mb-6">
                       <p>
                         {new Date(newArticle.date).toLocaleDateString('en-US', {
@@ -477,9 +480,7 @@ const ArticleEditor = () => {
               )}
 
               <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Existing Articles
-                </h3>
+                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">Existing Articles</h3>
                 {articles.length === 0 ? (
                   <p className="text-gray-500 dark:text-gray-400 text-lg">No articles found.</p>
                 ) : (
@@ -490,16 +491,15 @@ const ArticleEditor = () => {
                         className="p-4 bg-white dark:bg-slate-700 rounded-lg shadow-sm flex justify-between items-start border border-gray-200 dark:border-slate-700"
                       >
                         <div>
-                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">
-                            {article.title}
-                          </h4>
+                          <h4 className="text-lg font-semibold text-gray-900 dark:text-white">{article.title}</h4>
                           <p className="text-sm text-gray-500 dark:text-gray-400">Slug: {article.slug}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
                             Category: {article.category || 'None'}
                           </p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">Author: {article.author}</p>
                           <p className="text-sm text-gray-500 dark:text-gray-400">
-                            Date: {new Date(article.date).toLocaleDateString('en-US', {
+                            Date:{' '}
+                            {new Date(article.date).toLocaleDateString('en-US', {
                               month: 'long',
                               day: 'numeric',
                               year: 'numeric',
@@ -529,24 +529,6 @@ const ArticleEditor = () => {
                     ))}
                   </div>
                 )}
-              </section>
-
-              {/* New "Support Us" Section with Buy Me a Coffee Button */}
-              <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
-                <h3 className="text-2xl font-semibold text-gray-900 dark:text-white mb-4">
-                  Support FraudCheck
-                </h3>
-                <p className="text-gray-600 dark:text-slate-300 mb-6">
-                  Your contributions help us keep FraudCheck running and continue providing valuable resources to combat scams. If you find this platform helpful, please consider supporting us!
-                </p>
-                <a
-                  href="https://buymeacoffee.com/fraudcheck"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-block px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 transition-colors rounded-lg"
-                >
-                  Buy Me a Coffee
-                </a>
               </section>
             </>
           )}

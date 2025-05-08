@@ -10,35 +10,50 @@ function Contacts() {
   const [fraudContacts, setFraudContacts] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [sortConfig, setSortConfig] = useState({ key: 'institution', direction: 'asc' });
+  const [currentPage, setCurrentPage] = useState(1);
+  const [copiedNumber, setCopiedNumber] = useState(null);
+  const entriesPerPage = 10;
 
   useEffect(() => {
     window.scrollTo(0, 0);
 
-    // Fetch fraud contacts from Supabase
     const fetchFraudContacts = async () => {
       try {
         setIsLoading(true);
+        setError(null);
+
         const { data, error } = await supabase
           .from('fraud_contacts')
           .select('*')
           .order('institution', { ascending: true });
 
-        if (error) throw new Error(`Supabase fetch error: ${error.message}`);
+        if (error) {
+          throw new Error(`Supabase error: ${error.message}`);
+        }
 
-        // Map Supabase data to match the expected format
+        console.log('Supabase response:', { data });
+
+        if (!data || data.length === 0) {
+          console.warn('No data returned from fraud_contacts table.');
+          setFraudContacts([]);
+          return;
+        }
+
         const formattedData = data.map((entry) => ({
-          institution: entry.institution,
-          team: entry.team,
-          region: entry.region,
-          contactNumber: entry.contact_number,
-          availability: entry.availability,
-          notes: entry.notes,
+          institution: entry.institution || 'N/A',
+          team: entry.team || 'N/A',
+          region: entry.region || 'N/A',
+          contactNumber: entry.contact_number || 'N/A',
+          availability: entry.availability || 'Not specified',
+          notes: entry.notes || 'None',
         }));
 
         setFraudContacts(formattedData);
       } catch (err) {
-        setError('Failed to load fraud contacts from Supabase.');
-        console.error(err);
+        console.error('Error loading fraud contacts:', err);
+        setError(err.message);
       } finally {
         setIsLoading(false);
       }
@@ -46,12 +61,6 @@ function Contacts() {
 
     fetchFraudContacts();
   }, []);
-
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sortConfig, setSortConfig] = useState({ key: 'institution', direction: 'asc' });
-  const [currentPage, setCurrentPage] = useState(1);
-  const [copiedNumber, setCopiedNumber] = useState(null);
-  const entriesPerPage = 10;
 
   const filteredData = useMemo(() => {
     let filtered = [...fraudContacts];
@@ -112,7 +121,7 @@ function Contacts() {
   if (isLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-        <p>Loading...</p>
+        <p>Loading fraud contacts...</p>
       </div>
     );
   }
@@ -120,7 +129,7 @@ function Contacts() {
   if (error) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-900 text-slate-900 dark:text-slate-100">
-        <p className="text-red-600">{error}</p>
+        <p className="text-red-600">Error: {error}</p>
       </div>
     );
   }
@@ -168,129 +177,137 @@ function Contacts() {
             />
           </div>
 
-          <div className="overflow-x-auto">
-            <table
-              className="w-full border-collapse"
-              role="grid"
-              aria-label="Fraud Contact Database"
-            >
-              <thead>
-                <tr className="bg-slate-200 dark:bg-slate-700">
-                  <th
-                    className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
-                    onClick={() => handleSort('institution')}
-                    aria-sort={sortConfig.key === 'institution' ? sortConfig.direction : 'none'}
-                  >
-                    Institution {sortConfig.key === 'institution' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
-                    onClick={() => handleSort('team')}
-                    aria-sort={sortConfig.key === 'team' ? sortConfig.direction : 'none'}
-                  >
-                    Team {sortConfig.key === 'team' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
-                    onClick={() => handleSort('region')}
-                    aria-sort={sortConfig.key === 'region' ? sortConfig.direction : 'none'}
-                  >
-                    Region {sortConfig.key === 'region' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
-                    onClick={() => handleSort('contactNumber')}
-                    aria-sort={sortConfig.key === 'contactNumber' ? sortConfig.direction : 'none'}
-                  >
-                    Fraud Contact Number {sortConfig.key === 'contactNumber' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th
-                    className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
-                    onClick={() => handleSort('availability')}
-                    aria-sort={sortConfig.key === 'availability' ? sortConfig.direction : 'none'}
-                  >
-                    Availability {sortConfig.key === 'availability' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
-                  </th>
-                  <th className="p-2 sm:p-4 text-left text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base">
-                    Notes
-                  </th>
-                </tr>
-              </thead>
-              <tbody>
-                {paginatedData.map((entry, index) => (
-                  <tr
-                    key={index}
-                    className={`${
-                      index % 2 === 0 ? 'bg-slate-100 dark:bg-slate-800' : 'bg-white dark:bg-slate-900'
-                    } hover:bg-slate-200 dark:hover:bg-slate-700 transition`}
-                  >
-                    <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.institution}</td>
-                    <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.team}</td>
-                    <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.region}</td>
-                    <td className="p-2 sm:p-4 flex items-center space-x-2 text-sm sm:text-base">
-                      <span>{entry.contactNumber}</span>
-                      {entry.contactNumber !== 'N/A' &&
-                        !entry.contactNumber.startsWith('Email:') &&
-                        !entry.contactNumber.startsWith('phishing@') &&
-                        !entry.contactNumber.startsWith('reportfraud@') &&
-                        !entry.contactNumber.startsWith('emailscams@') &&
-                        !entry.contactNumber.startsWith('internetsecurity@') &&
-                        !entry.contactNumber.includes('paypal.com') &&
-                        !entry.contactNumber.includes('virginmoney.com') &&
-                        !entry.contactNumber.includes('clydesdalebank.co.uk') &&
-                        !entry.contactNumber.includes('aldermore.co.uk') &&
-                        !entry.contactNumber.includes('closebrothers.com') &&
-                        !entry.contactNumber.includes('investec.co.uk') &&
-                        !entry.contactNumber.includes('tescobank.com') && (
-                          <button
-                            onClick={() => handleCopyNumber(entry.contactNumber)}
-                            className="text-[#01355B] hover:text-[#012A47] focus:outline-none"
-                            aria-label={`Copy ${entry.contactNumber}`}
-                          >
-                            <ClipboardIcon className="w-4 sm:w-5 h-4 sm:h-5" aria-hidden="true" />
-                          </button>
-                        )}
-                      {copiedNumber === entry.contactNumber && (
-                        <span className="text-green-500 text-xs sm:text-sm">Copied!</span>
-                      )}
-                    </td>
-                    <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.availability}</td>
-                    <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.notes}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          {filteredData.length === 0 ? (
+            <div className="text-center text-gray-600 dark:text-slate-300">
+              No fraud contacts found in the database.
+            </div>
+          ) : (
+            <>
+              <div className="overflow-x-auto">
+                <table
+                  className="w-full border-collapse"
+                  role="grid"
+                  aria-label="Fraud Contact Database"
+                >
+                  <thead>
+                    <tr className="bg-slate-200 dark:bg-slate-700">
+                      <th
+                        className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
+                        onClick={() => handleSort('institution')}
+                        aria-sort={sortConfig.key === 'institution' ? sortConfig.direction : 'none'}
+                      >
+                        Institution {sortConfig.key === 'institution' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
+                        onClick={() => handleSort('team')}
+                        aria-sort={sortConfig.key === 'team' ? sortConfig.direction : 'none'}
+                      >
+                        Team {sortConfig.key === 'team' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
+                        onClick={() => handleSort('region')}
+                        aria-sort={sortConfig.key === 'region' ? sortConfig.direction : 'none'}
+                      >
+                        Region {sortConfig.key === 'region' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
+                        onClick={() => handleSort('contactNumber')}
+                        aria-sort={sortConfig.key === 'contactNumber' ? sortConfig.direction : 'none'}
+                      >
+                        Fraud Contact Number {sortConfig.key === 'contactNumber' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th
+                        className="p-2 sm:p-4 text-left cursor-pointer text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base"
+                        onClick={() => handleSort('availability')}
+                        aria-sort={sortConfig.key === 'availability' ? sortConfig.direction : 'none'}
+                      >
+                        Availability {sortConfig.key === 'availability' && (sortConfig.direction === 'asc' ? '↑' : '↓')}
+                      </th>
+                      <th className="p-2 sm:p-4 text-left text-[#01355B] dark:text-[#01355B] font-semibold text-sm sm:text-base">
+                        Notes
+                      </th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {paginatedData.map((entry, index) => (
+                      <tr
+                        key={index}
+                        className={`${
+                          index % 2 === 0 ? 'bg-slate-100 dark:bg-slate-800' : 'bg-white dark:bg-slate-900'
+                        } hover:bg-slate-200 dark:hover:bg-slate-700 transition`}
+                      >
+                        <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.institution}</td>
+                        <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.team}</td>
+                        <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.region}</td>
+                        <td className="p-2 sm:p-4 flex items-center space-x-2 text-sm sm:text-base">
+                          <span>{entry.contactNumber}</span>
+                          {entry.contactNumber !== 'N/A' &&
+                            !entry.contactNumber.startsWith('Email:') &&
+                            !entry.contactNumber.startsWith('phishing@') &&
+                            !entry.contactNumber.startsWith('reportfraud@') &&
+                            !entry.contactNumber.startsWith('emailscams@') &&
+                            !entry.contactNumber.startsWith('internetsecurity@') &&
+                            !entry.contactNumber.includes('paypal.com') &&
+                            !entry.contactNumber.includes('virginmoney.com') &&
+                            !entry.contactNumber.includes('clydesdalebank.co.uk') &&
+                            !entry.contactNumber.includes('aldermore.co.uk') &&
+                            !entry.contactNumber.includes('closebrothers.com') &&
+                            !entry.contactNumber.includes('investec.co.uk') &&
+                            !entry.contactNumber.includes('tescobank.com') && (
+                              <button
+                                onClick={() => handleCopyNumber(entry.contactNumber)}
+                                className="text-[#01355B] hover:text-[#012A47] focus:outline-none"
+                                aria-label={`Copy ${entry.contactNumber}`}
+                              >
+                                <ClipboardIcon className="w-4 sm:w-5 h-4 sm:h-5" aria-hidden="true" />
+                              </button>
+                            )}
+                          {copiedNumber === entry.contactNumber && (
+                            <span className="text-green-500 text-xs sm:text-sm">Copied!</span>
+                          )}
+                        </td>
+                        <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.availability}</td>
+                        <td className="p-2 sm:p-4 text-sm sm:text-base">{entry.notes}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
 
-          <div className="flex justify-center items-center space-x-4 mt-6 text-[#01355B] dark:text-[#01355B]">
-            <button
-              onClick={handlePreviousPage}
-              disabled={currentPage === 1}
-              className={`px-3 sm:px-4 py-1 sm:py-2 rounded-md text-white text-sm sm:text-base ${
-                currentPage === 1
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-[#01355B] hover:bg-[#012A47]'
-              } focus:outline-none focus:ring-2 focus:ring-[#01355B]`}
-              aria-label="Previous page"
-            >
-              Previous
-            </button>
-            <span className="text-sm sm:text-base">
-              Page {currentPage} of {totalPages}
-            </span>
-            <button
-              onClick={handleNextPage}
-              disabled={currentPage === totalPages}
-              className={`px-3 sm:px-4 py-1 sm:py-2 rounded-md text-white text-sm sm:text-base ${
-                currentPage === totalPages
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-[#01355B] hover:bg-[#012A47]'
-              } focus:outline-none focus:ring-2 focus:ring-[#01355B]`}
-              aria-label="Next page"
-            >
-              Next
-            </button>
-          </div>
+              <div className="flex justify-center items-center space-x-4 mt-6 text-[#01355B] dark:text-[#01355B]">
+                <button
+                  onClick={handlePreviousPage}
+                  disabled={currentPage === 1}
+                  className={`px-3 sm:px-4 py-1 sm:py-2 rounded-md text-white text-sm sm:text-base ${
+                    currentPage === 1
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-[#01355B] hover:bg-[#012A47]'
+                  } focus:outline-none focus:ring-2 focus:ring-[#01355B]`}
+                  aria-label="Previous page"
+                >
+                  Previous
+                </button>
+                <span className="text-sm sm:text-base">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={handleNextPage}
+                  disabled={currentPage === totalPages}
+                  className={`px-3 sm:px-4 py-1 sm:py-2 rounded-md text-white text-sm sm:text-base ${
+                    currentPage === totalPages
+                      ? 'bg-gray-400 cursor-not-allowed'
+                      : 'bg-[#01355B] hover:bg-[#012A47]'
+                  } focus:outline-none focus:ring-2 focus:ring-[#01355B]`}
+                  aria-label="Next page"
+                >
+                  Next
+                </button>
+              </div>
+            </>
+          )}
         </section>
       </div>
       <Footer />

@@ -1,7 +1,61 @@
-// src/utils/scamLogic.js
 import paymentFlows from '../data/paymentFlows';
 
+/**
+ * Calculates the risk level of a payment based on user answers, question flow, and category.
+ * @param {Array<string>} answers - Array of user answers to the questions.
+ * @param {Array<{ question: string }>} flow - Array of question objects for the category (optional, defaults to paymentFlows[category]).
+ * @param {string} category - The payment category (e.g., 'other', 'buying-a-vehicle', 'crypto-payment').
+ * @returns {Object} Risk assessment including riskLevel, summary, redFlags, missedBestPractices, bestPractices, advice, and patternSuggestions.
+ */
 function calculateRisk(answers, flow, category) {
+  // Input validation
+  if (!Array.isArray(answers) || typeof category !== 'string') {
+    console.error('Invalid input: answers must be an array, category must be a string.');
+    return {
+      riskLevel: 'Error',
+      summary: 'Unable to assess risk due to invalid input.',
+      redFlags: [],
+      missedBestPractices: [],
+      bestPractices: [],
+      advice: 'Please provide valid answers and category.',
+      patternSuggestions: [],
+    };
+  }
+
+  // Validate category and set flow
+  if (!paymentFlows[category]) {
+    console.error(`Invalid category: ${category}. Available categories: ${Object.keys(paymentFlows).join(', ')}`);
+    return {
+      riskLevel: 'Error',
+      summary: `Category "${category}" not found.`,
+      redFlags: [],
+      missedBestPractices: [],
+      bestPractices: [],
+      advice: 'Please select a valid payment category.',
+      patternSuggestions: [],
+    };
+  }
+
+  // Use provided flow or default to paymentFlows[category]
+  const questionFlow = Array.isArray(flow) && flow.length > 0 ? flow : paymentFlows[category];
+
+  if (!Array.isArray(questionFlow) || questionFlow.length === 0) {
+    console.error(`No questions defined for category: ${category}`);
+    return {
+      riskLevel: 'Error',
+      summary: 'No questions available for this category.',
+      redFlags: [],
+      missedBestPractices: [],
+      bestPractices: [],
+      advice: 'Please check the payment category configuration.',
+      patternSuggestions: [],
+    };
+  }
+
+  if (answers.length !== questionFlow.length) {
+    console.warn(`Mismatch: ${answers.length} answers provided for ${questionFlow.length} questions in category ${category}.`);
+  }
+
   let redFlags = [];
   let missedBestPractices = [];
   let bestPractices = [];
@@ -9,8 +63,17 @@ function calculateRisk(answers, flow, category) {
 
   // Analyze each answer against the flow's questions
   answers.forEach((answer, index) => {
-    const question = flow[index].question;
+    // Skip if index exceeds flow length
+    if (index >= questionFlow.length) return;
+
+    const question = questionFlow[index].question;
+    if (!question) {
+      console.warn(`Missing question at index ${index} in category ${category}.`);
+      return;
+    }
+
     if (category === 'other') {
+      // Handle "Other" category questions
       switch (question) {
         case 'What is this payment for?':
           // No risk assessment for Q1; it's a classifier
@@ -33,13 +96,14 @@ function calculateRisk(answers, flow, category) {
           else bestPractices.push('Recipient known and trusted.');
           break;
         case 'Was this payment your idea, without pressure or instructions from anyone?':
-          if (answer === 'no') redFlags.push('Payment influenced by external pressure.');
+          if (answer === 'yes') bestPractices.push('Payment was your own initiative.');
+          else if (answer === 'no') redFlags.push('Payment influenced by external pressure.');
           else if (answer === 'not-sure') missedBestPractices.push('Uncertain if payment was your idea.');
-          else bestPractices.push('Payment was your own initiative.');
           break;
         case 'Did you contact them first, or did they contact you?':
           if (answer === 'they-contacted-me') missedBestPractices.push('Recipient initiated contact.');
-          else bestPractices.push('You initiated contact.');
+          else if (answer === 'i-contacted-them') bestPractices.push('You initiated contact.');
+          else if (answer === 'not-sure') missedBestPractices.push('Uncertain who initiated contact.');
           break;
         case 'Have you sent them money before?':
           // Informational, no risk assessment
@@ -57,7 +121,7 @@ function calculateRisk(answers, flow, category) {
           break;
       }
     } else {
-      // Existing logic for other categories
+      // Handle specific category questions
       switch (question) {
         // Buying a Vehicle
         case 'Did you find the vehicle on a well-known website?':
@@ -142,7 +206,7 @@ function calculateRisk(answers, flow, category) {
         case 'Who has access to the app?':
           if (answer === 'third-party-phone') redFlags.push('Third-party on phone has app access.');
           else if (answer === 'someone-else') redFlags.push('Unknown person has app access.');
-          else missedBestPractices.push('Friend/family has app access—best practice is sole access.');
+          else if (answer === 'friend-family') missedBestPractices.push('Friend/family has app access—best practice is sole access.');
           break;
 
         // Investment
@@ -278,7 +342,7 @@ function calculateRisk(answers, flow, category) {
           break;
 
         // Service Provider
-        case 'Did they contact you out of the blue (email, call, popup)?':
+        case 'Did they contact you out of the blue (e.g., email, call, popup)?':
           if (answer === 'yes') redFlags.push('Unsolicited contact from provider.');
           else bestPractices.push('You contacted the provider.');
           break;
@@ -430,6 +494,7 @@ function calculateRisk(answers, flow, category) {
     const q7Answer = answers[6]; // Who contacted whom?
     const q9Answer = answers[8]; // Emotionally pressured?
 
+    // Validate answer indices to prevent undefined errors
     if (q2Answer === 'yes' && (q3Answer === 'yes' || q4Answer === 'yes') && q9Answer === 'yes') {
       patternSuggestions.push('This sounds like it could involve emotional manipulation or pressure. You may want to check the Threat or Duress scam type.');
     }
@@ -462,6 +527,14 @@ function calculateRisk(answers, flow, category) {
     bestPractices,
     advice,
     patternSuggestions,
+    // Include resultCard from paymentFlows for UI display
+    resultCard: questionFlow[0]?.resultCard || {
+      title: `${category.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())} Risk`,
+      description: `Risk assessment for ${category} payment.`,
+      redFlags: [],
+      bestPractices: [],
+      actions: [],
+    },
   };
 }
 

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ExclamationTriangleIcon,
@@ -21,7 +21,6 @@ import {
   ArrowLeftIcon,
   PlusIcon,
   TrashIcon,
-  ArrowPathIcon,
   ChevronDownIcon,
   ChevronUpIcon,
 } from '@heroicons/react/24/outline';
@@ -125,7 +124,6 @@ function HelpAdviceEditor() {
   const [isSaving, setIsSaving] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [previewTipIndex, setPreviewTipIndex] = useState(0);
   const [expandedTips, setExpandedTips] = useState({});
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
@@ -219,33 +217,30 @@ function HelpAdviceEditor() {
     };
 
     fetchData();
-  }, []);
+  }, [newCategoryTemplate]);
 
   // Auto-save with debounce
-  const debouncedSave = useCallback(
-    debounce(async (newData) => {
-      setIsSaving(true);
-      try {
-        const { data: { user } } = await supabase.auth.getUser();
-        if (!user) {
-          throw new Error('User not authenticated');
-        }
-
-        const { error } = await supabase.rpc('save_advice_data', { p_data: newData });
-        if (error) {
-          console.error('Auto-save error:', error);
-          throw error;
-        }
-        toast.success('Changes auto-saved!', { duration: 2000 });
-      } catch (err) {
-        console.error('Auto-save failed:', err);
-        toast.error(`Auto-save failed: ${err.message}`, { duration: 2000 });
-      } finally {
-        setIsSaving(false);
+  const debouncedSave = debounce(async (newData) => {
+    setIsSaving(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        throw new Error('User not authenticated');
       }
-    }, 1000),
-    []
-  );
+
+      const { error } = await supabase.rpc('save_advice_data', { p_data: newData });
+      if (error) {
+        console.error('Auto-save error:', error);
+        throw error;
+      }
+      toast.success('Changes auto-saved!', { duration: 2000 });
+    } catch (err) {
+      console.error('Auto-save failed:', err);
+      toast.error(`Auto-save failed: ${err.message}`, { duration: 2000 });
+    } finally {
+      setIsSaving(false);
+    }
+  }, 1000);
 
   // Update data and history
   const updateData = (newData) => {
@@ -285,7 +280,6 @@ function HelpAdviceEditor() {
   useEffect(() => {
     if (selectedCategory && data && !data.categories.some((cat) => cat.category === selectedCategory)) {
       setSelectedCategory(null);
-      setPreviewTipIndex(0);
     }
   }, [data, selectedCategory]);
 
@@ -345,9 +339,7 @@ function HelpAdviceEditor() {
         details: {
           ...data.tipOfTheWeek.details,
           [field]: subField !== null
-            ? data.tipOfTheWeek.details[field].map((item, idx) =>
-                idx === parseInt(subField) ? value : item
-              )
+            ? data.tipOfTheWeek.details[field].map((item, idx) => (idx === parseInt(subField) ? value : item))
             : value,
         },
       },
@@ -452,9 +444,7 @@ function HelpAdviceEditor() {
         idx === categoryIndex
           ? {
               ...cat,
-              tips: cat.tips.map((tip, tIdx) =>
-                tIdx === tipIndex ? { ...tip, [field]: value } : tip
-              ),
+              tips: cat.tips.map((tip, tIdx) => (tIdx === tipIndex ? { ...tip, [field]: value } : tip)),
             }
           : cat
       ),
@@ -477,9 +467,7 @@ function HelpAdviceEditor() {
                       details: {
                         ...tip.details,
                         [detailField]: subField !== null
-                          ? tip.details[detailField].map((item, i) =>
-                              i === parseInt(subField) ? value : item
-                            )
+                          ? tip.details[detailField].map((item, i) => (i === parseInt(subField) ? value : item))
                           : value,
                       },
                     }
@@ -548,9 +536,7 @@ function HelpAdviceEditor() {
     updateData({
       ...data,
       categories: data.categories.map((cat, idx) =>
-        idx === categoryIndex
-          ? { ...cat, tips: [...cat.tips, newTipTemplate] }
-          : cat
+        idx === categoryIndex ? { ...cat, tips: [...cat.tips, newTipTemplate] } : cat
       ),
     });
     setTimeout(() => {
@@ -567,9 +553,7 @@ function HelpAdviceEditor() {
     updateData({
       ...data,
       categories: data.categories.map((cat, idx) =>
-        idx === categoryIndex
-          ? { ...cat, tips: cat.tips.filter((_, tIdx) => tIdx !== tipIndex) }
-          : cat
+        idx === categoryIndex ? { ...cat, tips: cat.tips.filter((_, tIdx) => tIdx !== tipIndex) } : cat
       ),
     });
     toast.success('Tip removed!');
@@ -590,7 +574,6 @@ function HelpAdviceEditor() {
       categories: data.categories.filter((_, idx) => idx !== categoryIndex),
     });
     setSelectedCategory(null);
-    setPreviewTipIndex(0);
     toast.success('Category removed!');
   };
 
@@ -622,7 +605,10 @@ function HelpAdviceEditor() {
       <header className="bg-white dark:bg-slate-800 shadow-sm">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 flex justify-between items-center">
           <div className="flex items-center gap-3">
-            <Link to="/admin/dashboard" className="text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white">
+            <Link
+              to="/admin/dashboard"
+              className="text-gray-600 dark:text-slate-300 hover:text-gray-900 dark:hover:text-white"
+            >
               <ArrowLeftIcon className="w-6 h-6" />
             </Link>
             <h1 className="text-2xl font-bold font-inter">Help & Advice Editor</h1>
@@ -724,9 +710,7 @@ function HelpAdviceEditor() {
               </div>
             </div>
             <div className="mb-4">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">
-                Details
-              </h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2 font-inter">Details</h3>
               <div className="ml-4">
                 <div className="mb-4">
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
@@ -865,7 +849,10 @@ function HelpAdviceEditor() {
           {data.tipArchive.length > 0 ? (
             <div className="space-y-4">
               {data.tipArchive.map((tip, idx) => (
-                <div key={idx} className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 flex justify-between items-center">
+                <div
+                  key={idx}
+                  className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6 flex justify-between items-center"
+                >
                   <div>
                     <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">{tip.title}</h3>
                     <p className="text-sm text-gray-600 dark:text-slate-300 font-inter">
@@ -901,7 +888,6 @@ function HelpAdviceEditor() {
               value={selectedCategory || ''}
               onChange={(e) => {
                 setSelectedCategory(e.target.value || null);
-                setPreviewTipIndex(0);
               }}
               className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
             >
@@ -1078,7 +1064,7 @@ function HelpAdviceEditor() {
                                     />
                                     <button
                                       onClick={() => removeDetailItem(catIdx, tipIdx, 'whatToDo', idx)}
-                                      className="p-2 text-red-600 hover:text                                      red-800 dark:text-red-400 dark:hover:text-red-600"
+                                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
                                     >
                                       <TrashIcon className="w-5 h-5" />
                                     </button>

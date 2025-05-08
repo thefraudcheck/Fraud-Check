@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import ArticleCard from '../components/ArticleCard'; // Added missing import
+import ArticleCard from '../components/ArticleCard';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import Header from '../components/Header';
 import { ArrowLeftIcon, ShareIcon } from '@heroicons/react/24/outline';
@@ -59,7 +59,6 @@ const ArticleDetail = () => {
         if (articleError) throw articleError;
         setArticle(articleData);
 
-        // Fetch related articles (same category, limit 3)
         const { data: relatedData, error: relatedError } = await supabase
           .from('articles')
           .select('*')
@@ -80,11 +79,22 @@ const ArticleDetail = () => {
     fetchArticle();
   }, [slug]);
 
-  const handleShare = () => {
+  const handleShare = async () => {
     const url = window.location.href;
-    navigator.clipboard.writeText(url).then(() => {
-      alert('Article URL copied to clipboard!');
-    });
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: article.title,
+          url,
+        });
+      } else {
+        await navigator.clipboard.writeText(url);
+        alert('Article URL copied to clipboard!');
+      }
+    } catch (err) {
+      console.error('Share failed:', err);
+      alert('Failed to share article.');
+    }
   };
 
   return (
@@ -92,10 +102,18 @@ const ArticleDetail = () => {
       <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
         <style jsx>{`
           @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
+            from {
+              opacity: 0;
+              transform: translateY(10px);
+            }
+            to {
+              opacity: 1;
+              transform: translateY(0);
+            }
           }
-          .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+          .animate-fadeIn {
+            animation: fadeIn 0.5s ease-out forwards;
+          }
           .card-hover:hover {
             transform: scale(1.02);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
@@ -181,10 +199,11 @@ const ArticleDetail = () => {
                   </div>
                 </div>
 
-                {/* Related Articles */}
                 {relatedArticles.length > 0 && (
                   <div className="mt-12">
-                    <h4 className="text-xl font-semibold text-[#002E5D] dark:text-white mb-6 font-inter">Related Articles</h4>
+                    <h4 className="text-xl font-semibold text-[#002E5D] dark:text-white mb-6 font-inter">
+                      Related Articles
+                    </h4>
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                       {relatedArticles.map((related, idx) => (
                         <ArticleCard key={related.slug || `related-${idx}`} article={related} index={idx} />
@@ -197,11 +216,11 @@ const ArticleDetail = () => {
           </section>
         </div>
 
-        {/* Sticky Share Button */}
         {article && !loading && !error && (
           <button
             onClick={handleShare}
             className="fixed bottom-4 right-4 bg-cyan-600 text-white rounded-full p-3 shadow-md hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 flex items-center gap-2 font-inter"
+            aria-label="Share article"
           >
             <ShareIcon className="w-5 h-5" />
             Share

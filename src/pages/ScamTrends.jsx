@@ -13,7 +13,6 @@ import {
   ShieldExclamationIcon,
   MagnifyingGlassIcon,
   ChartPieIcon,
-  PencilSquareIcon,
   ArrowRightIcon,
   ExclamationCircleIcon,
   LinkIcon,
@@ -38,7 +37,6 @@ import { toast, Toaster } from 'react-hot-toast';
 import Header from '../components/Header.jsx';
 import Footer from '../components/Footer.jsx';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
-import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import { supabase } from '../utils/supabase';
 
 const scamCategoryIcons = {
@@ -336,12 +334,6 @@ function ScamTrends() {
 
   const isHTML = (content) => /<[a-z][\s\S]*>/i.test(content);
 
-  const stripHTML = (html) => {
-    if (!html) return '';
-    const doc = new DOMParser().parseFromString(html, 'text/html');
-    return doc.body.textContent || '';
-  };
-
   // Reorder the scam categories for the desired layout
   const reorderedCategories = scamData?.scamCategories ? [...scamData.scamCategories] : [];
   if (reorderedCategories.length >= 24) {
@@ -385,15 +377,7 @@ function ScamTrends() {
   }
 
   return (
-    <div
-      className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100"
-      style={{
-        backgroundImage: `url(${fraudCheckerBackground})`,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-      }}
-    >
+    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
       <Toaster position="top-right" />
       <style>
         {`
