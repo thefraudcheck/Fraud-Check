@@ -34,7 +34,8 @@
     "start": "react-scripts start",
     "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject"
+    "eject": "react-scripts eject",
+    "preinstall": "npx npm-force-resolutions"
   },
   "eslintConfig": {
     "extends": [
@@ -65,6 +66,8 @@
   "resolutions": {
     "svgo": "^3.0.2",
     "postcss": "^8.5.3",
-    "quill": "^2.0.0"
+    "quill": "^2.0.0",
+    "rimraf": "^4.0.0",
+    "rollup-plugin-terser": "@rollup/plugin-terser"
   }
 }

@@ -16,5 +16,5 @@
         }
       }
     ],
-    "framework": "react"
+    "framework": "create-react-app"
   }
