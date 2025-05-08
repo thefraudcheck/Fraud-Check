@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { ChevronLeftIcon, ChevronRightIcon, ShieldCheckIcon, CreditCardIcon, KeyIcon, LinkIcon, EnvelopeIcon, ExclamationCircleIcon } from '@heroicons/react/24/outline';
 import { ShieldCheck, Lightbulb, AlertTriangle } from 'lucide-react';
@@ -6,7 +6,6 @@ import Header from '../components/Header';
 import Hero from '../components/Hero';
 import ArticleCard from '../components/ArticleCard';
 import Footer from '../components/Footer';
-import fraudCheckerBackground from '../assets/fraud-checker-background.png';
 import fraudCheckImage from '../assets/fraud-check-image.png';
 import { getScamTrendsData } from '../utils/storage';
 import { supabase } from '../utils/supabase';
@@ -23,7 +22,7 @@ const mockArticles = [
 ];
 
 function Home() {
-  const defaultPageData = {
+  const defaultPageData = useMemo(() => ({
     hero: { title: 'Stay Scam Safe', subtitle: 'Fast, free tools to help you spot scams before it’s too late.', image: fraudCheckImage, textColor: '#FFFFFF', height: 450, position: { y: 20 }, textAlignment: 'bottom-left', overlay: 'bg-black/60' },
     keyFeatures: [
       { icon: 'shield-check', title: 'Expert Guidance', description: 'Built with insider fraud experience, our platform helps you spot scams before it’s too late.' },
@@ -36,7 +35,7 @@ function Home() {
       { title: 'Paid Wrong Person', preview: 'Steps to take if you’ve sent money to the wrong person.', whatToDo: ['Contact your bank immediately to attempt to reverse the transaction.', 'Provide transaction details to your bank.', 'Report to Action Fraud if fraudulent.'], icon: 'CreditCardIcon', link: '/help-advice#wrong-person' },
       { title: 'Shared Bank Details', preview: 'Protect yourself if you’ve shared sensitive bank information.', whatToDo: ['Notify your bank immediately to secure your account.', 'Monitor your account for unauthorized transactions.', 'Change online banking passwords and enable 2FA.'], icon: 'KeyIcon', link: '/help-advice#shared-details' },
     ],
-  };
+  }), []);
 
   const [pageData, setPageData] = useState(defaultPageData);
   const [demoScams, setDemoScams] = useState([]);
@@ -75,7 +74,7 @@ function Home() {
       }
     };
     fetchContent();
-  }, []);
+  }, [defaultPageData]);
 
   useEffect(() => {
     let isMounted = true;

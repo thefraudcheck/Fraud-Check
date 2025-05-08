@@ -71,6 +71,7 @@ function AdminHomeEditor() {
         setIsLoading(true);
         setError(null);
         console.log(`Fetching home_content records (Attempt ${retryCount + 1}/${maxRetries + 1})...`);
+        let fetchedRecords = [];
         const { data: records, error: fetchError } = await supabase.from('home_content').select('*');
         if (fetchError) {
           if (fetchError.code === '42P01') {
@@ -97,6 +98,7 @@ function AdminHomeEditor() {
           throw new Error(`Supabase fetch error: ${fetchError.message} (Code: ${fetchError.code || 'Unknown'})`);
         }
         console.log('Records fetched:', records);
+        fetchedRecords = records || [];
         if (!records || records.length === 0) {
           console.warn('No records in home_content. Attempting to initialize with defaults.');
           console.log('Inserting default __SETTINGS__ record...');
@@ -127,12 +129,12 @@ function AdminHomeEditor() {
           if (newFetchError) {
             throw new Error(`Supabase re-fetch error: ${newFetchError.message} (Code: ${newFetchError.code || 'Unknown'})`);
           }
-          records = newRecords;
-          console.log('Re-fetched records:', records);
+          fetchedRecords = newRecords;
+          console.log('Re-fetched records:', fetchedRecords);
         }
-        const settingsRecord = records.find((record) => record.type === '__SETTINGS__');
-        const keyFeatures = records.filter((record) => record.type === 'key_feature');
-        const whatToDoIf = records.filter((record) => record.type === 'what_to_do_if');
+        const settingsRecord = fetchedRecords.find((record) => record.type === '__SETTINGS__');
+        const keyFeatures = fetchedRecords.filter((record) => record.type === 'key_feature');
+        const whatToDoIf = fetchedRecords.filter((record) => record.type === 'what_to_do_if');
         const fetchedData = {
           hero: {
             ...defaultData.hero,
@@ -160,7 +162,7 @@ function AdminHomeEditor() {
       }
     };
     fetchContent();
-  }, []);
+  }, [defaultData]);
 
   const handleImageUpload = async (e) => {
     const file = e.target.files[0];

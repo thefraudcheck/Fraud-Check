@@ -183,6 +183,8 @@ function HelpAdviceEditor() {
             throw new Error(`Failed to initialize data: ${insertError.message}`);
           }
           setData(initialData);
+          setHistory([initialData]);
+          setHistoryIndex(0);
         } else if (!validateData(fetchedData)) {
           console.warn('Invalid data structure from Supabase:', fetchedData);
           throw new Error('Invalid data structure received from Supabase.');
@@ -211,6 +213,8 @@ function HelpAdviceEditor() {
           tipArchive: [],
           categories: [newCategoryTemplate],
         });
+        setHistory([data]);
+        setHistoryIndex(0);
       } finally {
         setLoading(false);
       }
