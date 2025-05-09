@@ -90,8 +90,11 @@ const ProtectedRoute = ({ children }) => {
     checkSession();
   }, []);
 
+  console.log('🔐 ProtectedRoute | loading:', loading);
+  console.log('🔐 ProtectedRoute | user:', user);
+  console.log('🔐 ProtectedRoute | error:', error);
+
   if (loading) {
-    console.log('ProtectedRoute: Loading state active');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
@@ -125,11 +128,10 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!loading && !user) {
-    console.log('ProtectedRoute: No user found after loading, navigating to /login');
+    console.log('🔁 Redirecting to /login due to missing user');
     return <Navigate to="/login" replace />;
   }
 
-  console.log('ProtectedRoute: Rendering children');
   return children;
 };
 
@@ -137,7 +139,7 @@ function AppContent({ resetErrorBoundary }) {
   const location = useLocation();
 
   useEffect(() => {
-    console.log('AppContent: Current route:', location.pathname);
+    console.log('📍 Current pathname:', location.pathname);
     if (resetErrorBoundary) {
       resetErrorBoundary();
     }
