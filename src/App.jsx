@@ -62,39 +62,52 @@ class ErrorBoundary extends React.Component {
 const ProtectedRoute = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
+    let mounted = true;
+
     const checkSession = async () => {
-      try {
-        console.log('ProtectedRoute: Checking Supabase session...');
-        const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('🔐 ProtectedRoute: Supabase session:', session);
-        console.log('🔐 ProtectedRoute: User:', session?.user);
-        if (error) {
-          console.error('ProtectedRoute: Session check error:', error);
-          setError('Authentication failed. Please log in.');
+      console.log('🔐 Checking Supabase session...');
+      const { data: { session }, error } = await supabase.auth.getSession();
+      console.log('✅ Session from getSession:', session);
+
+      if (error) {
+        console.error('❌ Supabase session error:', error);
+      }
+
+      if (session?.user && mounted) {
+        setUser(session.user);
+        setLoading(false);
+      } else {
+        // Fallback: wait for auth state change (in case session is late)
+        supabase.auth.getUser().then(({ data: userData }) => {
+          console.log('🔄 Fallback getUser():', userData?.user);
+          if (userData?.user && mounted) {
+            setUser(userData.user);
+          }
           setLoading(false);
-          return;
-        }
-        const user = session?.user;
-        console.log('ProtectedRoute: User authenticated:', user ? user.id : 'No user');
-        setUser(user);
-        setLoading(false);
-      } catch (err) {
-        console.error('ProtectedRoute: Unexpected auth error:', err);
-        setError('An unexpected error occurred during authentication.');
-        setLoading(false);
+        });
       }
     };
+
     checkSession();
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
+      console.log('📡 Supabase auth state changed:', _event);
+      if (session?.user && mounted) {
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+
+    return () => {
+      mounted = false;
+      listener?.subscription?.unsubscribe?.();
+    };
   }, []);
 
-  console.log('🔐 ProtectedRoute | loading:', loading);
-  console.log('🔐 ProtectedRoute | user:', user);
-  console.log('🔐 ProtectedRoute | error:', error);
-
   if (loading) {
+    console.log('⏳ Waiting for session...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
@@ -109,26 +122,8 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (error) {
-    console.log('ProtectedRoute: Error state, redirecting to /login:', error);
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900 text-gray-900 dark:text-white">
-        <div className="text-center">
-          <h1 className="text-2xl font-bold mb-4 font-inter">Authentication Error</h1>
-          <p className="text-lg mb-4 font-inter">{error}</p>
-          <Link
-            to="/login"
-            className="px-6 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter"
-          >
-            Go to Login
-          </Link>
-        </div>
-      </div>
-    );
-  }
-
-  if (!loading && !user) {
-    console.log('🔁 Redirecting to /login due to missing user');
+  if (!user) {
+    console.warn('🚫 No authenticated user. Redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
