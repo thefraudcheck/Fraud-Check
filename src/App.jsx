@@ -155,14 +155,7 @@ function AppContent({ resetErrorBoundary }) {
       <Route path="/about" element={<About />} />
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/login" element={<Login />} />
-      <Route
-        path="/admin/dashboard"
-        element={
-          <ProtectedRoute>
-            <AdminDashboard />
-          </ProtectedRoute>
-        }
-      />
+      <Route path="/admin/dashboard" element={<AdminDashboard />} />
       <Route
         path="/admin/home"
         element={
@@ -219,10 +212,12 @@ function AppContent({ resetErrorBoundary }) {
           </ProtectedRoute>
         }
       />
+      <Route path="/admin/test" element={<div style={{ padding: 40, color: 'green' }}>✅ Admin test loaded!</div>} />
       <Route
         path="*"
         element={
           <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-white">
+            {console.log('Wildcard route hit')}
             <div className="text-center">
               <h1 className="text-4xl font-bold mb-4 font-inter">404 - Page Not Found</h1>
               <p className="text-lg mb-4 font-inter">The page you are looking for does not exist.</p>
