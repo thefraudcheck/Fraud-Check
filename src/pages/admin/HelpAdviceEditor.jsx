@@ -131,25 +131,28 @@ function HelpAdviceEditor() {
   const hasFetched = useRef(false); // Prevent multiple fetches
 
   // Templates for new content
-  const newTipTemplate = {
-    title: 'New Tip',
-    preview: '<p>Enter a brief preview of the tip.</p>',
-    icon: 'ShieldCheckIcon',
-    details: {
-      why: '<p>Explain why this tip is important.</p>',
-      examples: ['Example 1'],
-      whatToDo: ['Step 1'],
-      signs: ['Sign 1'],
-      protect: ['Protection 1'],
-    },
-  };
+  const newTipTemplate = useMemo(
+    () => ({
+      title: 'New Tip',
+      preview: '<p>Enter a brief preview of the tip.</p>',
+      icon: 'ShieldCheckIcon',
+      details: {
+        why: '<p>Explain why this tip is important.</p>',
+        examples: ['Example 1'],
+        whatToDo: ['Step 1'],
+        signs: ['Sign 1'],
+        protect: ['Protection 1'],
+      },
+    }),
+    []
+  );
 
   const newCategoryTemplate = useMemo(
     () => ({
       category: 'New Category',
       tips: [newTipTemplate],
     }),
-    []
+    [newTipTemplate]
   );
 
   const initialData = useMemo(
@@ -216,25 +219,29 @@ function HelpAdviceEditor() {
   }, [initialData]);
 
   // Auto-save with debounce
-  const debouncedSave = debounce(async (newData) => {
-    setIsSaving(true);
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error('User not authenticated');
-      }
+  const debouncedSave = useMemo(
+    () =>
+      debounce(async (newData) => {
+        setIsSaving(true);
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          if (!user) {
+            throw new Error('User not authenticated');
+          }
 
-      const { error } = await supabase.rpc('save_advice_data', { p_data: newData });
-      if (error) {
-        throw new Error(`Auto-save failed: ${error.message}`);
-      }
-      toast.success('Changes auto-saved!', { duration: 2000 });
-    } catch (err) {
-      toast.error(`Auto-save failed: ${err.message}`, { duration: 2000 });
-    } finally {
-      setIsSaving(false);
-    }
-  }, 1000);
+          const { error } = await supabase.rpc('save_advice_data', { p_data: newData });
+          if (error) {
+            throw new Error(`Auto-save failed: ${error.message}`);
+          }
+          toast.success('Changes auto-saved!', { duration: 2000 });
+        } catch (err) {
+          toast.error(`Auto-save failed: ${err.message}`, { duration: 2000 });
+        } finally {
+          setIsSaving(false);
+        }
+      }, 1000),
+    []
+  );
 
   // Update data and history
   const updateData = (newData) => {
@@ -667,7 +674,7 @@ function HelpAdviceEditor() {
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+              <label className="block text-sm font-medium text-gray-700 dark:text-grainitialDatay-300 mb-1 font-inter">
                 Link
               </label>
               <input
