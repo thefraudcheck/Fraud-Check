@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   ExclamationTriangleIcon,
@@ -149,23 +149,26 @@ function HelpAdviceEditor() {
     tips: [newTipTemplate],
   };
 
-  const initialData = {
-    tipOfTheWeek: {
-      title: '🛡️ New Tip of the Week',
-      text: '<p>Enter the new tip description.</p>',
-      link: '/help-advice',
-      icon: 'ShieldCheckIcon',
-      details: {
-        why: '<p>Explain why this tip is important.</p>',
-        examples: ['Example 1'],
-        whatToDo: ['Step 1'],
-        signs: ['Sign 1'],
-        protect: ['Protection 1'],
+  const initialData = useMemo(
+    () => ({
+      tipOfTheWeek: {
+        title: '🛡️ New Tip of the Week',
+        text: '<p>Enter the new tip description.</p>',
+        link: '/help-advice',
+        icon: 'ShieldCheckIcon',
+        details: {
+          why: '<p>Explain why this tip is important.</p>',
+          examples: ['Example 1'],
+          whatToDo: ['Step 1'],
+          signs: ['Sign 1'],
+          protect: ['Protection 1'],
+        },
       },
-    },
-    tipArchive: [],
-    categories: [newCategoryTemplate],
-  };
+      tipArchive: [],
+      categories: [newCategoryTemplate],
+    }),
+    []
+  );
 
   // Fetch data from Supabase only once
   useEffect(() => {
@@ -207,7 +210,7 @@ function HelpAdviceEditor() {
     };
 
     fetchData();
-  }, [initialData]); // Added initialData to dependency array
+  }, [initialData]);
 
   // Auto-save with debounce
   const debouncedSave = debounce(async (newData) => {
@@ -749,7 +752,7 @@ function HelpAdviceEditor() {
                         onClick={() => removeTipOfTheWeekDetailItem('whatToDo', idx)}
                         className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
                       >
-                        <TrashIcon className preto="w-5 h-5" />
+                        <TrashIcon className="w-5 h-5" />
                       </button>
                     </div>
                   ))}
