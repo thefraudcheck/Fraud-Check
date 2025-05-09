@@ -1,6 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react'; // Added useMemo
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lightbulb, AlertTriangle } from 'lucide-react'; // Removed ChevronLeft, ChevronRight
+import { ShieldCheck, Lightbulb, AlertTriangle } from 'lucide-react';
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { supabase } from '../../utils/supabase';
 import fraudCheckerBackground from '../../assets/fraud-checker-background.png';
@@ -9,7 +9,8 @@ import fraudCheckImage from '../../assets/fraud-check-image.png';
 function AdminHomeEditor() {
   const navigate = useNavigate();
 
-  const defaultData = {
+  // Moved defaultData into useMemo to prevent re-creation on every render
+  const defaultData = useMemo(() => ({
     hero: {
       title: 'Stay Scam Safe',
       subtitle: 'Use our tools to identify, report, and stay informed about fraud.',
@@ -29,7 +30,7 @@ function AdminHomeEditor() {
       { icon: 'light-bulb', title: 'Real Scam Data', description: 'Learn from real reports submitted by people like you — updated weekly.' },
       { icon: 'exclamation-triangle', title: 'Instant Scam Checker', description: 'Answer a few questions and get an instant risk assessment, tailored to your situation.' },
     ],
-  };
+  }), []); // Empty dependency array since this data doesn't depend on props/state
 
   const [data, setData] = useState(defaultData);
   const [savedData, setSavedData] = useState(defaultData);
@@ -113,7 +114,7 @@ function AdminHomeEditor() {
     };
 
     fetchContent();
-  }, [navigate, defaultData]); // Added defaultData to dependency array
+  }, [navigate, defaultData]); // defaultData is now stable due to useMemo
 
   const handleSave = async () => {
     setIsSaving(true);

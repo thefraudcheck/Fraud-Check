@@ -30,6 +30,7 @@ import { supabase } from '../../utils/supabase';
 import { debounce } from 'lodash';
 import { toast, Toaster } from 'react-hot-toast';
 
+// Icon options for dropdown
 const iconOptions = [
   { name: 'ExclamationTriangleIcon', component: <ExclamationTriangleIcon className="w-6 h-6 text-cyan-700" /> },
   { name: 'LockClosedIcon', component: <LockClosedIcon className="w-6 h-6 text-cyan-700" /> },
@@ -50,6 +51,7 @@ const iconOptions = [
   { name: 'ShieldExclamationIcon', component: <ShieldExclamationIcon className="w-6 h-6 text-cyan-700" /> },
 ];
 
+// Quill editor configuration
 const quillModules = {
   toolbar: [
     [{ font: [] }],
@@ -81,11 +83,13 @@ const quillFormats = [
   'link',
 ];
 
+// Function to render icons dynamically
 const renderIcon = (iconName) => {
   const icon = iconOptions.find((opt) => opt.name === iconName);
   return icon ? icon.component : <ShieldCheckIcon className="w-6 h-6 text-cyan-700" />;
 };
 
+// Validate data structure
 const validateData = (data) => {
   if (!data || typeof data !== 'object') return false;
   if (!data.tipOfTheWeek || !data.categories || !data.tipArchive) return false;
@@ -124,7 +128,9 @@ function HelpAdviceEditor() {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const tipRefs = useRef({});
+  const hasFetched = useRef(false); // Prevent multiple fetches
 
+  // Templates for new content
   const newTipTemplate = {
     title: 'New Tip',
     preview: '<p>Enter a brief preview of the tip.</p>',
@@ -143,35 +149,38 @@ function HelpAdviceEditor() {
     tips: [newTipTemplate],
   };
 
+  const initialData = {
+    tipOfTheWeek: {
+      title: '🛡️ New Tip of the Week',
+      text: '<p>Enter the new tip description.</p>',
+      link: '/help-advice',
+      icon: 'ShieldCheckIcon',
+      details: {
+        why: '<p>Explain why this tip is important.</p>',
+        examples: ['Example 1'],
+        whatToDo: ['Step 1'],
+        signs: ['Sign 1'],
+        protect: ['Protection 1'],
+      },
+    },
+    tipArchive: [],
+    categories: [newCategoryTemplate],
+  };
+
+  // Fetch data from Supabase only once
   useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+
     const fetchData = async () => {
       setLoading(true);
       try {
         const { data: fetchedData, error } = await supabase.rpc('get_advice_data');
         if (error) {
-          console.error('Supabase fetch error:', error);
           throw new Error(`Failed to fetch data: ${error.message}`);
         }
 
         if (!fetchedData) {
-          console.warn('No data returned from Supabase, initializing empty structure.');
-          const initialData = {
-            tipOfTheWeek: {
-              title: '🛡️ New Tip of the Week',
-              text: '<p>Enter the new tip description.</p>',
-              link: '/help-advice',
-              icon: 'ShieldCheckIcon',
-              details: {
-                why: '<p>Explain why this tip is important.</p>',
-                examples: ['Example 1'],
-                whatToDo: ['Step 1'],
-                signs: ['Sign 1'],
-                protect: ['Protection 1'],
-              },
-            },
-            tipArchive: [],
-            categories: [newCategoryTemplate],
-          };
           const { error: insertError } = await supabase.rpc('save_advice_data', { p_data: initialData });
           if (insertError) {
             throw new Error(`Failed to initialize data: ${insertError.message}`);
@@ -180,7 +189,6 @@ function HelpAdviceEditor() {
           setHistory([initialData]);
           setHistoryIndex(0);
         } else if (!validateData(fetchedData)) {
-          console.warn('Invalid data structure from Supabase:', fetchedData);
           throw new Error('Invalid data structure received from Supabase.');
         } else {
           setData(fetchedData);
@@ -190,24 +198,8 @@ function HelpAdviceEditor() {
       } catch (err) {
         console.error('Fetch error:', err);
         setError(`Failed to load content: ${err.message}`);
-        setData({
-          tipOfTheWeek: {
-            title: '🛡️ New Tip of the Week',
-            text: '<p>Enter the new tip description.</p>',
-            link: '/help-advice',
-            icon: 'ShieldCheckIcon',
-            details: {
-              why: '<p>Explain why this tip is important.</p>',
-              examples: ['Example 1'],
-              whatToDo: ['Step 1'],
-              signs: ['Sign 1'],
-              protect: ['Protection 1'],
-            },
-          },
-          tipArchive: [],
-          categories: [newCategoryTemplate],
-        });
-        setHistory((prevHistory) => [...prevHistory, data]);
+        setData(initialData);
+        setHistory([initialData]);
         setHistoryIndex(0);
       } finally {
         setLoading(false);
@@ -215,25 +207,9 @@ function HelpAdviceEditor() {
     };
 
     fetchData();
-  }, [newCategoryTemplate]);
+  }, []); // Empty dependency array to run only once
 
-  useEffect(() => {
-    if (data) {
-      setHistory((prevHistory) => {
-        const newHistory = [...prevHistory.slice(0, historyIndex + 1), data];
-        if (newHistory.length > 50) newHistory.shift();
-        return newHistory;
-      });
-      setHistoryIndex((prevIndex) => prevIndex + 1);
-    }
-  }, [data]);
-
-  useEffect(() => {
-    if (selectedCategory && data && !data.categories.some((cat) => cat.category === selectedCategory)) {
-      setSelectedCategory(null);
-    }
-  }, [data, selectedCategory]);
-
+  // Auto-save with debounce
   const debouncedSave = debounce(async (newData) => {
     setIsSaving(true);
     try {
@@ -244,46 +220,55 @@ function HelpAdviceEditor() {
 
       const { error } = await supabase.rpc('save_advice_data', { p_data: newData });
       if (error) {
-        console.error('Auto-save error:', error);
-        throw error;
+        throw new Error(`Auto-save failed: ${error.message}`);
       }
       toast.success('Changes auto-saved!', { duration: 2000 });
     } catch (err) {
-      console.error('Auto-save failed:', err);
       toast.error(`Auto-save failed: ${err.message}`, { duration: 2000 });
     } finally {
       setIsSaving(false);
     }
   }, 1000);
 
+  // Update data and history
   const updateData = (newData) => {
     if (!validateData(newData)) {
-      console.warn('Invalid data structure for update:', newData);
       toast.error('Invalid data structure, cannot update.');
       return;
     }
     setData(newData);
+    const newHistory = [...history.slice(0, historyIndex + 1), newData];
+    if (newHistory.length > 50) newHistory.shift();
+    setHistory(newHistory);
+    setHistoryIndex(newHistory.length - 1);
     debouncedSave(newData);
   };
 
+  // Undo/Redo
   const undo = () => {
-    if (historyIndex > 0) {
-      const prevIndex = historyIndex - 1;
-      setData(history[prevIndex]);
-      setHistoryIndex(prevIndex);
-      toast('Undo applied', { duration: 1500 });
-    }
+    if (historyIndex <= 0) return;
+    const prevIndex = historyIndex - 1;
+    setData(history[prevIndex]);
+    setHistoryIndex(prevIndex);
+    toast('Undo applied', { duration: 1500 });
   };
 
   const redo = () => {
-    if (historyIndex < history.length - 1) {
-      const nextIndex = historyIndex + 1;
-      setData(history[nextIndex]);
-      setHistoryIndex(nextIndex);
-      toast('Redo applied', { duration: 1500 });
-    }
+    if (historyIndex >= history.length - 1) return;
+    const nextIndex = historyIndex + 1;
+    setData(history[nextIndex]);
+    setHistoryIndex(nextIndex);
+    toast('Redo applied', { duration: 1500 });
   };
 
+  // Reset selectedCategory if it no longer exists
+  useEffect(() => {
+    if (selectedCategory && data && !data.categories.some((cat) => cat.category === selectedCategory)) {
+      setSelectedCategory(null);
+    }
+  }, [data, selectedCategory]);
+
+  // Manual save
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -296,22 +281,14 @@ function HelpAdviceEditor() {
         throw new Error('Invalid data structure. Please check your inputs.');
       }
 
-      try {
-        JSON.parse(JSON.stringify(data));
-      } catch (e) {
-        throw new Error(`Invalid JSON syntax: ${e.message}`);
-      }
-
       const { error } = await supabase.rpc('save_advice_data', { p_data: data });
       if (error) {
-        console.error('Save error:', error);
         throw new Error(`Failed to save data: ${error.message}`);
       }
 
       toast.success('Content saved successfully!');
       navigate('/help-advice');
     } catch (err) {
-      console.error('Save error:', err);
       toast.error(`Failed to save content: ${err.message}`);
       setError(`Failed to save content: ${err.message}`);
     } finally {
@@ -323,6 +300,7 @@ function HelpAdviceEditor() {
     navigate('/admin/dashboard');
   };
 
+  // Tip of the Week Handlers
   const updateTipOfTheWeek = (field, value) => {
     updateData({
       ...data,
@@ -423,6 +401,7 @@ function HelpAdviceEditor() {
     toast.success('Tip deleted!');
   };
 
+  // Category/Tip Handlers
   const updateCategory = (categoryIndex, field, value) => {
     if (categoryIndex < 0 || categoryIndex >= data.categories.length) return;
     updateData({
@@ -518,7 +497,7 @@ function HelpAdviceEditor() {
                       ...tip,
                       details: {
                         ...tip.details,
-                        [detailField]: tip.details[detailField].filter((_, i) => idx !== itemIndex),
+                        [detailField]: tip.details[detailField].filter((_, i) => i !== itemIndex),
                       },
                     }
                   : tip
@@ -582,7 +561,7 @@ function HelpAdviceEditor() {
     }));
   };
 
-  if (loading || !data) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
@@ -593,6 +572,16 @@ function HelpAdviceEditor() {
             d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
           />
         </svg>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
+        <div className="p-4 bg-red-100 text-red-700 rounded-lg">
+          <span>{error}</span>
+        </div>
       </div>
     );
   }
@@ -644,12 +633,6 @@ function HelpAdviceEditor() {
       </header>
 
       <main className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-        {error && (
-          <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg">
-            <span>{error}</span>
-          </div>
-        )}
-
         <section className="mb-8">
           <h2 className="text-2xl font-semibold mb-4 font-inter">Tip of the Week</h2>
           <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
@@ -659,7 +642,7 @@ function HelpAdviceEditor() {
               </label>
               <input
                 type="text"
-                value={data.tipOfTheWeek.title}
+                value={data.tipOfTheWeek.title || ''}
                 onChange={(e) => updateTipOfTheWeek('title', e.target.value)}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
               />
@@ -670,7 +653,7 @@ function HelpAdviceEditor() {
               </label>
               <ReactQuill
                 theme="snow"
-                value={data.tipOfTheWeek.text}
+                value={data.tipOfTheWeek.text || ''}
                 onChange={(value) => updateTipOfTheWeek('text', value)}
                 modules={quillModules}
                 formats={quillFormats}
@@ -683,7 +666,7 @@ function HelpAdviceEditor() {
               </label>
               <input
                 type="text"
-                value={data.tipOfTheWeek.link}
+                value={data.tipOfTheWeek.link || ''}
                 onChange={(e) => updateTipOfTheWeek('link', e.target.value)}
                 className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
               />
@@ -695,7 +678,7 @@ function HelpAdviceEditor() {
               <div className="flex items-center gap-3">
                 {renderIcon(data.tipOfTheWeek.icon)}
                 <select
-                  value={data.tipOfTheWeek.icon}
+                  value={data.tipOfTheWeek.icon || 'ShieldCheckIcon'}
                   onChange={(e) => updateTipOfTheWeek('icon', e.target.value)}
                   className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                 >
@@ -716,7 +699,7 @@ function HelpAdviceEditor() {
                   </label>
                   <ReactQuill
                     theme="snow"
-                    value={data.tipOfTheWeek.details.why}
+                    value={data.tipOfTheWeek.details.why || ''}
                     onChange={(value) => updateTipOfTheWeekDetail('why', value)}
                     modules={quillModules}
                     formats={quillFormats}
@@ -727,11 +710,11 @@ function HelpAdviceEditor() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                     Examples
                   </label>
-                  {data.tipOfTheWeek.details.examples.map((example, idx) => (
+                  {(data.tipOfTheWeek.details.examples || []).map((example, idx) => (
                     <div key={idx} className="flex items-center gap-2 mb-2">
                       <input
                         type="text"
-                        value={example}
+                        value={example || ''}
                         onChange={(e) => updateTipOfTheWeekDetail('examples', e.target.value, idx)}
                         className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                       />
@@ -754,11 +737,11 @@ function HelpAdviceEditor() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                     What To Do
                   </label>
-                  {data.tipOfTheWeek.details.whatToDo.map((action, idx) => (
+                  {(data.tipOfTheWeek.details.whatToDo || []).map((action, idx) => (
                     <div key={idx} className="flex items-center gap-2 mb-2">
                       <input
                         type="text"
-                        value={action}
+                        value={action || ''}
                         onChange={(e) => updateTipOfTheWeekDetail('whatToDo', e.target.value, idx)}
                         className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                       />
@@ -781,11 +764,11 @@ function HelpAdviceEditor() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                     Signs to Watch For
                   </label>
-                  {data.tipOfTheWeek.details.signs.map((sign, idx) => (
+                  {(data.tipOfTheWeek.details.signs || []).map((sign, idx) => (
                     <div key={idx} className="flex items-center gap-2 mb-2">
                       <input
                         type="text"
-                        value={sign}
+                        value={sign || ''}
                         onChange={(e) => updateTipOfTheWeekDetail('signs', e.target.value, idx)}
                         className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                       />
@@ -808,11 +791,11 @@ function HelpAdviceEditor() {
                   <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                     How to Protect Yourself
                   </label>
-                  {data.tipOfTheWeek.details.protect.map((protection, idx) => (
+                  {(data.tipOfTheWeek.details.protect || []).map((protection, idx) => (
                     <div key={idx} className="flex items-center gap-2 mb-2">
                       <input
                         type="text"
-                        value={protection}
+                        value={protection || ''}
                         onChange={(e) => updateTipOfTheWeekDetail('protect', e.target.value, idx)}
                         className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                       />
@@ -884,9 +867,7 @@ function HelpAdviceEditor() {
           <div className="flex gap-4 mb-6">
             <select
               value={selectedCategory || ''}
-              onChange={(e) => {
-                setSelectedCategory(e.target.value || null);
-              }}
+              onChange={(e) => setSelectedCategory(e.target.value || null)}
               className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
             >
               <option value="">All Categories</option>
@@ -912,7 +893,7 @@ function HelpAdviceEditor() {
                   <div className="flex items-center gap-3">
                     <input
                       type="text"
-                      value={category.category}
+                      value={category.category || ''}
                       onChange={(e) => updateCategory(catIdx, 'category', e.target.value)}
                       className="text-xl font-semibold p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                     />
@@ -966,7 +947,7 @@ function HelpAdviceEditor() {
                             </label>
                             <input
                               type="text"
-                              value={tip.title}
+                              value={tip.title || ''}
                               onChange={(e) => updateTip(catIdx, tipIdx, 'title', e.target.value)}
                               className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                             />
@@ -977,7 +958,7 @@ function HelpAdviceEditor() {
                             </label>
                             <ReactQuill
                               theme="snow"
-                              value={tip.preview}
+                              value={tip.preview || ''}
                               onChange={(value) => updateTip(catIdx, tipIdx, 'preview', value)}
                               modules={quillModules}
                               formats={quillFormats}
@@ -991,7 +972,7 @@ function HelpAdviceEditor() {
                             <div className="flex items-center gap-3">
                               {renderIcon(tip.icon)}
                               <select
-                                value={tip.icon}
+                                value={tip.icon || 'ShieldCheckIcon'}
                                 onChange={(e) => updateTip(catIdx, tipIdx, 'icon', e.target.value)}
                                 className="p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                               >
@@ -1014,7 +995,7 @@ function HelpAdviceEditor() {
                                 </label>
                                 <ReactQuill
                                   theme="snow"
-                                  value={tip.details.why}
+                                  value={tip.details.why || ''}
                                   onChange={(value) => updateTipDetail(catIdx, tipIdx, 'why', value)}
                                   modules={quillModules}
                                   formats={quillFormats}
@@ -1025,11 +1006,11 @@ function HelpAdviceEditor() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                                   Examples
                                 </label>
-                                {tip.details.examples.map((example, idx) => (
+                                {(tip.details.examples || []).map((example, idx) => (
                                   <div key={idx} className="flex items-center gap-2 mb-2">
                                     <input
                                       type="text"
-                                      value={example}
+                                      value={example || ''}
                                       onChange={(e) => updateTipDetail(catIdx, tipIdx, 'examples', e.target.value, idx)}
                                       className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                                     />
@@ -1052,11 +1033,11 @@ function HelpAdviceEditor() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                                   What To Do
                                 </label>
-                                {tip.details.whatToDo.map((action, idx) => (
+                                {(tip.details.whatToDo || []).map((action, idx) => (
                                   <div key={idx} className="flex items-center gap-2 mb-2">
                                     <input
                                       type="text"
-                                      value={action}
+                                      value={action || ''}
                                       onChange={(e) => updateTipDetail(catIdx, tipIdx, 'whatToDo', e.target.value, idx)}
                                       className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                                     />
@@ -1079,11 +1060,11 @@ function HelpAdviceEditor() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                                   Signs to Watch For
                                 </label>
-                                {tip.details.signs.map((sign, idx) => (
+                                {(tip.details.signs || []).map((sign, idx) => (
                                   <div key={idx} className="flex items-center gap-2 mb-2">
                                     <input
                                       type="text"
-                                      value={sign}
+                                      value={sign || ''}
                                       onChange={(e) => updateTipDetail(catIdx, tipIdx, 'signs', e.target.value, idx)}
                                       className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                                     />
@@ -1106,11 +1087,11 @@ function HelpAdviceEditor() {
                                 <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                                   How to Protect Yourself
                                 </label>
-                                {tip.details.protect.map((protection, idx) => (
+                                {(tip.details.protect || []).map((protection, idx) => (
                                   <div key={idx} className="flex items-center gap-2 mb-2">
                                     <input
                                       type="text"
-                                      value={protection}
+                                      value={protection || ''}
                                       onChange={(e) => updateTipDetail(catIdx, tipIdx, 'protect', e.target.value, idx)}
                                       className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
                                     />
