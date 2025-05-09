@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { ShieldCheck, Lightbulb, AlertTriangle, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ShieldCheck, Lightbulb, AlertTriangle } from 'lucide-react'; // Removed ChevronLeft, ChevronRight
 import { ArrowLeftIcon } from '@heroicons/react/24/solid';
-import { supabase } from '../../utils/supabase'; // Ensure this file exists and is correctly configured
+import { supabase } from '../../utils/supabase';
 import fraudCheckerBackground from '../../assets/fraud-checker-background.png';
 import fraudCheckImage from '../../assets/fraud-check-image.png';
 
@@ -44,7 +44,6 @@ function AdminHomeEditor() {
         setIsLoading(true);
         setError(null);
 
-        // Check authentication
         const { data: { user }, error: authError } = await supabase.auth.getUser();
         if (authError || !user) {
           console.error('Authentication error:', authError?.message || 'No user found');
@@ -54,7 +53,6 @@ function AdminHomeEditor() {
         }
         console.log('Authenticated user:', user.id, 'Role:', user.role);
 
-        // Fetch home_content records
         const { data: records, error: fetchError } = await supabase
           .from('home_content')
           .select('*');
@@ -74,7 +72,6 @@ function AdminHomeEditor() {
             keyFeatures: features.length > 0 ? features.map((f) => f.content) : defaultData.keyFeatures,
           };
         } else {
-          // Initialize with default data if no records exist
           await initializeDefaultData();
           fetchedData = { ...defaultData };
         }
@@ -97,19 +94,16 @@ function AdminHomeEditor() {
         return;
       }
 
-      // Insert default hero
       await supabase.from('home_content').insert({
         section: 'hero',
         content: defaultData.hero,
       });
 
-      // Insert default tip of the week
       await supabase.from('home_content').insert({
         section: 'tip_of_the_week',
         content: defaultData.tipOfTheWeek,
       });
 
-      // Insert default key features
       for (const feature of defaultData.keyFeatures) {
         await supabase.from('home_content').insert({
           section: 'key_feature',
@@ -119,7 +113,7 @@ function AdminHomeEditor() {
     };
 
     fetchContent();
-  }, [navigate]);
+  }, [navigate, defaultData]); // Added defaultData to dependency array
 
   const handleSave = async () => {
     setIsSaving(true);
@@ -131,7 +125,6 @@ function AdminHomeEditor() {
       }
       console.log('Saving content as authenticated user:', user.id, 'Role:', user.role);
 
-      // Update or insert hero
       const { data: heroRecord, error: heroFetchError } = await supabase
         .from('home_content')
         .select('*')
@@ -153,7 +146,6 @@ function AdminHomeEditor() {
         if (heroInsertError) throw new Error(`Failed to insert hero: ${heroInsertError.message}`);
       }
 
-      // Update or insert tip of the week
       const { data: tipRecord, error: tipFetchError } = await supabase
         .from('home_content')
         .select('*')
@@ -175,7 +167,6 @@ function AdminHomeEditor() {
         if (tipInsertError) throw new Error(`Failed to insert tip: ${tipInsertError.message}`);
       }
 
-      // Update or insert key features
       const { data: existingFeatures, error: fetchFeaturesError } = await supabase
         .from('home_content')
         .select('id')

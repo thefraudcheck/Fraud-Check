@@ -30,7 +30,6 @@ import { supabase } from '../../utils/supabase';
 import { debounce } from 'lodash';
 import { toast, Toaster } from 'react-hot-toast';
 
-// Icon options for dropdown
 const iconOptions = [
   { name: 'ExclamationTriangleIcon', component: <ExclamationTriangleIcon className="w-6 h-6 text-cyan-700" /> },
   { name: 'LockClosedIcon', component: <LockClosedIcon className="w-6 h-6 text-cyan-700" /> },
@@ -51,7 +50,6 @@ const iconOptions = [
   { name: 'ShieldExclamationIcon', component: <ShieldExclamationIcon className="w-6 h-6 text-cyan-700" /> },
 ];
 
-// Quill editor configuration
 const quillModules = {
   toolbar: [
     [{ font: [] }],
@@ -83,13 +81,11 @@ const quillFormats = [
   'link',
 ];
 
-// Function to render icons dynamically
 const renderIcon = (iconName) => {
   const icon = iconOptions.find((opt) => opt.name === iconName);
   return icon ? icon.component : <ShieldCheckIcon className="w-6 h-6 text-cyan-700" />;
 };
 
-// Validate data structure
 const validateData = (data) => {
   if (!data || typeof data !== 'object') return false;
   if (!data.tipOfTheWeek || !data.categories || !data.tipArchive) return false;
@@ -129,7 +125,6 @@ function HelpAdviceEditor() {
   const [historyIndex, setHistoryIndex] = useState(-1);
   const tipRefs = useRef({});
 
-  // Templates for new content
   const newTipTemplate = {
     title: 'New Tip',
     preview: '<p>Enter a brief preview of the tip.</p>',
@@ -148,7 +143,6 @@ function HelpAdviceEditor() {
     tips: [newTipTemplate],
   };
 
-  // Fetch data from Supabase
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
@@ -213,7 +207,7 @@ function HelpAdviceEditor() {
           tipArchive: [],
           categories: [newCategoryTemplate],
         });
-        setHistory([data]);
+        setHistory((prevHistory) => [...prevHistory, data]);
         setHistoryIndex(0);
       } finally {
         setLoading(false);
@@ -223,7 +217,23 @@ function HelpAdviceEditor() {
     fetchData();
   }, [newCategoryTemplate]);
 
-  // Auto-save with debounce
+  useEffect(() => {
+    if (data) {
+      setHistory((prevHistory) => {
+        const newHistory = [...prevHistory.slice(0, historyIndex + 1), data];
+        if (newHistory.length > 50) newHistory.shift();
+        return newHistory;
+      });
+      setHistoryIndex((prevIndex) => prevIndex + 1);
+    }
+  }, [data]);
+
+  useEffect(() => {
+    if (selectedCategory && data && !data.categories.some((cat) => cat.category === selectedCategory)) {
+      setSelectedCategory(null);
+    }
+  }, [data, selectedCategory]);
+
   const debouncedSave = debounce(async (newData) => {
     setIsSaving(true);
     try {
@@ -246,7 +256,6 @@ function HelpAdviceEditor() {
     }
   }, 1000);
 
-  // Update data and history
   const updateData = (newData) => {
     if (!validateData(newData)) {
       console.warn('Invalid data structure for update:', newData);
@@ -254,14 +263,9 @@ function HelpAdviceEditor() {
       return;
     }
     setData(newData);
-    const newHistory = [...history.slice(0, historyIndex + 1), newData];
-    if (newHistory.length > 50) newHistory.shift();
-    setHistory(newHistory);
-    setHistoryIndex(newHistory.length - 1);
     debouncedSave(newData);
   };
 
-  // Undo/Redo
   const undo = () => {
     if (historyIndex > 0) {
       const prevIndex = historyIndex - 1;
@@ -280,14 +284,6 @@ function HelpAdviceEditor() {
     }
   };
 
-  // Reset selectedCategory if it no longer exists
-  useEffect(() => {
-    if (selectedCategory && data && !data.categories.some((cat) => cat.category === selectedCategory)) {
-      setSelectedCategory(null);
-    }
-  }, [data, selectedCategory]);
-
-  // Manual save
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -327,7 +323,6 @@ function HelpAdviceEditor() {
     navigate('/admin/dashboard');
   };
 
-  // Tip of the Week Handlers
   const updateTipOfTheWeek = (field, value) => {
     updateData({
       ...data,
@@ -428,7 +423,6 @@ function HelpAdviceEditor() {
     toast.success('Tip deleted!');
   };
 
-  // Category/Tip Handlers
   const updateCategory = (categoryIndex, field, value) => {
     if (categoryIndex < 0 || categoryIndex >= data.categories.length) return;
     updateData({
@@ -524,7 +518,7 @@ function HelpAdviceEditor() {
                       ...tip,
                       details: {
                         ...tip.details,
-                        [detailField]: tip.details[detailField].filter((_, i) => i !== itemIndex),
+                        [detailField]: tip.details[detailField].filter((_, i) => idx !== itemIndex),
                       },
                     }
                   : tip
