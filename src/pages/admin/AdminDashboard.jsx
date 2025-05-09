@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../../../utils/supabase';
+import { supabase } from '../../utils/supabase';
 import Header from '../../../components/Header';
 import { toast, Toaster } from 'react-hot-toast';
 
