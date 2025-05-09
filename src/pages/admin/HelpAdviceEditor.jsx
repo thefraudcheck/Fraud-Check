@@ -207,7 +207,7 @@ function HelpAdviceEditor() {
     };
 
     fetchData();
-  }, []); // Empty dependency array to run only once
+  }, [initialData]); // Added initialData to dependency array
 
   // Auto-save with debounce
   const debouncedSave = debounce(async (newData) => {
@@ -533,7 +533,9 @@ function HelpAdviceEditor() {
         idx === categoryIndex ? { ...cat, tips: cat.tips.filter((_, tIdx) => tIdx !== tipIndex) } : cat
       ),
     });
-    toast.success('Tip removed!');
+    toast
+
+toast.success('Tip removed!');
   };
 
   const addCategory = () => {
