@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { supabase } from '../../utils/supabase';
-import Header from '../../components/Header';
+import { supabase } from '../../../utils/supabase';
+import Header from '../../../components/Header';
 import { toast, Toaster } from 'react-hot-toast';
 
 // Error Boundary for AdminDashboard
@@ -83,7 +83,7 @@ function AdminDashboard() {
 
     // Cleanup listener on unmount
     return () => {
-      authListener.subscription.unsubscribe();
+      authListener?.subscription?.unsubscribe();
     };
   }, [navigate]);
 
@@ -156,7 +156,7 @@ function AdminDashboard() {
             <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
           </div>
         )}
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
             <button

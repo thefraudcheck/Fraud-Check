@@ -17,7 +17,7 @@ import ScamCheckerEditor from './pages/admin/ScamCheckerEditor';
 import AboutEditor from './pages/admin/AboutEditor';
 import HelpAdviceEditor from './pages/admin/HelpAdviceEditor';
 import ContactEditor from './pages/admin/ContactEditor';
-import Login from './pages/Login'; // Import the Login page
+import Login from './pages/Login';
 
 class ErrorBoundary extends React.Component {
   state = { hasError: false, error: null };
@@ -130,127 +130,118 @@ const ProtectedRoute = ({ children }) => {
   return children;
 };
 
-function AppContent() {
+function AppContent({ resetErrorBoundary }) {
   const location = useLocation();
 
   useEffect(() => {
     console.log('AppContent: Current route:', location.pathname);
-    const errorBoundary = document.querySelector('ErrorBoundary');
-    if (errorBoundary && errorBoundary.resetError) {
-      errorBoundary.resetError();
+    if (resetErrorBoundary) {
+      resetErrorBoundary();
     }
-  }, [location.pathname]);
+  }, [location.pathname, resetErrorBoundary]);
 
   return (
-    <ErrorBoundary>
-      <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/articles" element={<Articles />} />
-        <Route path="/articles/:slug" element={<ArticleDetail />} />
-        <Route path="/scam-trends" element={<ScamTrends />} />
-        <Route path="/scam-checker" element={<ScamCheckerCategories />} />
-        <Route path="/help-advice" element={<Advice />} />
-        <Route path="/about" element={<About />} />
-        <Route path="/contacts" element={<Contacts />} />
-        <Route path="/login" element={<Login />} />
-        <Route
-          path="/admin"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/dashboard"
-          element={
-            <ProtectedRoute>
-              <AdminDashboard />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/home"
-          element={
-            <ProtectedRoute>
-              <AdminHomeEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/articles"
-          element={
-            <ProtectedRoute>
-              <ArticleEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/scam-trends"
-          element={
-            <ProtectedRoute>
-              <ScamTrendsEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/scam-checker"
-          element={
-            <ProtectedRoute>
-              <ScamCheckerEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/about"
-          element={
-            <ProtectedRoute>
-              <AboutEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/help-advice"
-          element={
-            <ProtectedRoute>
-              <HelpAdviceEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="/admin/contacts"
-          element={
-            <ProtectedRoute>
-              <ContactEditor />
-            </ProtectedRoute>
-          }
-        />
-        <Route
-          path="*"
-          element={
-            <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-white">
-              <div className="text-center">
-                <h1 className="text-4xl font-bold mb-4 font-inter">404 - Page Not Found</h1>
-                <p className="text-lg mb-4 font-inter">The page you are looking for does not exist.</p>
-                <Link
-                  to="/"
-                  className="px-6 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter"
-                >
-                  Go to Home
-                </Link>
-              </div>
+    <Routes>
+      <Route path="/" element={<Home />} />
+      <Route path="/articles" element={<Articles />} />
+      <Route path="/articles/:slug" element={<ArticleDetail />} />
+      <Route path="/scam-trends" element={<ScamTrends />} />
+      <Route path="/scam-checker" element={<ScamCheckerCategories />} />
+      <Route path="/help-advice" element={<Advice />} />
+      <Route path="/about" element={<About />} />
+      <Route path="/contacts" element={<Contacts />} />
+      <Route path="/login" element={<Login />} />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/home"
+        element={
+          <ProtectedRoute>
+            <AdminHomeEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/articles"
+        element={
+          <ProtectedRoute>
+            <ArticleEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/scam-trends"
+        element={
+          <ProtectedRoute>
+            <ScamTrendsEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/scam-checker"
+        element={
+          <ProtectedRoute>
+            <ScamCheckerEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/about"
+        element={
+          <ProtectedRoute>
+            <AboutEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/help-advice"
+        element={
+          <ProtectedRoute>
+            <HelpAdviceEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="/admin/contacts"
+        element={
+          <ProtectedRoute>
+            <ContactEditor />
+          </ProtectedRoute>
+        }
+      />
+      <Route
+        path="*"
+        element={
+          <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-white">
+            <div className="text-center">
+              <h1 className="text-4xl font-bold mb-4 font-inter">404 - Page Not Found</h1>
+              <p className="text-lg mb-4 font-inter">The page you are looking for does not exist.</p>
+              <Link
+                to="/"
+                className="px-6 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter"
+              >
+                Go to Home
+              </Link>
             </div>
-          }
-        />
-      </Routes>
-    </ErrorBoundary>
+          </div>
+        }
+      />
+    </Routes>
   );
 }
 
 function App() {
   return (
-    <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
-      <AppContent />
+    <BrowserRouter>
+      <ErrorBoundary>
+        <AppContent resetErrorBoundary={() => document.querySelector('ErrorBoundary')?.resetError?.()} />
+      </ErrorBoundary>
     </BrowserRouter>
   );
 }

@@ -1,11 +1,8 @@
 import React from 'react';
-import ReactDOM from 'react-dom'; // Use react-dom for React 17
-import App from './App.jsx';
+import ReactDOM from 'react-dom';
 import './styles.css';
-
-if (process.env.NODE_ENV !== 'production') {
-  console.log('index.js: Starting render');
-}
+import App from './App';
+import reportWebVitals from './reportWebVitals';
 
 ReactDOM.render(
   <React.StrictMode>
@@ -14,6 +11,4 @@ ReactDOM.render(
   document.getElementById('root')
 );
 
-if (process.env.NODE_ENV !== 'production') {
-  console.log('index.js: Render complete');
-}
+reportWebVitals();
