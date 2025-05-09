@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter as Router, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
+import { HashRouter as Router, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
 import { supabase } from './utils/supabase';
 import Home from './pages/Home';
 import Articles from './pages/Articles';
@@ -155,7 +155,14 @@ function AppContent({ resetErrorBoundary }) {
       <Route path="/about" element={<About />} />
       <Route path="/contacts" element={<Contacts />} />
       <Route path="/login" element={<Login />} />
-      <Route path="/admin/dashboard" element={<AdminDashboard />} />
+      <Route
+        path="/admin/dashboard"
+        element={
+          <ProtectedRoute>
+            <AdminDashboard />
+          </ProtectedRoute>
+        }
+      />
       <Route
         path="/admin/home"
         element={
