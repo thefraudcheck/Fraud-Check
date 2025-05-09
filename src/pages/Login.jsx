@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { supabase } from '../utils/supabase';
 
 function Login() {
+  console.log('🧠 Login component loaded');
   const navigate = useNavigate();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -11,16 +12,20 @@ function Login() {
   const handleLogin = async (e) => {
     e.preventDefault();
     try {
+      console.log('Login: Attempting to sign in with email:', email);
       const { error } = await supabase.auth.signInWithPassword({
         email,
         password,
       });
       if (error) {
+        console.error('Login: Sign-in error:', error);
         setError(error.message);
         return;
       }
+      console.log('Login: Sign-in successful, navigating to /admin/dashboard');
       navigate('/admin/dashboard');
     } catch (err) {
+      console.error('Login: Unexpected error:', err);
       setError('An unexpected error occurred.');
     }
   };

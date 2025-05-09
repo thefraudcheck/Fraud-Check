@@ -69,8 +69,8 @@ const ProtectedRoute = ({ children }) => {
       try {
         console.log('ProtectedRoute: Checking Supabase session...');
         const { data: { session }, error } = await supabase.auth.getSession();
-        console.log('🔐 Supabase session:', session);
-        console.log('🔐 Supabase user:', session?.user);
+        console.log('🔐 ProtectedRoute: Supabase session:', session);
+        console.log('🔐 ProtectedRoute: User:', session?.user);
         if (error) {
           console.error('ProtectedRoute: Session check error:', error);
           setError('Authentication failed. Please log in.');
@@ -79,7 +79,6 @@ const ProtectedRoute = ({ children }) => {
         }
         const user = session?.user;
         console.log('ProtectedRoute: User authenticated:', user ? user.id : 'No user');
-        console.log('ProtectedRoute: Loading:', loading);
         setUser(user);
         setLoading(false);
       } catch (err) {
