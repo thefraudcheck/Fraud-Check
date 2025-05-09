@@ -533,9 +533,7 @@ function HelpAdviceEditor() {
         idx === categoryIndex ? { ...cat, tips: cat.tips.filter((_, tIdx) => tIdx !== tipIndex) } : cat
       ),
     });
-    toast
-
-toast.success('Tip removed!');
+    toast.success('Tip removed!');
   };
 
   const addCategory = () => {
@@ -751,7 +749,7 @@ toast.success('Tip removed!');
                         onClick={() => removeTipOfTheWeekDetailItem('whatToDo', idx)}
                         className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
                       >
-                        <TrashIcon className="w-5 h-5" />
+                        <TrashIcon className preto="w-5 h-5" />
                       </button>
                     </div>
                   ))}
