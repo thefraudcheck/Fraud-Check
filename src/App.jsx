@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from 'react';
-import { BrowserRouter, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
 import { supabase } from './utils/supabase';
 import Home from './pages/Home';
 import Articles from './pages/Articles';
@@ -238,11 +238,11 @@ function AppContent({ resetErrorBoundary }) {
 
 function App() {
   return (
-    <BrowserRouter>
+    <Router>
       <ErrorBoundary>
         <AppContent resetErrorBoundary={() => document.querySelector('ErrorBoundary')?.resetError?.()} />
       </ErrorBoundary>
-    </BrowserRouter>
+    </Router>
   );
 }
 
