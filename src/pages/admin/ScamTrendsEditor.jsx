@@ -44,24 +44,26 @@ const defaultWeeklyStatsHeadings = {
 
 // Validate data structure
 const validateData = (data) => {
-  if (!data || typeof data !== 'object') return false;
-  if (
-    !data.hero ||
-    !data.scamOfTheWeek ||
-    !data.pastScamOfTheWeek ||
-    !data.scamCategories ||
-    !data.userReportedScams ||
-    !data.weeklyStats ||
-    !data.quickAlerts
-  )
+  if (!data || typeof data !== 'object') {
+    console.warn('Invalid data: Data is not an object');
     return false;
+  }
+  if (!data.hero) console.warn('Missing hero section in data');
+  if (!data.scamOfTheWeek) console.warn('Missing scamOfTheWeek section in data');
+  if (!data.pastScamOfTheWeek) console.warn('Missing pastScamOfTheWeek section in data');
+  if (!data.scamCategories) console.warn('Missing scamCategories section in data');
+  if (!data.userReportedScams) console.warn('Missing userReportedScams section in data');
+  if (!data.weeklyStats) console.warn('Missing weeklyStats section in data');
+  if (!data.quickAlerts) console.warn('Missing quickAlerts section in data');
   if (
     !Array.isArray(data.pastScamOfTheWeek) ||
     !Array.isArray(data.scamCategories) ||
     !Array.isArray(data.userReportedScams) ||
     !Array.isArray(data.quickAlerts)
-  )
+  ) {
+    console.warn('One or more sections are not arrays');
     return false;
+  }
   return true;
 };
 
@@ -139,7 +141,7 @@ function ScamTrendsEditor() {
           throw new Error('Invalid data structure received from Supabase.');
         }
 
-        const cleanedCategories = initialData.scamCategories.map(({ prevention, reportDate, source, ...rest }) => ({
+        const cleanedCategories = (initialData.scamCategories || []).map(({ prevention, reportDate, source, ...rest }) => ({
           ...rest,
           id: rest.id || uuidv4(),
           related: rest.related || '',
@@ -154,7 +156,7 @@ function ScamTrendsEditor() {
           action: rest.action || '',
         }));
 
-        const cleanedReports = initialData.userReportedScams.map((report) => ({
+        const cleanedReports = (initialData.userReportedScams || []).map((report) => ({
           id: report.id || uuidv4(),
           name: report.name || report.type || 'Unknown Scam',
           type: report.type || report.name || 'Unknown Scam',
@@ -166,9 +168,10 @@ function ScamTrendsEditor() {
           headings: { ...defaultHeadings, ...(report.headings || {}) },
         }));
 
-        const cleanedPastScams = initialData.pastScamOfTheWeek.map((scam) => ({
+        const cleanedPastScams = (initialData.pastScamOfTheWeek || []).map((scam) => ({
           ...scam,
           id: scam.id || uuidv4(),
+          redFlags: Array.isArray(scam.redFlags) ? scam.redFlags : [],
           headings: { ...defaultHeadings, ...(scam.headings || {}) },
         }));
 
@@ -207,6 +210,7 @@ function ScamTrendsEditor() {
           weeklyStats: {
             ...initialData.weeklyStats,
             mostReported: mostCommon,
+            redFlags: Array.isArray(initialData.weeklyStats.redFlags) ? initialData.weeklyStats.redFlags : [],
             headings: { ...defaultWeeklyStatsHeadings, ...(initialData.weeklyStats.headings || {}) },
           },
         };
@@ -251,11 +255,11 @@ function ScamTrendsEditor() {
 
       const dataToSave = {
         ...data,
-        scamCategories: data.scamCategories.map((category) => ({
+        scamCategories: (data.scamCategories || []).map((category) => ({
           ...category,
-          redFlags: category.redFlagsInput
+          redFlags: (category.redFlagsInput || '')
             ? category.redFlagsInput.split(',').map((item) => item.trim()).filter(Boolean)
-            : category.redFlags,
+            : (category.redFlags || []),
         })),
       };
 
@@ -314,8 +318,8 @@ function ScamTrendsEditor() {
   // Reset to last saved state
   const handleReset = () => {
     setData(savedData);
-    setOpenSections(new Array(savedData.scamCategories.length).fill(false));
-    setOpenPastScamSections(new Array(savedData.pastScamOfTheWeek.length).fill(false));
+    setOpenSections(new Array((savedData.scamCategories || []).length).fill(false));
+    setOpenPastScamSections(new Array((savedData.pastScamOfTheWeek || []).length).fill(false));
     setSaveError(null);
     setSaveSuccess(false);
     toast.success('Changes reset to last saved state.', {
@@ -854,7 +858,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Title</label>
                 <input
                   type="text"
-                  value={data.hero.title}
+                  value={data.hero.title || ''}
                   onChange={(e) => updateHero('title', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="Enter hero title"
@@ -863,7 +867,7 @@ function ScamTrendsEditor() {
               <div>
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Subtitle</label>
                 <textarea
-                  value={data.hero.subtitle}
+                  value={data.hero.subtitle || ''}
                   onChange={(e) => updateHero('subtitle', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   rows="4"
@@ -874,7 +878,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Logo URL</label>
                 <input
                   type="text"
-                  value={data.hero.logo}
+                  value={data.hero.logo || ''}
                   onChange={(e) => updateHero('logo', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="Enter logo URL"
@@ -892,7 +896,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Text Color</label>
                 <input
                   type="color"
-                  value={data.hero.textColor}
+                  value={data.hero.textColor || '#000000'}
                   onChange={(e) => updateHero('textColor', e.target.value)}
                   className="w-16 h-10 rounded-md border border-gray-200 dark:border-slate-600 cursor-pointer"
                 />
@@ -909,7 +913,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Name</label>
                 <input
                   type="text"
-                  value={data.scamOfTheWeek.name}
+                  value={data.scamOfTheWeek.name || ''}
                   onChange={(e) => updateScamOfTheWeek('name', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="Enter scam name"
@@ -919,7 +923,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Description</label>
                 <ReactQuill
                   theme="snow"
-                  value={data.scamOfTheWeek.description}
+                  value={data.scamOfTheWeek.description || ''}
                   onChange={(content) => updateScamOfTheWeek('description', content)}
                   modules={quillModules}
                   formats={quillFormats}
@@ -931,7 +935,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags Heading</label>
                 <input
                   type="text"
-                  value={data.scamOfTheWeek.headings.redFlags}
+                  value={data.scamOfTheWeek.headings?.redFlags || ''}
                   onChange={(e) => updateScamOfTheWeekHeading('redFlags', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                   placeholder="Enter heading"
@@ -939,7 +943,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags</label>
                 <input
                   type="text"
-                  value={data.scamOfTheWeek.redFlags.join(', ')}
+                  value={(data.scamOfTheWeek.redFlags || []).join(', ')}
                   onChange={(e) => updateScamOfTheWeek('redFlags', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="e.g., Unsolicited emails, Suspicious links"
@@ -949,7 +953,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action Heading</label>
                 <input
                   type="text"
-                  value={data.scamOfTheWeek.headings.action}
+                  value={data.scamOfTheWeek.headings?.action || ''}
                   onChange={(e) => updateScamOfTheWeekHeading('action', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                   placeholder="Enter heading"
@@ -957,7 +961,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action</label>
                 <ReactQuill
                   theme="snow"
-                  value={data.scamOfTheWeek.action}
+                  value={data.scamOfTheWeek.action || ''}
                   onChange={(content) => updateScamOfTheWeek('action', content)}
                   modules={quillModules}
                   formats={quillFormats}
@@ -969,7 +973,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Report Date</label>
                 <input
                   type="date"
-                  value={data.scamOfTheWeek.reportDate}
+                  value={data.scamOfTheWeek.reportDate || ''}
                   onChange={(e) => updateScamOfTheWeek('reportDate', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                 />
@@ -993,7 +997,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Most Reported Scam</label>
                 <input
                   type="text"
-                  value={data.weeklyStats.mostReported}
+                  value={data.weeklyStats.mostReported || 'None'}
                   readOnly
                   className="w-full px-4 py-2 rounded-lg bg-gray-100 dark:bg-slate-600 border border-gray-200 dark:border-slate-600 text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="e.g., Imposter Scams"
@@ -1003,7 +1007,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Top Delivery Channel</label>
                 <input
                   type="text"
-                  value={data.weeklyStats.topDeliveryChannel}
+                  value={data.weeklyStats.topDeliveryChannel || ''}
                   onChange={(e) => updateWeeklyStats('topDeliveryChannel', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="e.g., Email and SMS"
@@ -1013,7 +1017,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">High Risk Scams Detected</label>
                 <input
                   type="text"
-                  value={data.weeklyStats.highRiskScamsDetected}
+                  value={data.weeklyStats.highRiskScamsDetected || ''}
                   onChange={(e) => updateWeeklyStats('highRiskScamsDetected', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="e.g., 15% increase in fraud cases"
@@ -1023,7 +1027,7 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags Heading</label>
                 <input
                   type="text"
-                  value={data.weeklyStats.headings.redFlags}
+                  value={data.weeklyStats.headings?.redFlags || ''}
                   onChange={(e) => updateWeeklyStatsHeading('redFlags', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                   placeholder="Enter heading"
@@ -1031,17 +1035,18 @@ function ScamTrendsEditor() {
                 <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags</label>
                 <input
                   type="text"
-                  value={data.weeklyStats.redFlags.join(', ')}
+                  value={(data.weeklyStats.redFlags || []).join(', ')}
                   onChange={(e) => updateWeeklyStats('redFlags', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                   placeholder="e.g., Unsolicited contact, Urgency to act"
                 />
               </div>
               <div>
-                <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Report Date</label>
+                <label className="block text-sm font-medium text-gray-7
+                00 dark:text-slate-300 mb-1 font-inter">Report Date</label>
                 <input
                   type="date"
-                  value={data.weeklyStats.reportDate}
+                  value={data.weeklyStats.reportDate || ''}
                   onChange={(e) => updateWeeklyStats('reportDate', e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                 />
@@ -1053,10 +1058,10 @@ function ScamTrendsEditor() {
         <section className="mb-8">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
             <h2 className="text-2xl font-semibold mb-4 font-inter">Past Scam of the Week</h2>
-            {data.pastScamOfTheWeek.length === 0 ? (
+            {(data.pastScamOfTheWeek || []).length === 0 ? (
               <p className="text-gray-500 dark:text-slate-400 font-inter">No past scams added.</p>
             ) : (
-              data.pastScamOfTheWeek.map((pastScam, index) => (
+              (data.pastScamOfTheWeek || []).map((pastScam, index) => (
                 <div
                   key={pastScam.id}
                   className="rounded-lg border border-gray-200 dark:border-slate-600 p-4 mb-4 bg-gray-50 dark:bg-slate-700"
@@ -1080,7 +1085,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Name</label>
                         <input
                           type="text"
-                          value={pastScam.name}
+                          value={pastScam.name || ''}
                           onChange={(e) => updatePastScam(index, 'name', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                           placeholder="Enter scam name"
@@ -1090,7 +1095,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Description</label>
                         <ReactQuill
                           theme="snow"
-                          value={pastScam.description}
+                          value={pastScam.description || ''}
                           onChange={(content) => updatePastScam(index, 'description', content)}
                           modules={quillModules}
                           formats={quillFormats}
@@ -1102,7 +1107,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags Heading</label>
                         <input
                           type="text"
-                          value={pastScam.headings.redFlags}
+                          value={pastScam.headings?.redFlags || ''}
                           onChange={(e) => updatePastScamHeading(index, 'redFlags', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                           placeholder="Enter heading"
@@ -1110,7 +1115,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags</label>
                         <input
                           type="text"
-                          value={pastScam.redFlags.join(', ')}
+                          value={(pastScam.redFlags || []).join(', ')}
                           onChange={(e) => updatePastScam(index, 'redFlags', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                           placeholder="e.g., Unsolicited emails, Suspicious links"
@@ -1120,7 +1125,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action Heading</label>
                         <input
                           type="text"
-                          value={pastScam.headings.action}
+                          value={pastScam.headings?.action || ''}
                           onChange={(e) => updatePastScamHeading(index, 'action', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                           placeholder="Enter heading"
@@ -1128,7 +1133,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action</label>
                         <ReactQuill
                           theme="snow"
-                          value={pastScam.action}
+                          value={pastScam.action || ''}
                           onChange={(content) => updatePastScam(index, 'action', content)}
                           modules={quillModules}
                           formats={quillFormats}
@@ -1140,7 +1145,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Report Date</label>
                         <input
                           type="date"
-                          value={pastScam.reportDate}
+                          value={pastScam.reportDate || ''}
                           onChange={(e) => updatePastScam(index, 'reportDate', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                         />
@@ -1163,10 +1168,10 @@ function ScamTrendsEditor() {
         <section className="mb-8">
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
             <h2 className="text-2xl font-semibold mb-4 font-inter">Common Scam Types</h2>
-            {data.scamCategories.length === 0 ? (
+            {(data.scamCategories || []).length === 0 ? (
               <p className="text-gray-500 dark:text-slate-400 font-inter">No scam types added.</p>
             ) : (
-              data.scamCategories.map((category, index) => (
+              (data.scamCategories || []).map((category, index) => (
                 <div
                   key={category.id}
                   className="rounded-lg border border-gray-200 dark:border-slate-600 p-4 mb-4 bg-gray-50 dark:bg-slate-700"
@@ -1190,7 +1195,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Name</label>
                         <input
                           type="text"
-                          value={category.name}
+                          value={category.name || ''}
                           onChange={(e) => updateCategory(index, 'name', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                           placeholder="Enter scam type name (e.g., Phishing Scams)"
@@ -1200,7 +1205,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Description</label>
                         <ReactQuill
                           theme="snow"
-                          value={category.description}
+                          value={category.description || ''}
                           onChange={(content) => updateCategory(index, 'description', content)}
                           modules={quillModules}
                           formats={quillFormats}
@@ -1212,7 +1217,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags Heading</label>
                         <input
                           type="text"
-                          value={category.headings.redFlags}
+                          value={category.headings?.redFlags || ''}
                           onChange={(e) => updateCategoryHeading(index, 'redFlags', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                           placeholder="Enter heading"
@@ -1220,7 +1225,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags</label>
                         <input
                           type="text"
-                          value={category.redFlagsInput}
+                          value={category.redFlagsInput || ''}
                           onChange={(e) => updateCategory(index, 'redFlagsInput', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                           placeholder="e.g., Suspicious links, Urgent requests"
@@ -1230,7 +1235,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action Heading</label>
                         <input
                           type="text"
-                          value={category.headings.action}
+                          value={category.headings?.action || ''}
                           onChange={(e) => updateCategoryHeading(index, 'action', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                           placeholder="Enter heading"
@@ -1238,7 +1243,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action</label>
                         <ReactQuill
                           theme="snow"
-                          value={category.action}
+                          value={category.action || ''}
                           onChange={(content) => updateCategory(index, 'action', content)}
                           modules={quillModules}
                           formats={quillFormats}
@@ -1250,7 +1255,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Related</label>
                         <input
                           type="text"
-                          value={category.related}
+                          value={category.related || ''}
                           onChange={(e) => updateCategory(index, 'related', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                           placeholder="Enter related scams or keywords"
@@ -1260,7 +1265,7 @@ function ScamTrendsEditor() {
                         <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Image URL</label>
                         <input
                           type="text"
-                          value={category.image}
+                          value={category.image || ''}
                           onChange={(e) => updateCategory(index, 'image', e.target.value)}
                           className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                           placeholder="Enter image URL"
@@ -1277,7 +1282,7 @@ function ScamTrendsEditor() {
                       <div className="flex items-center">
                         <input
                           type="checkbox"
-                          checked={category.includeImage}
+                          checked={category.includeImage || false}
                           onChange={(e) => updateCategory(index, 'includeImage', e.target.checked)}
                           className="h-4 w-4 text-cyan-600 focus:ring-cyan-500 border-gray-300 dark:border-slate-600 rounded"
                         />
@@ -1289,17 +1294,17 @@ function ScamTrendsEditor() {
                           className="text-sm text-gray-600 dark:text-slate-300 mt-2 scam-preview"
                           dangerouslySetInnerHTML={{ __html: category.description || 'No description provided.' }}
                         />
-                        {category.redFlags.length > 0 && (
+                        {(category.redFlags || []).length > 0 && (
                           <div className="mt-2 scam-preview">
                             <span className="bg-red-100 text-red-700 text-sm rounded-full px-3 py-1 font-medium inline-block">
-                              🚩 <span className="scam-preview">{category.headings.redFlags}</span>: {category.redFlags.join(', ')}
+                              🚩 <span className="scam-preview">{category.headings?.redFlags || ''}</span>: {(category.redFlags || []).join(', ')}
                             </span>
                           </div>
                         )}
                         {category.action && (
                           <div className="text-sm text-gray-600 dark:text-slate-300 mt-2 scam-preview">
                             <strong>
-                              <span className="scam-preview">{category.headings.action}</span>:
+                              <span className="scam-preview">{category.headings?.action || ''}</span>:
                             </strong>{' '}
                             <span
                               className="scam-preview"
@@ -1333,10 +1338,10 @@ function ScamTrendsEditor() {
         <section>
           <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm p-6 border border-gray-200 dark:border-slate-700">
             <h2 className="text-2xl font-semibold mb-4 font-inter">User Reported Scams</h2>
-            {data.userReportedScams.length === 0 ? (
+            {(data.userReportedScams || []).length === 0 ? (
               <p className="text-gray-500 dark:text-slate-400 font-inter">No user reports added.</p>
             ) : (
-              data.userReportedScams.map((report, index) => (
+              (data.userReportedScams || []).map((report, index) => (
                 <div
                   key={report.id}
                   className="rounded-lg border border-gray-200 dark:border-slate-600 p-4 mb-4 bg-gray-50 dark:bg-slate-700"
@@ -1347,7 +1352,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Name</label>
                       <input
                         type="text"
-                        value={report.name}
+                        value={report.name || ''}
                         onChange={(e) => updateReport(index, 'name', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                         placeholder="Enter scam name"
@@ -1357,7 +1362,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Description</label>
                       <ReactQuill
                         theme="snow"
-                        value={report.description}
+                        value={report.description || ''}
                         onChange={(content) => updateReport(index, 'description', content)}
                         modules={quillModules}
                         formats={quillFormats}
@@ -1369,7 +1374,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags Heading</label>
                       <input
                         type="text"
-                        value={report.headings.redFlags}
+                        value={report.headings?.redFlags || ''}
                         onChange={(e) => updateReportHeading(index, 'redFlags', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                         placeholder="Enter heading"
@@ -1377,7 +1382,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Red Flags</label>
                       <input
                         type="text"
-                        value={report.redFlags.join(', ')}
+                        value={(report.redFlags || []).join(', ')}
                         onChange={(e) => updateReport(index, 'redFlags', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                         placeholder="e.g., Unsolicited emails, Suspicious links"
@@ -1387,7 +1392,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Report Date</label>
                       <input
                         type="date"
-                        value={report.reportDate}
+                        value={report.reportDate || ''}
                         onChange={(e) => updateReport(index, 'reportDate', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                       />
@@ -1396,7 +1401,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action Heading</label>
                       <input
                         type="text"
-                        value={report.headings.action}
+                        value={report.headings?.action || ''}
                         onChange={(e) => updateReportHeading(index, 'action', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 mb-2 font-inter"
                         placeholder="Enter heading"
@@ -1404,7 +1409,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Action</label>
                       <ReactQuill
                         theme="snow"
-                        value={report.action}
+                        value={report.action || ''}
                         onChange={(content) => updateReport(index, 'action', content)}
                         modules={quillModules}
                         formats={quillFormats}
@@ -1416,7 +1421,7 @@ function ScamTrendsEditor() {
                       <label className="block text-sm font-medium text-gray-700 dark:text-slate-300 mb-1 font-inter">Related URL</label>
                       <input
                         type="url"
-                        value={report.url}
+                        value={report.url || ''}
                         onChange={(e) => updateReport(index, 'url', e.target.value)}
                         className="w-full px-4 py-2 rounded-lg bg-white dark:bg-slate-700 border border-gray-200 dark:border-slate-600 focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-gray-900 dark:text-slate-100 font-inter"
                         placeholder="e.g., https://fake-ticket-site.com"
@@ -1428,17 +1433,17 @@ function ScamTrendsEditor() {
                         className="text-sm text-gray-600 dark:text-slate-300 mt-2 scam-preview"
                         dangerouslySetInnerHTML={{ __html: report.description || 'No description provided.' }}
                       />
-                      {report.redFlags.length > 0 && (
+                      {(report.redFlags || []).length > 0 && (
                         <div className="mt-2 scam-preview">
                           <span className="bg-red-100 text-red-700 text-sm rounded-full px-3 py-1 font-medium inline-block">
-                            🚩 <span className="scam-preview">{report.headings.redFlags}</span>: {report.redFlags.join(', ')}
+                            🚩 <span className="scam-preview">{report.headings?.redFlags || ''}</span>: {(report.redFlags || []).join(', ')}
                           </span>
                         </div>
                       )}
                       {report.action && (
                         <div className="text-sm text-gray-600 dark:text-slate-300 mt-2 scam-preview">
                           <strong>
-                            <span className="scam-preview">{report.headings.action}</span>:
+                            <span className="scam-preview">{report.headings?.action || ''}</span>:
                           </strong>{' '}
                           <span
                             className="scam-preview"

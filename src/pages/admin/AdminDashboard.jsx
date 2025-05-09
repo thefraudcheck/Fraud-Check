@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { supabase } from '../../utils/supabase';
 import Header from '../../components/Header';
+import { toast, Toaster } from 'react-hot-toast';
 
 // Error Boundary for AdminDashboard
 class ErrorBoundary extends React.Component {
@@ -19,15 +20,13 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div style={{ padding: '20px', textAlign: 'center', color: '#dc2626' }}>
-          <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
-            Error in Admin Dashboard
-          </h1>
-          <p>{this.state.error?.message || 'An unexpected error occurred.'}</p>
-          <p>Please refresh the page or contact support.</p>
+        <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-900 text-red-600">
+          <h1 className="text-3xl font-bold mb-4">Error in Admin Dashboard</h1>
+          <p className="mb-4">{this.state.error?.message || 'An unexpected error occurred.'}</p>
+          <p className="mb-4">Please refresh the page or contact support.</p>
           <button
             onClick={() => window.location.reload()}
-            style={{ marginTop: '10px', padding: '8px 16px', background: '#dc2626', color: 'white', borderRadius: '4px' }}
+            className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
           >
             Refresh
           </button>
@@ -48,28 +47,44 @@ function AdminDashboard() {
     const checkUser = async () => {
       setLoading(true);
       try {
+        // Fetch user from Supabase
         const { data: { user }, error } = await supabase.auth.getUser();
         if (error) {
           console.error('Supabase auth error in AdminDashboard:', error);
-          setError(`Authentication failed: ${error.message}`);
-          navigate('/login'); // Changed from '/' to '/login'
-          return;
+          throw new Error(`Authentication failed: ${error.message}`);
         }
         if (!user) {
-          console.log('No user found, redirecting to home page');
-          navigate('/login'); // Changed from '/' to '/login'
+          console.log('No user found, redirecting to login page');
+          navigate('/login', { replace: true });
           return;
         }
         setUser(user);
       } catch (err) {
         console.error('Unexpected error during auth check:', err);
         setError(`Unexpected error: ${err.message}`);
-        navigate('/login'); // Changed from '/' to '/login'
+        navigate('/login', { replace: true });
       } finally {
         setLoading(false);
       }
     };
+
     checkUser();
+
+    // Listen for auth state changes
+    const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
+      if (event === 'SIGNED_OUT') {
+        setUser(null);
+        navigate('/login', { replace: true });
+      } else if (event === 'SIGNED_IN' && session?.user) {
+        setUser(session.user);
+        setLoading(false);
+      }
+    });
+
+    // Cleanup listener on unmount
+    return () => {
+      authListener.subscription.unsubscribe();
+    };
   }, [navigate]);
 
   const handleSignOut = async () => {
@@ -77,13 +92,21 @@ function AdminDashboard() {
       const { error } = await supabase.auth.signOut();
       if (error) {
         console.error('Sign out error:', error);
-        setError(`Sign out failed: ${error.message}`);
-        return;
+        throw new Error(`Sign out failed: ${error.message}`);
       }
-      navigate('/login'); // Changed from '/' to '/login'
+      setUser(null);
+      navigate('/login', { replace: true });
     } catch (err) {
       console.error('Unexpected error during sign out:', err);
       setError(`Unexpected error: ${err.message}`);
+      toast.error(`Sign out failed: ${err.message}`, {
+        duration: 4000,
+        style: {
+          background: '#EF4444',
+          color: '#FFFFFF',
+          borderRadius: '8px',
+        },
+      });
     }
   };
 
@@ -104,15 +127,13 @@ function AdminDashboard() {
 
   if (error) {
     return (
-      <div style={{ padding: '20px', textAlign: 'center', color: '#dc2626' }}>
-        <h1 style={{ fontSize: '1.875rem', fontWeight: 'bold' }}>
-          Failed to Load Admin Dashboard
-        </h1>
-        <p>{error}</p>
-        <p>Please refresh the page or contact support.</p>
+      <div className="min-h-screen flex flex-col items-center justify-center bg-gray-50 dark:bg-slate-900 text-red-600">
+        <h1 className="text-3xl font-bold mb-4">Failed to Load Admin Dashboard</h1>
+        <p className="mb-4">{error}</p>
+        <p className="mb-4">Please refresh the page or contact support.</p>
         <button
           onClick={() => window.location.reload()}
-          style={{ marginTop: '10px', padding: '8px 16px', background: '#dc2626', color: 'white', borderRadius: '4px' }}
+          className="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-all"
         >
           Refresh
         </button>
@@ -121,13 +142,20 @@ function AdminDashboard() {
   }
 
   if (!user) {
-    return null; // ProtectedRoute should handle the redirect, but we ensure no render happens
+    return null; // Navigation to /login should already be triggered
   }
 
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gray-100 dark:bg-slate-900">
-        {Header ? <Header /> : <div className="p-4 bg-white dark:bg-slate-800 shadow-sm"><h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1></div>}
+        <Toaster position="top-right" />
+        {Header ? (
+          <Header />
+        ) : (
+          <div className="p-4 bg-white dark:bg-slate-800 shadow-sm">
+            <h1 className="text-2xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
+          </div>
+        )}
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
           <div className="flex justify-between items-center mb-6">
             <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Admin Dashboard</h1>
