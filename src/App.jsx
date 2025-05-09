@@ -68,14 +68,18 @@ const ProtectedRoute = ({ children }) => {
     const checkUser = async () => {
       try {
         console.log('ProtectedRoute: Checking user authentication...');
-        const { data: { user }, error } = await supabase.auth.getUser();
+        const { data: { session }, error } = await supabase.auth.getSession();
+        console.log('🔐 Supabase session:', session);
+        console.log('🔐 Supabase user:', session?.user);
         if (error) {
-          console.error('ProtectedRoute: Auth check error:', error);
+          console.error('ProtectedRoute: Session check error:', error);
           setError('Authentication failed. Please log in.');
           setLoading(false);
           return;
         }
+        const user = session?.user;
         console.log('ProtectedRoute: User authenticated:', user ? user.id : 'No user');
+        console.log('ProtectedRoute: Loading:', loading);
         setUser(user);
         setLoading(false);
       } catch (err) {
@@ -121,8 +125,8 @@ const ProtectedRoute = ({ children }) => {
     );
   }
 
-  if (!user) {
-    console.log('ProtectedRoute: No user found, navigating to /login');
+  if (!loading && !user) {
+    console.log('ProtectedRoute: No user found after loading, navigating to /login');
     return <Navigate to="/login" replace />;
   }
 
