@@ -65,9 +65,9 @@ const ProtectedRoute = ({ children }) => {
   const [error, setError] = useState(null);
 
   useEffect(() => {
-    const checkUser = async () => {
+    const checkSession = async () => {
       try {
-        console.log('ProtectedRoute: Checking user authentication...');
+        console.log('ProtectedRoute: Checking Supabase session...');
         const { data: { session }, error } = await supabase.auth.getSession();
         console.log('🔐 Supabase session:', session);
         console.log('🔐 Supabase user:', session?.user);
@@ -88,7 +88,7 @@ const ProtectedRoute = ({ children }) => {
         setLoading(false);
       }
     };
-    checkUser();
+    checkSession();
   }, []);
 
   if (loading) {
