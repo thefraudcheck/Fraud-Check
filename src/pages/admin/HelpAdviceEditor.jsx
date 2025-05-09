@@ -144,10 +144,13 @@ function HelpAdviceEditor() {
     },
   };
 
-  const newCategoryTemplate = {
-    category: 'New Category',
-    tips: [newTipTemplate],
-  };
+  const newCategoryTemplate = useMemo(
+    () => ({
+      category: 'New Category',
+      tips: [newTipTemplate],
+    }),
+    []
+  );
 
   const initialData = useMemo(
     () => ({
@@ -167,7 +170,7 @@ function HelpAdviceEditor() {
       tipArchive: [],
       categories: [newCategoryTemplate],
     }),
-    []
+    [newCategoryTemplate]
   );
 
   // Fetch data from Supabase only once
