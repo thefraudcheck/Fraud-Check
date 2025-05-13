@@ -234,6 +234,7 @@ const ArticleEditor = () => {
         };
       });
 
+      console.log('Fetched articles:', normalizedArticles); // Debugging log
       setArticles(normalizedArticles);
     } catch (err) {
       console.error('Fetch articles error:', err.message);
@@ -308,6 +309,7 @@ const ArticleEditor = () => {
       setZoom(1);
       setCrop({ x: 0, y: 0 });
     } catch (err) {
+      console.error('File upload error:', err.message);
       setError(err.message);
       toast.error(err.message);
       setIsUploading(false);
@@ -315,6 +317,7 @@ const ArticleEditor = () => {
   };
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
+    console.log('Crop complete:', croppedArea, croppedAreaPixels);
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
@@ -331,18 +334,15 @@ const ArticleEditor = () => {
       const { type, blockId } = modalState.data;
 
       const fileName = `${Date.now()}_${uuidv4()}.jpg`;
-      // Strip HTML tags from the slug to create a clean file path
       const cleanSlug = stripHTML(newArticle.slug);
       const filePath = `${cleanSlug}/${fileName}`;
 
-      // Upload the cropped image to Supabase storage
       const { error: uploadError } = await supabase.storage
         .from('article-images')
         .upload(filePath, croppedFile, { upsert: true });
 
       if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-      // Get the public URL of the uploaded image
       const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
       if (!data.publicUrl) throw new Error('Failed to get public URL.');
 
@@ -392,6 +392,7 @@ const ArticleEditor = () => {
 
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
     } catch (err) {
+      console.error('Crop save error:', err.message);
       toast.error(`Failed to upload image: ${err.message}`);
     } finally {
       setModalState({ isOpen: false, type: null, data: null });
@@ -820,10 +821,16 @@ const ArticleEditor = () => {
           .drop-zone label:hover {
             text-decoration: underline;
           }
+          .article-card {
+            transform: translateY(0);
+            transition: all 0.3s ease-in-out;
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+          }
           .article-card:hover {
             transform: translateY(-4px);
             box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-            transition: all 0.3s ease-in-out;
           }
           .card-glow {
             position: relative;
@@ -842,6 +849,18 @@ const ArticleEditor = () => {
           }
           .card-glow-dark {
             background: linear-gradient(145deg, #1e293b, #334155);
+          }
+          @media (max-width: 640px) {
+            .article-card {
+              max-width: 100%;
+              margin: 0;
+            }
+            .article-grid {
+              display: flex;
+              flex-direction: column;
+              gap: 1.5rem;
+              align-items: center;
+            }
           }
         `}</style>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -1139,9 +1158,9 @@ const ArticleEditor = () => {
               <section className="mb-12 card-glow dark:card-glow-dark rounded-2xl p-8">
                 <h2 className="text-3xl font-bold mb-8 text-[#002E5D] dark:text-white font-inter">Existing Articles</h2>
                 {articles.length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-400 font-inter">No articles found.</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-inter text-center">No articles available.</p>
                 ) : (
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                  <div className="article-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {articles.map((article) => (
                       <div key={article.slug} className="article-card rounded-xl p-5 bg-gray-50 dark:bg-slate-700 shadow-sm transition-all">
                         <div className="relative mb-4">
@@ -1159,7 +1178,7 @@ const ArticleEditor = () => {
                         </div>
                         <h3 className="text-xl font-semibold text-[#002E5D] dark:text-white font-inter mb-2 line-clamp-2">{stripHTML(article.title)}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-inter mb-2">
-                          {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No Date'} • {article.author}
+                          {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: "long", day: "numeric", year: "numeric" }) : 'No Date'} • {article.author}
                         </p>
                         <p className="text-gray-700 dark:text-gray-300 font-inter mb-4 line-clamp-3">{stripHTML(article.summary)}</p>
                         <div className="flex space-x-4">
@@ -1265,7 +1284,7 @@ const ArticleEditor = () => {
                     <button
                       onClick={handleCrop}
                       className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
-                      disabled={isUploading}
+                      disabled={isUploading || !croppedAreaPixels}
                     >
                       Crop & Save
                     </button>
