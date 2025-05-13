@@ -1,4 +1,3 @@
-// src/components/Articles.jsx
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import ArticleCard from '../components/ArticleCard';
@@ -75,27 +74,8 @@ function Articles() {
 
         if (articlesError) throw articlesError;
 
-        const normalizedArticles = articlesData.map((article) => ({
-          ...article,
-          title: article.title,
-          summary: article.summary,
-          content: article.content,
-          category: article.category,
-          tags: Array.isArray(article.tags) ? article.tags : [],
-          heroImages: (article.article_images || [])
-            .filter(img => img.image_type === 'hero')
-            .sort((a, b) => b.id.localeCompare(a.id))
-            .map((img) => ({
-              ...img,
-              x: img.x ?? 0,
-              y: img.y ?? 0,
-              zoom: img.zoom ?? 1.0,
-              rotation: img.rotation ?? 0,
-              width: img.width,
-              height: img.width,
-              fitMode: img.fitmode ?? 'cover',
-            })),
-          cardImages: (article.article_images || [])
+        const normalizedArticles = articlesData.map((article) => {
+          const cardImages = (article.article_images || [])
             .filter(img => img.image_type === 'card')
             .map((img) => ({
               ...img,
@@ -106,9 +86,33 @@ function Articles() {
               width: img.width,
               height: img.width,
               fitMode: img.fitmode ?? 'cover',
-            })),
-          background: article.article_backgrounds?.[0] || null,
-        }));
+            }));
+
+          return {
+            ...article,
+            title: article.title,
+            summary: article.summary,
+            content: article.content,
+            category: article.category,
+            tags: Array.isArray(article.tags) ? article.tags : [],
+            heroImages: (article.article_images || [])
+              .filter(img => img.image_type === 'hero')
+              .sort((a, b) => b.id.localeCompare(a.id))
+              .map((img) => ({
+                ...img,
+                x: img.x ?? 0,
+                y: img.y ?? 0,
+                zoom: img.zoom ?? 1.0,
+                rotation: img.rotation ?? 0,
+                width: img.width,
+                height: img.width,
+                fitMode: img.fitmode ?? 'cover',
+              })),
+            cardImages,
+            image: cardImages[0]?.src || 'https://via.placeholder.com/150', // Set article.image for ArticleCard
+            background: article.article_backgrounds?.[0] || null,
+          };
+        });
 
         console.log('Normalized articles:', normalizedArticles);
         setArticles(normalizedArticles);

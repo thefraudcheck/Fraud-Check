@@ -14,7 +14,6 @@ import {
   EnvelopeIcon,
   ClipboardDocumentCheckIcon,
   BuildingLibraryIcon,
-  ShieldExclamationIcon,
   LockClosedIcon,
   UserIcon,
   MagnifyingGlassIcon,
@@ -24,6 +23,7 @@ import {
 import logo from '../assets/fraud-check-logo.png';
 import { supabase } from '../utils/supabase.js';
 import Header from '../components/Header';
+import Footer from '../components/Footer';
 
 // Icon mappings
 const iconOptions = {
@@ -41,7 +41,6 @@ const iconOptions = {
   EnvelopeIcon,
   ClipboardDocumentCheckIcon,
   BuildingLibraryIcon,
-  ShieldExclamationIcon,
   LockClosedIcon,
   UserIcon,
 };
@@ -118,42 +117,52 @@ function Advice() {
   const [selectedTip, setSelectedTip] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
+  const [content, setContent] = useState(null);
   const searchRef = useRef(null);
 
   // Scroll to top and fetch data
   useEffect(() => {
     window.scrollTo(0, 0);
     const fetchData = async () => {
-      setLoading(true);
       try {
-        const { data, error } = await supabase.rpc('get_advice_data');
-        if (error) {
-          console.error('Supabase RPC Error:', error);
-          throw new Error(`Failed to fetch data: ${error.message}`);
+        const [adviceResponse, contentResponse] = await Promise.all([
+          supabase.rpc('get_advice_data'),
+          supabase.from('about_content').select('*').maybeSingle(),
+        ]);
+
+        if (adviceResponse.error) {
+          console.error('Supabase RPC Error:', adviceResponse.error);
+          throw new Error(`Failed to fetch advice data: ${adviceResponse.error.message}`);
         }
 
-        if (!data) {
-          console.warn('No data returned from Supabase, using fallback.');
-          throw new Error('No data returned from Supabase.');
+        if (!adviceResponse.data) {
+          console.warn('No advice data returned from Supabase, using fallback.');
+          throw new Error('No advice data returned from Supabase.');
         }
 
-        if (!validateData(data)) {
-          console.warn('Invalid data structure from Supabase:', data);
-          throw new Error('Invalid data structure received from Supabase.');
+        if (!validateData(adviceResponse.data)) {
+          console.warn('Invalid advice data structure from Supabase:', adviceResponse.data);
+          throw new Error('Invalid advice data structure received from Supabase.');
         }
 
-        console.log('Data fetched successfully from Supabase:', data);
-        setCategories(data.categories);
-        setTipOfTheWeek(data.tipOfTheWeek);
+        console.log('Advice data fetched successfully from Supabase:', adviceResponse.data);
+        setCategories(adviceResponse.data.categories);
+        setTipOfTheWeek(adviceResponse.data.tipOfTheWeek);
+
+        setContent(
+          contentResponse.data || {
+            footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+            footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+          }
+        );
       } catch (err) {
         console.error('Fetch Error:', err);
-        setError(`Failed to load content: ${err.message}. Using default data as fallback.`);
         setCategories(initialAdviceData.categories);
         setTipOfTheWeek(initialAdviceData.tipOfTheWeek);
-      } finally {
-        setLoading(false);
+        setContent({
+          footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+          footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+        });
       }
     };
     fetchData();
@@ -204,20 +213,7 @@ function Advice() {
     }))
     .filter((cat) => cat.tips.length > 0 || cat.category.toLowerCase().includes(searchQuery.toLowerCase()));
 
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
-        <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
-          <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-          <path
-            className="opacity-75"
-            fill="currentColor"
-            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
-          />
-        </svg>
-      </div>
-    );
-  }
+  if (!content) return null;
 
   return (
     <div className="min-h-screen text-gray-900 dark:text-gray-100">
@@ -300,8 +296,7 @@ function Advice() {
             />
           </div>
           <div className="-mt-6">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white font-inter flex items-center justify-center gap-3">
-              <ShieldCheckIcon className="w-8 h-8 text-cyan-700" aria-hidden="true" />
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white font-inter">
               Help & Advice
             </h2>
           </div>
@@ -334,12 +329,6 @@ function Advice() {
             </div>
           </div>
         </section>
-
-        {error && (
-          <div className="mt-4 p-4 bg-red-100 text-red-700 rounded-lg">
-            <span>{error}</span>
-          </div>
-        )}
 
         {tipOfTheWeek.title && (
           <section className="mt-8 tip-card animate-fadeIn">
@@ -483,24 +472,7 @@ function Advice() {
         )}
       </div>
 
-      <footer className="bg-gray-800 dark:bg-slate-900 text-white py-6">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="flex flex-col md:flex-row justify-between items-center">
-            <p className="text-sm font-inter">© {new Date().getFullYear()} Scam Checker. All rights reserved.</p>
-            <div className="flex space-x-4 mt-4 md:mt-0">
-              <a href="/privacy" className="text-gray-300 hover:text-cyan-500 font-inter">
-                Privacy Policy
-              </a>
-              <a href="/terms" className="text-gray-300 hover:text-cyan-500 font-inter">
-                Terms of Service
-              </a>
-              <a href="/contact" className="text-gray-300 hover:text-cyan-500 font-inter">
-                Contact Us
-              </a>
-            </div>
-          </div>
-        </div>
-      </footer>
+      <Footer footerAbout={content.footerAbout} footerCopyright={content.footerCopyright} />
     </div>
   );
 }

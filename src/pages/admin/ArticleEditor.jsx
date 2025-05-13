@@ -17,7 +17,6 @@ import { supabase } from '../../utils/supabase';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
 import Cropper from 'react-easy-crop';
-import '../../components/admin/ArticleEditor.css';
 
 const quillModules = {
   toolbar: [
@@ -47,18 +46,20 @@ class ErrorBoundary extends React.Component {
   render() {
     if (this.state.hasError) {
       return (
-        <div className="p-5 text-center text-red-600">
-          <h1 className="text-3xl font-bold">Editor Error</h1>
-          <p>{this.state.error?.message || 'An unexpected error occurred.'}</p>
-          <button
-            onClick={() => {
-              this.setState({ hasError: false, error: null });
-              window.location.reload();
-            }}
-            className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700"
-          >
-            Refresh Page
-          </button>
+        <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 flex items-center justify-center">
+          <div className="text-center text-red-600">
+            <h1 className="text-3xl font-bold font-inter">Editor Error</h1>
+            <p className="mt-2 font-inter">{this.state.error?.message || 'An unexpected error occurred.'}</p>
+            <button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+              className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 font-inter"
+            >
+              Refresh Page
+            </button>
+          </div>
         </div>
       );
     }
@@ -147,15 +148,21 @@ const ArticleEditor = () => {
   }, [newArticle, isAuthenticated]);
 
   useEffect(() => {
-    const handleScroll = () => {
-      if (containerRef.current) setScrollPosition(containerRef.current.scrollTop);
-    };
     const container = containerRef.current;
-    if (container) container.addEventListener('scroll', handleScroll);
+    const handleScroll = () => {
+      if (container) setScrollPosition(container.scrollTop);
+    };
+    if (container) container.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       if (container) container.removeEventListener('scroll', handleScroll);
     };
   }, []);
+
+  useEffect(() => {
+    if (!modalState.isOpen && containerRef.current) {
+      containerRef.current.scrollTop = scrollPosition;
+    }
+  }, [modalState.isOpen, scrollPosition]);
 
   const fetchArticles = async () => {
     try {
@@ -279,129 +286,116 @@ const ArticleEditor = () => {
     }
   };
 
-  const handleFileUpload = useCallback(
-    async (file, type, blockId = null) => {
-      if (!isAuthenticated) {
-        toast.error('Please log in to upload images.');
-        return null;
-      }
-      try {
-        setIsUploading(true);
-        const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-        if (sessionError || !session) throw new Error('User not authenticated.');
-        if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
-        if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
+  const handleFileUpload = async (file, type, blockId = null) => {
+    if (!isAuthenticated) {
+      toast.error('Please log in to upload images.');
+      return;
+    }
+    if (!newArticle.slug) {
+      toast.error('Please set a slug before uploading images.');
+      return;
+    }
+    try {
+      setIsUploading(true);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error('User not authenticated.');
+      if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
+      if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
 
-        const imageUrl = URL.createObjectURL(file);
-        setCropImage(imageUrl);
-        setModalState({ isOpen: true, type: 'cropper', data: { type, blockId } });
-        setCroppedAreaPixels(null);
-        setZoom(1);
-        setCrop({ x: 0, y: 0 });
-
-        return new Promise((resolve) => {
-          window.onCropComplete = async (croppedData) => {
-            try {
-              const { file: croppedFile, width, height } = croppedData;
-              const fileName = `${Date.now()}_${uuidv4()}_${croppedFile.name || 'image.jpg'}`;
-              const { error: uploadError } = await supabase.storage
-                .from('article-images')
-                .upload(`${newArticle.slug || 'temp'}/${fileName}`, croppedFile, { upsert: true });
-
-              if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
-
-              const { data } = supabase.storage.from('article-images').getPublicUrl(`${newArticle.slug || 'temp'}/${fileName}`);
-              if (!data.publicUrl) throw new Error('Failed to get public URL.');
-
-              const imageData = {
-                id: uuidv4(),
-                src: `${data.publicUrl}?t=${Date.now()}`,
-                width: width || (type === 'hero' ? 1200 : type === 'card' ? 320 : 300),
-                height: height || (type === 'hero' ? 300 : type === 'card' ? 320 : 200),
-                fitmode: type === 'hero' ? 'cover' : 'contain',
-                image_type: type,
-                position: { x: 50, y: type === 'hero' ? 0 : 720 },
-                zIndex: type === 'hero' ? 0 : 5,
-              };
-
-              setNewArticle((prev) => {
-                let updatedLayout = [...prev.layout];
-                if (type === 'hero') {
-                  updatedLayout = prev.layout.map((block) =>
-                    block.type === 'hero'
-                      ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
-                      : block
-                  );
-                  return { ...prev, heroType: 'image', heroImage: imageData, layout: updatedLayout };
-                } else if (type === 'card') {
-                  return { ...prev, cardImage: imageData };
-                } else if (type === 'content' && blockId) {
-                  updatedLayout = prev.layout.map((block) =>
-                    block.id === blockId
-                      ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
-                      : block
-                  );
-                  return { ...prev, layout: updatedLayout };
-                } else {
-                  updatedLayout.push({
-                    id: imageData.id,
-                    type: 'image',
-                    src: imageData.src,
-                    width: imageData.width,
-                    height: imageData.height,
-                    fitmode: imageData.fitmode,
-                    position: { x: 50, y: 720 },
-                    zIndex: 5,
-                  });
-                  return { ...prev, layout: updatedLayout };
-                }
-              });
-
-              toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded.`);
-              resolve(imageData);
-            } catch (err) {
-              toast.error(`Upload failed: ${err.message}`);
-              resolve(null);
-            }
-          };
-
-          window.onCropCancel = () => {
-            setModalState({ isOpen: false, type: null, data: null });
-            setCropImage(null);
-            setIsUploading(false);
-            resolve(null);
-          };
-        });
-      } catch (err) {
-        setError(err.message);
-        toast.error(err.message);
-        return null;
-      } finally {
-        if (!modalState.isOpen) setIsUploading(false);
-      }
-    },
-    [isAuthenticated, newArticle.slug, modalState]
-  );
+      const imageUrl = URL.createObjectURL(file);
+      setCropImage(imageUrl);
+      setModalState({ isOpen: true, type: 'cropper', data: { file, type, blockId } });
+      setCroppedAreaPixels(null);
+      setZoom(1);
+      setCrop({ x: 0, y: 0 });
+    } catch (err) {
+      setError(err.message);
+      toast.error(err.message);
+      setIsUploading(false);
+    }
+  };
 
   const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
     setCroppedAreaPixels(croppedAreaPixels);
   }, []);
 
   const handleCrop = async () => {
+    if (!croppedAreaPixels || !cropImage) {
+      toast.error('Please adjust the crop area before saving.');
+      setIsUploading(false);
+      return;
+    }
+
     try {
-      if (!croppedAreaPixels || !cropImage) {
-        toast.error('Please adjust the crop area before saving.');
-        return;
-      }
-      const croppedData = await getCroppedImg(cropImage, croppedAreaPixels);
+      setIsUploading(true);
+      const { file: croppedFile, width, height } = await getCroppedImg(cropImage, croppedAreaPixels);
+      const { type, blockId } = modalState.data;
+
+      const fileName = `${Date.now()}_${uuidv4()}.jpg`;
+      const filePath = `${newArticle.slug}/${fileName}`;
+
+      // Upload the cropped image to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('article-images')
+        .upload(filePath, croppedFile, { upsert: true });
+
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+
+      // Get the public URL of the uploaded image
+      const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
+      if (!data.publicUrl) throw new Error('Failed to get public URL.');
+
+      const imageData = {
+        id: uuidv4(),
+        src: `${data.publicUrl}?t=${Date.now()}`,
+        width: width || (type === 'hero' ? 1200 : type === 'card' ? 320 : 300),
+        height: height || (type === 'hero' ? 300 : type === 'card' ? 320 : 200),
+        fitmode: type === 'hero' ? 'cover' : 'contain',
+        image_type: type,
+        position: { x: 50, y: type === 'hero' ? 0 : 720 },
+        zIndex: type === 'hero' ? 0 : 5,
+      };
+
+      setNewArticle((prev) => {
+        let updatedLayout = [...prev.layout];
+        if (type === 'hero') {
+          updatedLayout = prev.layout.map((block) =>
+            block.type === 'hero'
+              ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
+              : block
+          );
+          return { ...prev, heroType: 'image', heroImage: imageData, layout: updatedLayout };
+        } else if (type === 'card') {
+          return { ...prev, cardImage: imageData };
+        } else if (type === 'content' && blockId) {
+          updatedLayout = prev.layout.map((block) =>
+            block.id === blockId
+              ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
+              : block
+          );
+          return { ...prev, layout: updatedLayout };
+        } else {
+          updatedLayout.push({
+            id: imageData.id,
+            type: 'image',
+            src: imageData.src,
+            width: imageData.width,
+            height: imageData.height,
+            fitmode: imageData.fitmode,
+            position: { x: 50, y: 720 },
+            zIndex: 5,
+          });
+          return { ...prev, layout: updatedLayout };
+        }
+      });
+
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
+    } catch (err) {
+      toast.error(`Failed to upload image: ${err.message}`);
+    } finally {
       setModalState({ isOpen: false, type: null, data: null });
       setCropImage(null);
-      if (window.onCropComplete) await window.onCropComplete(croppedData);
-    } catch (err) {
-      toast.error(`Failed to crop image: ${err.message}`);
-    } finally {
       setIsUploading(false);
-      if (containerRef.current) containerRef.current.scrollTop = scrollPosition;
     }
   };
 
@@ -409,8 +403,6 @@ const ArticleEditor = () => {
     setModalState({ isOpen: false, type: null, data: null });
     setCropImage(null);
     setIsUploading(false);
-    if (window.onCropCancel) window.onCropCancel();
-    if (containerRef.current) containerRef.current.scrollTop = scrollPosition;
   };
 
   const handleSaveArticle = async (silent = false) => {
@@ -577,7 +569,7 @@ const ArticleEditor = () => {
   const openEditor = (field, value, e, blockId = null) => {
     e.preventDefault();
     e.stopPropagation();
-    setScrollPosition(containerRef.current?.scrollTop || 0);
+    if (containerRef.current) setScrollPosition(containerRef.current.scrollTop);
     setModalState({ isOpen: true, type: 'editor', data: { field, value, blockId } });
     setEditorValue(value || '');
     document.body.style.overflow = 'hidden';
@@ -613,7 +605,6 @@ const ArticleEditor = () => {
     setEditorValue('');
     toast.success(`${field.replace(/([A-Z])/g, ' $1').trim().replace(/^./, (str) => str.toUpperCase())} updated.`);
     document.body.style.overflow = 'auto';
-    if (containerRef.current) containerRef.current.scrollTop = scrollPosition;
   };
 
   const closeModal = () => {
@@ -622,32 +613,37 @@ const ArticleEditor = () => {
     setCropImage(null);
     setIsUploading(false);
     document.body.style.overflow = 'auto';
-    if (containerRef.current) containerRef.current.scrollTop = scrollPosition;
+  };
+
+  const stripHTML = (html) => {
+    if (!html) return '';
+    const doc = new DOMParser().parseFromString(html, 'text/html');
+    return doc.body.textContent || '';
   };
 
   const renderFieldPreview = (field, value, label, isRichText = false) => {
     if (isRichText) {
       return (
         <div
-          className="p-4 bg-gray-50 dark:bg-slate-700 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors mb-4"
+          className="p-5 bg-gray-50 dark:bg-slate-700 rounded-xl shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors mb-6"
           onClick={(e) => openEditor(field, value, e)}
         >
-          <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</label>
+          <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">{label}</label>
           {value ? (
-            <div className="text-gray-900 dark:text-gray-100 prose dark:prose-invert max-w-none" dangerouslySetInnerHTML={{ __html: value }} />
+            <p className="text-gray-900 dark:text-gray-100 font-inter">{stripHTML(value)}</p>
           ) : (
-            <p className="text-gray-500 dark:text-gray-400 italic">Click to edit {label.toLowerCase()}</p>
+            <p className="text-gray-500 dark:text-gray-400 italic font-inter">Click to edit {label.toLowerCase()}</p>
           )}
         </div>
       );
     }
     return (
       <div
-        className="p-4 bg-gray-50 dark:bg-slate-700 rounded-lg shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors mb-4"
+        className="p-5 bg-gray-50 dark:bg-slate-700 rounded-xl shadow-sm cursor-pointer hover:bg-gray-100 dark:hover:bg-slate-600 transition-colors mb-6"
         onClick={(e) => openEditor(field, value, e)}
       >
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">{label}</label>
-        <p className="text-gray-900 dark:text-gray-100">
+        <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">{label}</label>
+        <p className="text-gray-900 dark:text-gray-100 font-inter">
           {field === 'date' && value
             ? new Date(value).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
             : value || `Click to edit ${label.toLowerCase()}`}
@@ -756,11 +752,11 @@ const ArticleEditor = () => {
     return (
       <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
         <div className="max-w-7xl mx-auto px-4 py-8 text-center">
-          <h2 className="text-3xl font-bold mb-4">Authentication Required</h2>
-          <p className="text-gray-600 dark:text-gray-400 mb-6">Please log in to access the article editor.</p>
+          <h2 className="text-3xl font-bold mb-4 font-inter">Authentication Required</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6 font-inter">Please log in to access the article editor.</p>
           <button
             onClick={() => navigate('/login')}
-            className="px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-lg"
+            className="px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-lg font-inter"
           >
             Go to Login
           </button>
@@ -776,13 +772,84 @@ const ArticleEditor = () => {
 
   return (
     <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100 overflow-auto">
+      <div className="min-h-screen bg-gradient-to-b from-[#f0fcff] to-[#e0f5fa] dark:bg-slate-900 text-gray-900 dark:text-gray-100 overflow-auto">
+        <style jsx>{`
+          @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+          }
+          .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+          .prose img {
+            border-radius: 0.5rem;
+            margin: 2rem auto;
+            max-width: 100%;
+            height: auto;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          }
+          .drop-zone {
+            border: 2px dashed #0ea5e9;
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+            background: #f8fafc;
+            transition: background 0.3s ease;
+          }
+          .drop-zone.uploading {
+            background: #e0f2fe;
+            cursor: not-allowed;
+          }
+          .drop-zone.drag-over {
+            background: #e0f2fe;
+          }
+          .drop-zone .icon {
+            width: 40px;
+            height: 40px;
+            margin: 0 auto 16px;
+            color: #0ea5e9;
+          }
+          .drop-zone p {
+            margin: 8px 0;
+            color: #64748b;
+            font-family: 'Inter', sans-serif;
+          }
+          .drop-zone label {
+            color: #0ea5e9;
+            cursor: pointer;
+          }
+          .drop-zone label:hover {
+            text-decoration: underline;
+          }
+          .article-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            transition: all 0.3s ease-in-out;
+          }
+          .card-glow {
+            position: relative;
+            background: linear-gradient(145deg, #ffffff, #e6f9fd);
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+            border: 1px solid rgba(14, 165, 233, 0.2);
+            border-radius: 1.5rem;
+          }
+          .card-glow::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: radial-gradient(circle at center, rgba(14,165,233,0.1) 0%, rgba(14,165,233,0) 70%);
+            z-index: -1;
+            border-radius: 1.5rem;
+          }
+          .card-glow-dark {
+            background: linear-gradient(145deg, #1e293b, #334155);
+          }
+        `}</style>
+        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6" ref={containerRef} style={{ overflowY: 'auto', maxHeight: '100vh' }}>
-          <section className="mt-8">
+        <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16 py-8" ref={containerRef} style={{ overflowY: 'auto', maxHeight: '100vh' }}>
+          <section className="mt-6">
             <Link
               to="/admin/dashboard"
-              className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500 mb-6"
+              className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500 font-inter font-medium text-lg mb-6"
             >
               <ArrowLeftIcon className="w-5 h-5 mr-2" />
               Back to Dashboard
@@ -790,18 +857,18 @@ const ArticleEditor = () => {
           </section>
 
           {error && (
-            <div className="mb-4 p-4 bg-red-100 text-red-700 rounded-lg flex items-center">
+            <div className="mb-6 p-4 bg-red-100 text-red-700 rounded-xl flex items-center animate-fadeIn">
               <ExclamationCircleIcon className="w-5 h-5 mr-2" /> {error}
             </div>
           )}
           {success && (
-            <div className="mb-4 p-4 bg-green-100 text-green-700 rounded-lg flex items-center">
+            <div className="mb-6 p-4 bg-green-100 text-green-700 rounded-xl flex items-center animate-fadeIn">
               <CheckCircleIcon className="w-5 h-5 mr-2" /> {success}
             </div>
           )}
 
           {loading ? (
-            <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
+            <div className="card-glow dark:card-glow-dark rounded-2xl p-6 text-center">
               <svg className="animate-spin h-8 w-8 text-cyan-600 mx-auto" viewBox="0 0 24 24">
                 <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                 <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
@@ -809,8 +876,8 @@ const ArticleEditor = () => {
             </div>
           ) : (
             <>
-              <section className="mb-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
-                <h1 className="text-3xl font-bold mb-6 text-gray-900 dark:text-white">Edit Article</h1>
+              <section className="mb-12 card-glow dark:card-glow-dark rounded-2xl p-8">
+                <h1 className="text-4xl font-bold mb-8 text-[#002E5D] dark:text-white font-inter">{editingArticle ? 'Edit Article' : 'Create New Article'}</h1>
                 <div className="space-y-6">
                   {renderFieldPreview('slug', newArticle.slug, 'Slug')}
                   {renderFieldPreview('title', newArticle.title, 'Title', true)}
@@ -820,8 +887,8 @@ const ArticleEditor = () => {
                   {renderFieldPreview('date', newArticle.date, 'Date')}
                   {renderFieldPreview('heroText', newArticle.heroText, 'Hero Text', true)}
 
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hero Type</label>
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">Hero Type</label>
                     <select
                       value={newArticle.heroType}
                       onChange={(e) => {
@@ -837,7 +904,7 @@ const ArticleEditor = () => {
                           ),
                         }));
                       }}
-                      className="w-full p-2 border border-gray-300 rounded-lg dark:border-gray-600 dark:bg-slate-700"
+                      className="w-full p-3 border border-gray-300 rounded-xl dark:border-gray-600 dark:bg-slate-700 dark:text-gray-100 font-inter focus:outline-none focus:ring-2 focus:ring-cyan-500"
                       disabled={!isAuthenticated}
                     >
                       <option value="none">None</option>
@@ -846,21 +913,26 @@ const ArticleEditor = () => {
                   </div>
 
                   {newArticle.heroType === 'image' && (
-                    <div className="mb-4">
-                      <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Hero Image</label>
+                    <div className="mb-6">
+                      <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">Hero Image</label>
                       {newArticle.heroImage?.src ? (
                         <div className="relative">
                           <img
                             src={newArticle.heroImage.src}
                             alt="Hero Image"
-                            className="w-full h-64 object-cover rounded-lg"
+                            className="w-full h-[32rem] object-cover rounded-2xl shadow-md"
                           />
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent rounded-2xl" />
+                          <div className="absolute bottom-10 left-10 right-10">
+                            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 leading-tight">{stripHTML(newArticle.title)}</h1>
+                            <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHTML(newArticle.summary)}</p>
+                          </div>
                           <button
                             onClick={() => deleteBlock(memoizedLayout.find((b) => b.type === 'hero')?.id)}
-                            className="absolute top-2 right-2 px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-lg text-sm"
+                            className="absolute top-4 right-4 p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg shadow-md transition-colors"
                             title="Delete Hero Image"
                           >
-                            <TrashIcon className="w-4 h-4" />
+                            <TrashIcon className="w-5 h-5" />
                           </button>
                         </div>
                       ) : (
@@ -902,21 +974,21 @@ const ArticleEditor = () => {
                     </div>
                   )}
 
-                  <div className="mb-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Card Image</label>
+                  <div className="mb-6">
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">Card Image</label>
                     {newArticle.cardImage?.src ? (
                       <div className="relative">
                         <img
                           src={newArticle.cardImage.src}
                           alt="Card Image"
-                          className="w-48 h-48 object-cover rounded-lg"
+                          className="w-48 h-48 object-cover rounded-xl shadow-md"
                         />
                         <button
                           onClick={() => setNewArticle((prev) => ({ ...prev, cardImage: null }))}
-                          className="absolute top-2 right-2 px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-lg text-sm"
+                          className="absolute top-2 right-2 p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg shadow-md transition-colors"
                           title="Delete Card Image"
                         >
-                          <TrashIcon className="w-4 h-4" />
+                          <TrashIcon className="w-5 h-5" />
                         </button>
                       </div>
                     ) : (
@@ -958,110 +1030,102 @@ const ArticleEditor = () => {
                   </div>
                 </div>
 
-                <div className="mt-6">
-                  <h4 className="text-lg font-semibold mb-4">Article Preview</h4>
-                  <div className="relative bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6" style={{ width: '1200px', margin: '0 auto' }}>
-                    {memoizedLayout.map((block) => (
-                      <div
-                        key={block.id}
-                        className={`layout-block ${block.type}`}
-                        style={{
-                          position: 'relative',
-                          width: block.type === 'hero' || block.type === 'image' ? `${block.width}px` : '100%',
-                          height: block.type === 'hero' || block.type === 'image' ? `${block.height}px` : 'auto',
-                          margin: block.type === 'hero' ? '0 auto 2rem' : '0.5rem auto',
-                        }}
-                      >
-                        {block.type === 'hero' && block.src && (
-                          <div className="hero-container">
-                            <img
-                              src={block.src}
-                              alt="Hero"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: block.fitmode,
-                                borderRadius: '8px',
-                              }}
-                            />
-                            {block.text && (
-                              <div
-                                className="hero-text"
-                                style={{
-                                  position: 'absolute',
-                                  top: '50%',
-                                  left: '50%',
-                                  transform: 'translate(-50%, -50%)',
-                                  width: '100%',
-                                  textAlign: 'center',
-                                  color: '#fff',
-                                  textShadow: '0 2px 4px rgba(0, 0, 0, 0.5)',
-                                }}
-                                dangerouslySetInnerHTML={{ __html: block.text }}
+                <div className="mt-8">
+                  <h4 className="text-2xl font-semibold mb-6 text-[#002E5D] dark:text-white font-inter">Article Preview</h4>
+                  <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl shadow-sm p-8">
+                    <div className="max-w-3xl mx-auto">
+                      {memoizedLayout.map((block) => (
+                        <div
+                          key={block.id}
+                          className={`layout-block ${block.type}`}
+                          style={{
+                            position: 'relative',
+                            width: '100%',
+                            margin: block.type === 'hero' ? '0 auto 3rem' : '0.5rem auto',
+                          }}
+                        >
+                          {block.type === 'hero' && block.src && (
+                            <div className="relative w-full h-[32rem] rounded-2xl overflow-hidden shadow-xl">
+                              <img
+                                src={block.src}
+                                alt="Hero"
+                                className="w-full h-full object-cover"
+                                style={{ objectFit: block.fitmode }}
                               />
-                            )}
-                          </div>
-                        )}
-                        {block.type === 'title' && (
-                          <h1
-                            className="text-4xl font-bold text-gray-900 dark:text-white"
-                            dangerouslySetInnerHTML={{ __html: block.content || 'Untitled' }}
-                          />
-                        )}
-                        {block.type === 'meta' && (
-                          <p
-                            className="text-sm text-gray-600 dark:text-gray-400"
-                            dangerouslySetInnerHTML={{ __html: block.content || 'No Date • Fraud Check Team' }}
-                          />
-                        )}
-                        {block.type === 'summary' && (
-                          <p
-                            className="text-lg text-gray-700 dark:text-gray-300 prose dark:prose-invert"
-                            dangerouslySetInnerHTML={{ __html: block.content || 'No summary provided' }}
-                          />
-                        )}
-                        {block.type === 'content' && (
-                          <div
-                            className="prose dark:prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: block.content || 'No content provided' }}
-                          />
-                        )}
-                        {block.type === 'image' && block.src && (
-                          <div className="image-container" style={{ width: '100%', height: '100%', position: 'relative' }}>
-                            <img
-                              src={block.src}
-                              alt="Content Image"
-                              style={{
-                                width: '100%',
-                                height: '100%',
-                                objectFit: block.fitmode,
-                                borderRadius: '8px',
-                              }}
+                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                              <div className="absolute bottom-10 left-10 right-10">
+                                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 leading-tight">{stripHTML(newArticle.title)}</h1>
+                                <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHTML(newArticle.summary)}</p>
+                              </div>
+                            </div>
+                          )}
+                          {block.type === 'title' && (
+                            <h1
+                              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 leading-tight"
+                              dangerouslySetInnerHTML={{ __html: block.content || 'Untitled' }}
                             />
-                            <button
-                              onClick={() => deleteBlock(block.id)}
-                              className="absolute top-2 right-2 px-3 py-1 bg-red-600 text-white hover:bg-red-700 rounded-lg text-sm"
-                              title="Delete Image"
-                            >
-                              <TrashIcon className="w-4 h-4" />
-                            </button>
-                          </div>
-                        )}
-                      </div>
-                    ))}
+                          )}
+                          {block.type === 'meta' && (
+                            <div className="flex items-center justify-between mb-10 border-b border-gray-200 dark:border-gray-700 pb-4">
+                              <div className="flex items-center space-x-6 text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-inter font-medium">{new Date(newArticle.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                                </div>
+                                <div className="flex items-center space-x-2">
+                                  <span className="text-sm font-inter font-medium">{newArticle.author}</span>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                          {block.type === 'summary' && block.content && (
+                            <p
+                              className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter mb-8"
+                              dangerouslySetInnerHTML={{ __html: block.content }}
+                            />
+                          )}
+                          {block.type === 'content' && (
+                            <div
+                              className="prose prose-lg dark:prose-invert font-inter max-w-none"
+                              dangerouslySetInnerHTML={{ __html: block.content || 'No content provided' }}
+                            />
+                          )}
+                          {block.type === 'image' && block.src && (
+                            <div className="relative my-8 mx-auto" style={{ textAlign: 'center' }}>
+                              <img
+                                src={block.src}
+                                alt="Content Image"
+                                className="rounded-xl shadow-md"
+                                style={{
+                                  width: `${block.width || 300}px`,
+                                  height: `${block.height || 200}px`,
+                                  objectFit: block.fitmode,
+                                }}
+                              />
+                              <button
+                                onClick={() => deleteBlock(block.id)}
+                                className="absolute top-2 right-2 p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg shadow-md transition-colors"
+                                title="Delete Image"
+                              >
+                                <TrashIcon className="w-5 h-5" />
+                              </button>
+                            </div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   </div>
 
-                  <div className="mt-4 flex justify-end space-x-4">
+                  <div className="mt-8 flex justify-end space-x-4">
                     <button
                       onClick={() => addBlock('image')}
-                      className="px-4 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-lg flex items-center"
+                      className="px-4 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-xl flex items-center font-inter font-medium transition-colors"
                       title="Add Image"
                     >
-                      <PlusIcon className="w-5 h-5 mr-2" /> Image
+                      <PlusIcon className="w-5 h-5 mr-2" /> Add Image
                     </button>
                     <button
                       onClick={() => handleSaveArticle()}
-                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg flex items-center"
+                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl flex items-center font-inter font-medium transition-colors"
                       disabled={!isAuthenticated || isUploading}
                     >
                       <CheckCircleIcon className="w-5 h-5 mr-2" />
@@ -1071,36 +1135,42 @@ const ArticleEditor = () => {
                 </div>
               </section>
 
-              <section className="mb-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6">
-                <h2 className="text-2xl font-bold mb-6 text-gray-900 dark:text-white">Existing Articles</h2>
+              <section className="mb-12 card-glow dark:card-glow-dark rounded-2xl p-8">
+                <h2 className="text-3xl font-bold mb-8 text-[#002E5D] dark:text-white font-inter">Existing Articles</h2>
                 {articles.length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-400">No articles found.</p>
+                  <p className="text-gray-600 dark:text-gray-400 font-inter">No articles found.</p>
                 ) : (
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {articles.map((article) => (
-                      <div key={article.slug} className="border border-gray-200 dark:border-gray-600 rounded-lg p-4 hover:shadow-md transition-shadow">
-                        <h3 className="text-xl font-semibold text-gray-900 dark:text-white">{article.title}</h3>
-                        <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">
-                          {article.date ? new Date(article.date).toLocaleDateString() : 'No Date'} • {article.author}
+                      <div key={article.slug} className="article-card rounded-xl p-5 bg-gray-50 dark:bg-slate-700 shadow-sm transition-all">
+                        <div className="relative mb-4">
+                          {article.cardImage?.src ? (
+                            <img
+                              src={article.cardImage.src}
+                              alt={article.title}
+                              className="w-full h-48 object-cover rounded-xl shadow-md"
+                            />
+                          ) : (
+                            <div className="w-full h-48 bg-gray-200 dark:bg-slate-600 rounded-xl flex items-center justify-center">
+                              <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                            </div>
+                          )}
+                        </div>
+                        <h3 className="text-xl font-semibold text-[#002E5D] dark:text-white font-inter mb-2 line-clamp-2">{stripHTML(article.title)}</h3>
+                        <p className="text-sm text-gray-600 dark:text-gray-400 font-inter mb-2">
+                          {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No Date'} • {article.author}
                         </p>
-                        <p className="text-gray-700 dark:text-gray-300 mt-2 line-clamp-3">{article.summary}</p>
-                        {article.heroImage?.src && (
-                          <img
-                            src={article.heroImage.src}
-                            alt={article.title}
-                            className="mt-4 w-full h-32 object-cover rounded-lg"
-                          />
-                        )}
-                        <div className="mt-4 flex space-x-4">
+                        <p className="text-gray-700 dark:text-gray-300 font-inter mb-4 line-clamp-3">{stripHTML(article.summary)}</p>
+                        <div className="flex space-x-4">
                           <button
                             onClick={() => handleEditArticle(article)}
-                            className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-lg flex items-center"
+                            className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl flex items-center font-inter font-medium transition-colors"
                           >
                             <PencilIcon className="w-4 h-4 mr-2" /> Edit
                           </button>
                           <button
                             onClick={() => handleDeleteArticle(article.slug)}
-                            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-lg flex items-center"
+                            className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl flex items-center font-inter font-medium transition-colors"
                           >
                             <TrashIcon className="w-4 h-4 mr-2" /> Delete
                           </button>
@@ -1125,7 +1195,7 @@ const ArticleEditor = () => {
               </button>
               {modalState.type === 'editor' && (
                 <>
-                  <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">
+                  <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">
                     Edit {modalState.data.field.replace(/([A-Z])/g, ' $1').trim().replace(/^./, (str) => str.toUpperCase())}
                   </h2>
                   <ReactQuill
@@ -1140,13 +1210,13 @@ const ArticleEditor = () => {
                   <div className="flex justify-end space-x-4">
                     <button
                       onClick={closeModal}
-                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-lg"
+                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={saveEditor}
-                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg"
+                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
                     >
                       Save
                     </button>
@@ -1155,7 +1225,7 @@ const ArticleEditor = () => {
               )}
               {modalState.type === 'cropper' && (
                 <>
-                  <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Crop Image</h2>
+                  <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">Crop Image</h2>
                   <div className="relative w-full" style={{ height: '400px' }}>
                     <Cropper
                       image={cropImage}
@@ -1173,7 +1243,7 @@ const ArticleEditor = () => {
                     />
                   </div>
                   <div className="mt-4">
-                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Zoom</label>
+                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">Zoom</label>
                     <input
                       type="range"
                       min="1"
@@ -1187,13 +1257,13 @@ const ArticleEditor = () => {
                   <div className="flex justify-end space-x-4 mt-4">
                     <button
                       onClick={handleCropCancel}
-                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-lg"
+                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
                     >
                       Cancel
                     </button>
                     <button
                       onClick={handleCrop}
-                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-lg"
+                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
                       disabled={isUploading}
                     >
                       Crop & Save
@@ -1203,7 +1273,7 @@ const ArticleEditor = () => {
               )}
               {modalState.type === 'image-upload' && (
                 <>
-                  <h2 className="text-2xl font-bold mb-4 text-gray-900 dark:text-white">Upload Image</h2>
+                  <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">Upload Image</h2>
                   <div
                     className={`drop-zone ${isUploading ? 'uploading' : ''}`}
                     onPaste={async (e) => {
@@ -1241,7 +1311,7 @@ const ArticleEditor = () => {
                   <div className="flex justify-end space-x-4 mt-4">
                     <button
                       onClick={closeModal}
-                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-lg"
+                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
                     >
                       Cancel
                     </button>

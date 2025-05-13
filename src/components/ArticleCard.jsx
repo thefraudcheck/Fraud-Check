@@ -1,4 +1,3 @@
-// src/components/ArticleCard.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
 
@@ -16,30 +15,30 @@ const formatDate = (date) => {
   }
 };
 
+const stripHtmlTags = (text) => {
+  if (!text) return '';
+  return text.replace(/<[^>]+>/g, '');
+};
+
 const ArticleCard = ({ article, index, isEditorsPick }) => {
-  const imageUrl = article?.cardImages?.[0]?.src || article?.heroImages?.[0]?.src || null;
-  const title = article?.title || 'Untitled Article';
-  const summary = article?.summary || 'No summary available.';
-  const author = article?.author || 'Fraud Check Team';
+  const imageUrl = article?.image || 'https://via.placeholder.com/150';
+  const title = stripHtmlTags(article?.title || 'Untitled Article');
+  const summary = stripHtmlTags(article?.summary || 'No summary available.');
+  const author = stripHtmlTags(article?.author || 'Fraud Check Team');
   const date = article?.date;
 
   return (
     <div className="max-w-sm bg-white dark:bg-slate-700 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200 dark:border-slate-700">
-      {imageUrl ? (
-        <img
-          src={imageUrl}
-          alt={title}
-          className="w-full h-48 object-cover"
-          onError={(e) => {
-            console.error('Error loading image:', imageUrl);
-            e.target.src = 'https://via.placeholder.com/150';
-          }}
-        />
-      ) : (
-        <div className="w-full h-48 bg-gray-200 dark:bg-slate-600 flex items-center justify-center">
-          <span className="text-gray-500 dark:text-gray-400">No Image</span>
-        </div>
-      )}
+      <img
+        src={imageUrl}
+        alt={title}
+        className="w-full h-60 object-cover"
+        style={{ objectFit: 'cover', objectPosition: 'center' }}
+        onError={(e) => {
+          console.error('Error loading image:', imageUrl);
+          e.target.src = 'https://via.placeholder.com/150';
+        }}
+      />
       <div className="p-4">
         {isEditorsPick && (
           <span className="inline-block bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-300 text-xs font-semibold px-2 py-1 rounded-full mb-2">

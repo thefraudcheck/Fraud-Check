@@ -23,7 +23,7 @@ const mockArticles = [
 
 function Home() {
   const defaultPageData = useMemo(() => ({
-    hero: { title: 'Stay Scam Safe', subtitle: 'Fast, free tools to help you spot scams before it’s too late.', image: fraudCheckImage, textColor: '#FFFFFF', height: 450, position: { y: 20 }, textAlignment: 'bottom-left', overlay: 'bg-black/60' },
+    hero: { title: 'Welcome to Fraud Check', subtitle: 'Fast, free tools to help you spot scams before it’s too late.', image: fraudCheckImage, textColor: '#FFFFFF', height: 480, position: { y: 20 }, textAlignment: 'bottom-left', overlay: 'bg-black/60' },
     keyFeatures: [
       { icon: 'shield-check', title: 'Expert Guidance', description: 'Built with insider fraud experience, our platform helps you spot scams before it’s too late.' },
       { icon: 'light-bulb', title: 'Real Scam Data', description: 'Learn from real reports submitted by people like you — updated weekly.' },
@@ -215,7 +215,7 @@ function Home() {
     <div className="min-h-screen">
       <Header />
       <div className="w-full">
-        <Hero onStartScamCheck={handleStartScamCheck} heroData={pageData.hero} />
+        <Hero className="overflow-visible" onStartScamCheck={handleStartScamCheck} heroData={pageData.hero} />
       </div>
       {error && (
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-4 text-center">
@@ -325,7 +325,7 @@ function Home() {
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-md p-8 card-hover">
             <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 mb-6 font-inter text-center">What To Do If…</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
               {pageData.whatToDoIf.slice(0, 3).map((scenario, idx) => {
                 const Icon = iconMap[scenario.icon] || ShieldCheckIcon;
                 return (
@@ -338,7 +338,7 @@ function Home() {
               })}
             </div>
             <div className="text-center">
-              <Link to="/help-advice" className="text-cyan-700 dark:text-cyan-300 text-base font-medium underline hover:text-cyan-500 dark:hover:text-cyan-400 transition-colors font-inter" aria-label="See all scenarios">See All</Link>
+              <Link to="/help-advice" className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="See all scenarios">See All</Link>
             </div>
           </div>
         </div>

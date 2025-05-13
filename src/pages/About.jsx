@@ -11,26 +11,18 @@ import {
 
 function About() {
   const [content, setContent] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
 
   useEffect(() => {
     window.scrollTo(0, 0);
     const fetchContent = async () => {
       try {
-        setLoading(true);
-        const { data, error } = await supabase
+        const { data } = await supabase
           .from('about_content')
           .select('*')
           .maybeSingle();
 
-        if (error) {
-          throw new Error(`Supabase fetch error: ${error.message} (Code: ${error.code || 'Unknown'})`);
-        }
-
-        if (!data) {
-          // Fallback content if no data is found
-          setContent({
+        setContent(
+          data || {
             title: 'About Fraud Check',
             intro: 'Fraud Check is an independent platform. We help people avoid scams with real expertise, free tools, and real-time advice.',
             precision: 'Precision protection, powered by expertise. We provide scam detection, red flag tips, weekly updates, and smart question flows.',
@@ -41,27 +33,22 @@ function About() {
             missionText2: 'Together we can stop scams before they start. Share Fraud Check or send us your scam story.',
             footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
             footerCopyright: '© 2025 Fraud Check. All rights reserved.',
-          });
-          return;
-        }
-
-        setContent({
-          title: data.title,
-          intro: data.intro,
-          precision: data.precision,
-          community: data.community,
-          trustedText: data.trusted_text,
-          missionTitle: data.mission_title,
-          missionText1: data.mission_text1,
-          missionText2: data.mission_text2,
-          footerAbout: data.footer_about,
-          footerCopyright: data.footer_copyright,
-        });
+          }
+        );
       } catch (err) {
         console.error('Error loading about data:', err);
-        setError('Failed to load content. Please try again later.');
-      } finally {
-        setLoading(false);
+        setContent({
+          title: 'About Fraud Check',
+          intro: 'Fraud Check is an independent platform. We help people avoid scams with real expertise, free tools, and real-time advice.',
+          precision: 'Precision protection, powered by expertise. We provide scam detection, red flag tips, weekly updates, and smart question flows.',
+          community: 'Lead the charge against fraud. Join our community to share your scam stories and help others stay safe.',
+          trustedText: 'Trusted by thousands to stay safe online.',
+          missionTitle: 'Our Mission',
+          missionText1: 'Fraud Check is an independent platform. We’re here to help people avoid scams with real expertise, free tools, and real-time advice.',
+          missionText2: 'Together we can stop scams before they start. Share Fraud Check or send us your scam story.',
+          footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
+          footerCopyright: '© 2025 Fraud Check. All rights reserved.',
+        });
       }
     };
     fetchContent();
@@ -71,13 +58,7 @@ function About() {
     window.alert('Share Fraud Check via your preferred platform!');
   };
 
-  if (loading) {
-    return <div className="text-center py-10 font-inter text-gray-600 dark:text-slate-300">Loading...</div>;
-  }
-
-  if (error) {
-    return <div className="text-center py-10 text-red-600 font-inter">{error}</div>;
-  }
+  if (!content) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
@@ -143,8 +124,7 @@ function About() {
             className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
           />
           <div className="-mt-6">
-            <h2 className="text-4xl font-bold text-gray-900 dark:text-white font-inter flex items-center justify-center gap-3">
-              <ShieldCheckIcon className="w-8 h-8 text-cyan-700" aria-hidden="true" />
+            <h2 className="text-4xl font-bold text-gray-900 dark:text-white font-inter">
               {content.title}
             </h2>
           </div>
