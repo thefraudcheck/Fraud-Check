@@ -15,7 +15,6 @@ import {
 import { supabase } from '../../utils/supabase';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
-import Cropper from 'react-easy-crop';
 
 const quillModules = {
   toolbar: [
@@ -93,10 +92,6 @@ const ArticleEditor = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [modalState, setModalState] = useState({ isOpen: false, type: null, data: null });
   const [editorValue, setEditorValue] = useState('');
-  const [crop, setCrop] = useState({ x: 0, y: 0 });
-  const [zoom, setZoom] = useState(1);
-  const [croppedAreaPixels, setCroppedAreaPixels] = useState(null);
-  const [cropImage, setCropImage] = useState(null);
   const [scrollPosition, setScrollPosition] = useState(0);
   const navigate = useNavigate();
   const containerRef = useRef(null);
@@ -246,46 +241,6 @@ const ArticleEditor = () => {
     }
   };
 
-  const getCroppedImg = async (imageSrc, pixelCrop) => {
-    try {
-      const image = new Image();
-      image.src = imageSrc;
-      image.crossOrigin = 'anonymous';
-      await new Promise((resolve, reject) => {
-        image.onload = resolve;
-        image.onerror = reject;
-      });
-
-      const canvas = document.createElement('canvas');
-      const ctx = canvas.getContext('2d');
-
-      canvas.width = pixelCrop.width;
-      canvas.height = pixelCrop.height;
-
-      ctx.drawImage(
-        image,
-        pixelCrop.x,
-        pixelCrop.y,
-        pixelCrop.width,
-        pixelCrop.height,
-        0,
-        0,
-        pixelCrop.width,
-        pixelCrop.height
-      );
-
-      return new Promise((resolve) => {
-        canvas.toBlob((blob) => {
-          if (!blob) throw new Error('Failed to create cropped image blob');
-          const file = new File([blob], 'cropped-image.jpg', { type: 'image/jpeg' });
-          resolve({ file, width: pixelCrop.width, height: pixelCrop.height });
-        }, 'image/jpeg', 0.9);
-      });
-    } catch (err) {
-      throw new Error(`Error cropping image: ${err.message}`);
-    }
-  };
-
   const handleFileUpload = async (file, type, blockId = null) => {
     if (!isAuthenticated) {
       toast.error('Please log in to upload images.');
@@ -302,55 +257,27 @@ const ArticleEditor = () => {
       if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
       if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
 
-      const imageUrl = URL.createObjectURL(file);
-      setCropImage(imageUrl);
-      setModalState({ isOpen: true, type: 'cropper', data: { file, type, blockId } });
-      setCroppedAreaPixels(null);
-      setZoom(1);
-      setCrop({ x: 0, y: 0 });
-    } catch (err) {
-      console.error('File upload error:', err.message);
-      setError(err.message);
-      toast.error(err.message);
-      setIsUploading(false);
-    }
-  };
-
-  const onCropComplete = useCallback((croppedArea, croppedAreaPixels) => {
-    console.log('Crop complete:', croppedArea, croppedAreaPixels);
-    setCroppedAreaPixels(croppedAreaPixels);
-  }, []);
-
-  const handleCrop = async () => {
-    if (!croppedAreaPixels || !cropImage) {
-      toast.error('Please adjust the crop area before saving.');
-      setIsUploading(false);
-      return;
-    }
-
-    try {
-      setIsUploading(true);
-      const { file: croppedFile, width, height } = await getCroppedImg(cropImage, croppedAreaPixels);
-      const { type, blockId } = modalState.data;
-
       const fileName = `${Date.now()}_${uuidv4()}.jpg`;
       const cleanSlug = stripHTML(newArticle.slug);
       const filePath = `${cleanSlug}/${fileName}`;
 
+      console.log('Uploading file to Supabase:', filePath); // Debugging log
       const { error: uploadError } = await supabase.storage
         .from('article-images')
-        .upload(filePath, croppedFile, { upsert: true });
+        .upload(filePath, file, { upsert: true });
 
       if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
       const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
       if (!data.publicUrl) throw new Error('Failed to get public URL.');
 
+      console.log('Public URL for uploaded image:', data.publicUrl); // Debugging log
+
       const imageData = {
         id: uuidv4(),
         src: `${data.publicUrl}?t=${Date.now()}`,
-        width: width || (type === 'hero' ? 1200 : type === 'card' ? 320 : 300),
-        height: height || (type === 'hero' ? 300 : type === 'card' ? 320 : 200),
+        width: type === 'hero' ? 1200 : type === 'card' ? 320 : 300,
+        height: type === 'hero' ? 300 : type === 'card' ? 320 : 200,
         fitmode: type === 'hero' ? 'cover' : 'contain',
         image_type: type,
         position: { x: 50, y: type === 'hero' ? 0 : 720 },
@@ -392,19 +319,12 @@ const ArticleEditor = () => {
 
       toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
     } catch (err) {
-      console.error('Crop save error:', err.message);
-      toast.error(`Failed to upload image: ${err.message}`);
+      console.error('File upload error:', err.message);
+      setError(err.message);
+      toast.error(err.message);
     } finally {
-      setModalState({ isOpen: false, type: null, data: null });
-      setCropImage(null);
       setIsUploading(false);
     }
-  };
-
-  const handleCropCancel = () => {
-    setModalState({ isOpen: false, type: null, data: null });
-    setCropImage(null);
-    setIsUploading(false);
   };
 
   const handleSaveArticle = async (silent = false) => {
@@ -481,6 +401,7 @@ const ArticleEditor = () => {
       });
 
       if (imagesToInsert.length > 0) {
+        console.log('Inserting images into article_images table:', imagesToInsert); // Debugging log
         const { error: imageError } = await supabase.from('article_images').insert(imagesToInsert);
         if (imageError) throw new Error(`Failed to save images: ${imageError.message}`);
       }
@@ -612,7 +533,6 @@ const ArticleEditor = () => {
   const closeModal = () => {
     setModalState({ isOpen: false, type: null, data: null });
     setEditorValue('');
-    setCropImage(null);
     setIsUploading(false);
     document.body.style.overflow = 'auto';
   };
@@ -1178,7 +1098,7 @@ const ArticleEditor = () => {
                         </div>
                         <h3 className="text-xl font-semibold text-[#002E5D] dark:text-white font-inter mb-2 line-clamp-2">{stripHTML(article.title)}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-inter mb-2">
-                          {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: "long", day: "numeric", year: "numeric" }) : 'No Date'} • {article.author}
+                          {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No Date'} • {article.author}
                         </p>
                         <p className="text-gray-700 dark:text-gray-300 font-inter mb-4 line-clamp-3">{stripHTML(article.summary)}</p>
                         <div className="flex space-x-4">
@@ -1239,54 +1159,6 @@ const ArticleEditor = () => {
                       className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
                     >
                       Save
-                    </button>
-                  </div>
-                </>
-              )}
-              {modalState.type === 'cropper' && (
-                <>
-                  <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">Crop Image</h2>
-                  <div className="relative w-full" style={{ height: '400px' }}>
-                    <Cropper
-                      image={cropImage}
-                      crop={crop}
-                      zoom={zoom}
-                      aspect={modalState.data.type === 'hero' ? 4 / 1 : modalState.data.type === 'card' ? 1 / 1 : 3 / 2}
-                      onCropChange={setCrop}
-                      onZoomChange={setZoom}
-                      onCropComplete={onCropComplete}
-                      restrictPosition={false}
-                      style={{
-                        containerStyle: { background: '#333' },
-                        mediaStyle: { maxWidth: '100%', maxHeight: '100%' },
-                      }}
-                    />
-                  </div>
-                  <div className="mt-4">
-                    <label className="block text-sm font-semibold text-gray-700 dark:text-gray-300 mb-2 font-inter">Zoom</label>
-                    <input
-                      type="range"
-                      min="1"
-                      max="3"
-                      step="0.1"
-                      value={zoom}
-                      onChange={(e) => setZoom(parseFloat(e.target.value))}
-                      className="w-full"
-                    />
-                  </div>
-                  <div className="flex justify-end space-x-4 mt-4">
-                    <button
-                      onClick={handleCropCancel}
-                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
-                    >
-                      Cancel
-                    </button>
-                    <button
-                      onClick={handleCrop}
-                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
-                      disabled={isUploading || !croppedAreaPixels}
-                    >
-                      Crop & Save
                     </button>
                   </div>
                 </>
