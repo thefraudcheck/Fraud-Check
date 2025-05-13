@@ -23,16 +23,18 @@ const stripHtmlTags = (text) => {
 const ArticleCard = ({ article, index, isEditorsPick }) => {
   const imageUrl = article?.image || 'https://via.placeholder.com/150';
   const title = stripHtmlTags(article?.title || 'Untitled Article');
-  const summary = stripHtmlTags(article?.summary || 'No summary available.');
+  const summary = stripHtmlTags(article?.content || 'No summary available.');
   const author = stripHtmlTags(article?.author || 'Fraud Check Team');
   const date = article?.date;
+  // Ensure the slug is clean for use in URLs or upload keys
+  const cleanSlug = stripHtmlTags(article?.slug || 'untitled-article');
 
   return (
     <div className="max-w-sm bg-white dark:bg-slate-700 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200 dark:border-slate-700">
       <img
         src={imageUrl}
         alt={title}
-        className="w-full h-60 object-cover"
+        className="w-full h-60 object-cover transform scale-90"
         style={{ objectFit: 'cover', objectPosition: 'center' }}
         onError={(e) => {
           console.error('Error loading image:', imageUrl);
@@ -51,7 +53,7 @@ const ArticleCard = ({ article, index, isEditorsPick }) => {
         </p>
         <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-3">{summary}</p>
         <Link
-          to={`/articles/${article?.slug || '#'}`}
+          to={`/articles/${cleanSlug}`}
           className="text-blue-600 dark:text-cyan-400 font-semibold hover:underline"
           onClick={(e) => {
             if (!article?.slug) {

@@ -1,4 +1,3 @@
-// src/pages/ArticleDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import { ArrowLeftIcon, ShareIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline';
@@ -11,6 +10,11 @@ const ArticleDetail = () => {
   const [otherArticles, setOtherArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+
+  const stripHtmlTags = (text) => {
+    if (!text) return '';
+    return text.replace(/<[^>]+>/g, '');
+  };
 
   useEffect(() => {
     const fetchArticle = async () => {
@@ -77,6 +81,9 @@ const ArticleDetail = () => {
 
         const normalizedRelated = (relatedData || []).map(item => ({
           ...item,
+          title: stripHtmlTags(item.title || 'Untitled Article'),
+          summary: stripHtmlTags(item.summary || 'No summary available.'),
+          author: stripHtmlTags(item.author || 'Fraud Check Team'),
           image: (item.article_images || []).filter(img => img.image_type === 'card')[0]?.src || 'https://via.placeholder.com/150',
         }));
 
@@ -103,6 +110,7 @@ const ArticleDetail = () => {
 
         const normalizedOther = (otherData || []).map(item => ({
           ...item,
+          title: stripHtmlTags(item.title || 'Untitled Article'),
           image: (item.article_images || []).filter(img => img.image_type === 'card')[0]?.src || 'https://via.placeholder.com/150',
         }));
 
@@ -133,8 +141,8 @@ const ArticleDetail = () => {
 
   const handleShare = async () => {
     const shareData = {
-      title: article?.title || 'Article',
-      text: article?.summary || 'Check out this article!',
+      title: stripHtmlTags(article?.title || 'Article'),
+      text: stripHtmlTags(article?.summary || 'Check out this article!'),
       url: window.location.href,
     };
     try {
@@ -233,14 +241,16 @@ const ArticleDetail = () => {
           <div className="relative w-full h-[32rem] rounded-2xl overflow-hidden shadow-xl">
             <img
               src={article.heroImage.src}
-              alt={article.title}
+              alt={stripHtmlTags(article.title)}
               className="w-full h-full object-cover"
               style={{ objectFit: article.heroImage.fitmode || 'cover' }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
             <div className="absolute bottom-10 left-10 right-10">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">{article.title}</h1>
-              <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{article.summary}</p>
+              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
+                {stripHtmlTags(article.title)}
+              </h1>
+              <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
             </div>
           </div>
         ) : article.heroType === 'linear' ? (
@@ -252,15 +262,19 @@ const ArticleDetail = () => {
           >
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center px-10">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">{article.title}</h1>
-                <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{article.summary}</p>
+                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
+                  {stripHtmlTags(article.title)}
+                </h1>
+                <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="py-16 text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 animate-fadeIn leading-tight">{article.title}</h1>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter">{article.summary}</p>
+            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 animate-fadeIn leading-tight">
+              {stripHtmlTags(article.title)}
+            </h1>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter">{stripHtmlTags(article.summary)}</p>
           </div>
         )}
       </div>
@@ -280,7 +294,7 @@ const ArticleDetail = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <UserIcon className="w-5 h-5" />
-                    <span className="text-sm font-inter font-medium">{article.author || 'Fraud Check Team'}</span>
+                    <span className="text-sm font-inter font-medium">{stripHtmlTags(article.author || 'Fraud Check Team')}</span>
                   </div>
                 </div>
                 <button
@@ -319,7 +333,7 @@ const ArticleDetail = () => {
                         key={index}
                         className="inline-block bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-300 text-sm font-semibold px-4 py-1.5 rounded-full font-inter"
                       >
-                        {tag}
+                        {stripHtmlTags(tag)}
                       </span>
                     ))}
                   </div>
@@ -378,7 +392,7 @@ const ArticleDetail = () => {
                     </h3>
                     <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">{related.summary}</p>
                     <p className="text-gray-500 dark:text-gray-400 text-xs mb-4 font-inter">
-                      {formatDate(related.date)} • {related.author || 'Fraud Check Team'}
+                      {formatDate(related.date)} • {related.author}
                     </p>
                     <Link
                       to={`/articles/${related.slug}`}

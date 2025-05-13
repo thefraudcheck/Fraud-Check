@@ -1,4 +1,3 @@
-// src/pages/admin/ArticleEditor.jsx
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { v4 as uuidv4 } from 'uuid';
@@ -332,7 +331,9 @@ const ArticleEditor = () => {
       const { type, blockId } = modalState.data;
 
       const fileName = `${Date.now()}_${uuidv4()}.jpg`;
-      const filePath = `${newArticle.slug}/${fileName}`;
+      // Strip HTML tags from the slug to create a clean file path
+      const cleanSlug = stripHTML(newArticle.slug);
+      const filePath = `${cleanSlug}/${fileName}`;
 
       // Upload the cropped image to Supabase storage
       const { error: uploadError } = await supabase.storage
@@ -418,7 +419,7 @@ const ArticleEditor = () => {
 
       if (!newArticle.slug || !newArticle.title) throw new Error('Slug and title are required.');
 
-      const normalizedSlug = newArticle.slug.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
+      const normalizedSlug = stripHTML(newArticle.slug).toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
       const updatedArticle = {
         slug: normalizedSlug,
         title: newArticle.title,
