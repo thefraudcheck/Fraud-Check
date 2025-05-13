@@ -16,9 +16,9 @@ const stripHtmlTags = (str) => {
 };
 
 const mockArticles = [
-  { id: '1', slug: 'scam-alert-1', title: 'Beware of Phishing Emails', date: '2025-04-20', content: 'Phishing emails are on the rise...', image: 'https://via.placeholder.com/300' },
-  { id: '2', slug: 'scam-alert-2', title: 'Fake HMRC Calls', date: '2025-04-15', content: 'Scammers impersonating HMRC...', image: 'https://via.placeholder.com/300' },
-  { id: '3', slug: 'scam-alert-3', title: 'Online Shopping Scams', date: '2025-04-10', content: 'Online shopping scams are increasing...', image: 'https://via.placeholder.com/300' },
+  { slug: 'scam-alert-1', title: 'Beware of Phishing Emails', date: '2025-04-20', content: 'Phishing emails are on the rise...', image: 'https://via.placeholder.com/300' },
+  { slug: 'scam-alert-2', title: 'Fake HMRC Calls', date: '2025-04-15', content: 'Scammers impersonating HMRC...', image: 'https://via.placeholder.com/300' },
+  { slug: 'scam-alert-3', title: 'Online Shopping Scams', date: '2025-04-10', content: 'Online shopping scams are increasing...', image: 'https://via.placeholder.com/300' },
 ];
 
 function Home() {
@@ -91,10 +91,33 @@ function Home() {
         }
       }, 10000);
       try {
-        const { data, error } = await supabase.from('articles').select('id, slug, title, date, content, image').order('date', { ascending: false }).limit(3);
+        const { data, error } = await supabase
+          .from('articles')
+          .select(`
+            slug,
+            title,
+            date,
+            content,
+            article_images (
+              src,
+              x,
+              y,
+              width,
+              height,
+              zoom,
+              rotation
+            )
+          `)
+          .order('date', { ascending: false })
+          .limit(3);
         clearTimeout(timeout);
         if (error) throw new Error(`Supabase error: ${error.message}`);
-        if (isMounted) setArticles(data || []);
+        if (isMounted) {
+          setArticles(data.map(item => ({
+            ...item,
+            image: item.article_images?.[0]?.src || 'https://via.placeholder.com/300'
+          })) || []);
+        }
       } catch (error) {
         clearTimeout(timeout);
         console.error('Failed to load articles:', error.message);

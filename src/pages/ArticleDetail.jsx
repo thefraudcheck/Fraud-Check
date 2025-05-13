@@ -1,77 +1,120 @@
+// src/components/ArticleDetail.jsx
 import React, { useState, useEffect } from 'react';
 import { useParams, Link } from 'react-router-dom';
-import ArticleCard from '../components/ArticleCard';
-import fraudCheckLogo from '../assets/fraud-check-logo.png';
-import Header from '../components/Header';
-import { ArrowLeftIcon, ShareIcon } from '@heroicons/react/24/outline';
+import { v4 as uuidv4 } from 'uuid';
+import { ArrowLeftIcon } from '@heroicons/react/24/solid';
 import { supabase } from '../utils/supabase';
-
-class ErrorBoundary extends React.Component {
-  state = { hasError: false, error: null };
-
-  static getDerivedStateFromError(error) {
-    console.error('ArticleDetail ErrorBoundary caught error:', error);
-    return { hasError: true, error };
-  }
-
-  componentDidCatch(error, errorInfo) {
-    console.error('ArticleDetail ErrorBoundary error info:', errorInfo);
-  }
-
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-white">
-          <div className="text-center">
-            <h1 className="text-3xl font-bold text-red-600">Error in Article</h1>
-            <p className="mt-2 text-lg">{this.state.error?.message || 'Something went wrong.'}</p>
-            <p className="mt-2">Please refresh the page or contact support.</p>
-            <button
-              onClick={() => window.location.reload()}
-              className="mt-4 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
-            >
-              Refresh
-            </button>
-          </div>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
+import '../components/admin/ArticleEditor.css';
 
 const ArticleDetail = () => {
   const { slug } = useParams();
   const [article, setArticle] = useState(null);
-  const [relatedArticles, setRelatedArticles] = useState([]);
-  const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
 
   useEffect(() => {
     const fetchArticle = async () => {
       try {
         setLoading(true);
-        const { data: articleData, error: articleError } = await supabase
+        const { data, error: fetchError } = await supabase
           .from('articles')
-          .select('*')
+          .select(`
+            *,
+            article_images (
+              id,
+              src,
+              width,
+              height,
+              fitmode,
+              image_type
+            ),
+            article_backgrounds (
+              background_type,
+              background_data
+            )
+          `)
           .eq('slug', slug)
           .single();
-        if (articleError) throw articleError;
-        setArticle(articleData);
 
-        const { data: relatedData, error: relatedError } = await supabase
-          .from('articles')
-          .select('*')
-          .neq('slug', slug)
-          .eq('category', articleData.category)
-          .order('date', { ascending: false })
-          .limit(3);
-        if (relatedError) throw relatedError;
-        setRelatedArticles(relatedData || []);
+        if (fetchError) throw new Error(`Failed to fetch article: ${fetchError.message}`);
+        if (!data) throw new Error('Article not found');
+
+        const heroImage = data.article_images?.find((img) => img.image_type === 'hero') || null;
+        const contentImages = data.article_images?.filter((img) => img.image_type === 'content') || [];
+
+        setArticle({
+          ...data,
+          heroImage,
+          contentImages,
+          heroType: heroImage ? 'image' : (data.article_backgrounds?.[0]?.background_type || 'none'),
+          gradientColor1: data.article_backgrounds?.[0]?.background_data?.color_one || '#4fd1c5',
+          gradientColor2: data.article_backgrounds?.[0]?.background_data?.color_two || '#38a169',
+          gradientAngle: data.article_backgrounds?.[0]?.background_data?.angle || 90,
+          layout: [
+            {
+              id: data.id || uuidv4(),
+              type: 'hero',
+              src: heroImage?.src || null,
+              width: heroImage?.width || 1200,
+              height: heroImage?.height || 300,
+              fitmode: heroImage?.fitmode || 'cover',
+              text: data.hero_text || '',
+              position: { x: 50, y: 50 },
+              zIndex: 0,
+            },
+            {
+              id: uuidv4(),
+              type: 'title',
+              content: data.title || 'Untitled',
+              position: { x: 50, y: 350 },
+              width: 1100,
+              height: 60,
+              zIndex: 1,
+            },
+            {
+              id: uuidv4(),
+              type: 'meta',
+              content: `${
+                data.date ? new Date(data.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No Date'
+              } • ${data.author || 'Fraud Check Team'}`,
+              position: { x: 50, y: 420 },
+              width: 1100,
+              height: 30,
+              zIndex: 2,
+            },
+            {
+              id: uuidv4(),
+              type: 'summary',
+              content: data.summary || '',
+              position: { x: 50, y: 460 },
+              width: 1100,
+              height: 50,
+              zIndex: 3,
+            },
+            {
+              id: uuidv4(),
+              type: 'content',
+              content: data.content || '',
+              position: { x: 50, y: 520 },
+              width: 1100,
+              height: 200,
+              zIndex: 4,
+            },
+            ...contentImages.map((img) => ({
+              id: img.id || uuidv4(),
+              type: 'image',
+              src: img.src,
+              width: img.width || 300,
+              height: img.height || 200,
+              fitmode: img.fitmode || 'contain',
+              position: { x: 50, y: 720 },
+              zIndex: 5,
+            })),
+          ],
+        });
       } catch (err) {
-        setError(err.message || 'Article not found');
-        setArticle(null);
-        setRelatedArticles([]);
+        console.error('Fetch article error:', err.message);
+        setError(`Failed to load article: ${err.message}`);
       } finally {
         setLoading(false);
       }
@@ -79,155 +122,138 @@ const ArticleDetail = () => {
     fetchArticle();
   }, [slug]);
 
-  const handleShare = async () => {
-    const url = window.location.href;
-    try {
-      if (navigator.share) {
-        await navigator.share({
-          title: article.title,
-          url,
-        });
-      } else {
-        await navigator.clipboard.writeText(url);
-        alert('Article URL copied to clipboard!');
-      }
-    } catch (err) {
-      console.error('Share failed:', err);
-      alert('Failed to share article.');
-    }
-  };
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+          <svg className="animate-spin h-8 w-8 text-cyan-600 mx-auto" viewBox="0 0 24 24">
+            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+            <path
+              className="opacity-75"
+              fill="currentColor"
+              d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+            />
+          </svg>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !article) {
+    return (
+      <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+        <div className="max-w-4xl mx-auto px-4 py-8 text-center">
+          <h2 className="text-3xl font-bold mb-4">Error</h2>
+          <p className="text-gray-600 dark:text-gray-400 mb-6">{error || 'Article not found.'}</p>
+          <Link to="/" className="px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-lg">
+            Back to Home
+          </Link>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <ErrorBoundary>
-      <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
-        <style jsx>{`
-          @keyframes fadeIn {
-            from {
-              opacity: 0;
-              transform: translateY(10px);
-            }
-            to {
-              opacity: 1;
-              transform: translateY(0);
-            }
-          }
-          .animate-fadeIn {
-            animation: fadeIn 0.5s ease-out forwards;
-          }
-          .card-hover:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease-in-out;
-          }
-        `}</style>
-        <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
-        <Header />
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
-          <section className="text-center animate-fadeIn">
-            <img
-              src={fraudCheckLogo}
-              alt="Fraud Check Logo"
-              className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
-              onError={() => console.error('Failed to load logo')}
-            />
-            <div className="-mt-6">
-              <h2 className="text-4xl font-bold text-[#002E5D] dark:text-white font-inter">Fraud Articles</h2>
-              <div className="mt-2 w-24 mx-auto border-b-2 border-cyan-200/50"></div>
-            </div>
-            <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto font-inter">
-              Expert insights, detailed breakdowns, and actionable safety guides from the Fraud Check team.
-            </p>
-          </section>
-
-          <section className="mt-8 bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-8 animate-fadeIn">
-            {loading ? (
-              <p className="text-gray-500 dark:text-gray-400 text-center text-lg font-inter">Loading article...</p>
-            ) : error ? (
-              <p className="text-red-600 text-center text-lg font-inter">{error}</p>
-            ) : !article ? (
-              <p className="text-red-600 text-center text-lg font-inter">Article not found</p>
-            ) : (
-              <>
-                <Link
-                  to="/articles"
-                  className="inline-flex items-center px-6 py-2 bg-cyan-600 text-white hover:bg-cyan-500 active:scale-95 transition-all duration-100 rounded-lg mb-6 font-inter"
-                >
-                  <ArrowLeftIcon className="w-5 h-5 mr-2" />
-                  Return to Articles
-                </Link>
-
-                {article.image && (
-                  <img
-                    src={article.image}
-                    alt={article.title}
-                    className="w-full max-w-3xl rounded-lg mb-6 object-cover"
-                    style={{ aspectRatio: '16/9' }}
-                    onError={() => setArticle({ ...article, image: '' })}
+    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
+      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-12">
+        <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 sm:p-8">
+          <Link
+            to="/"
+            className="inline-flex items-center text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500 mb-8"
+          >
+            <ArrowLeftIcon className="w-5 h-5 mr-2" />
+            Back to Articles
+          </Link>
+          <article className="prose dark:prose-invert max-w-none">
+            {article.layout.map((block) => (
+              <React.Fragment key={block.id}>
+                {block.type === 'hero' && article.heroType === 'linear' && (
+                  <div
+                    className="relative w-full h-96 mb-8 rounded-lg overflow-hidden"
+                    style={{
+                      background: `linear-gradient(${article.gradientAngle}deg, ${article.gradientColor1}, ${article.gradientColor2})`,
+                    }}
+                  >
+                    {block.text && (
+                      <div
+                        className="absolute text-white text-4xl font-bold text-center w-full"
+                        style={{
+                          left: `${block.position?.x || 50}%`,
+                          top: `${block.position?.y || 50}%`,
+                          transform: 'translate(-50%, -50%)',
+                          textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                        }}
+                        dangerouslySetInnerHTML={{ __html: block.text }}
+                      />
+                    )}
+                  </div>
+                )}
+                {block.type === 'hero' && article.heroType === 'image' && block.src && (
+                  <div className="relative w-full h-96 mb-8 rounded-lg overflow-hidden">
+                    <img
+                      src={block.src}
+                      alt="Hero Image"
+                      className="w-full h-full object-cover"
+                      style={{ objectFit: block.fitmode || 'cover' }}
+                    />
+                    {block.text && (
+                      <div
+                        className="absolute text-white text-4xl font-bold text-center w-full"
+                        style={{
+                          left: `${block.position?.x || 50}%`,
+                          top: `${block.position?.y || 50}%`,
+                          transform: 'translate(-50%, -50%)',
+                          textShadow: '2px 2px 4px rgba(0, 0, 0, 0.5)',
+                        }}
+                        dangerouslySetInnerHTML={{ __html: block.text }}
+                      />
+                    )}
+                  </div>
+                )}
+                {block.type === 'title' && (
+                  <h1
+                    className="text-4xl font-bold mb-4 text-center"
+                    dangerouslySetInnerHTML={{ __html: block.content || 'Untitled' }}
                   />
                 )}
-
-                <div className="space-y-4">
-                  {article.category && (
-                    <span className="inline-block bg-cyan-100 text-cyan-800 text-xs font-semibold px-2 py-1 rounded-full">
-                      {article.category}
-                    </span>
-                  )}
-                  <h3 className="text-3xl font-bold text-[#002E5D] dark:text-white font-inter">{article.title}</h3>
-                  <div className="flex flex-wrap gap-4 text-sm text-gray-500 dark:text-slate-400 font-inter">
-                    <p>
-                      {new Date(article.date).toLocaleDateString('en-US', {
-                        month: 'long',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })}
-                    </p>
-                    {article.author && (
-                      <>
-                        <p>•</p>
-                        <p>{article.author}</p>
-                      </>
-                    )}
-                    {Array.isArray(article.tags) && article.tags.length > 0 && (
-                      <>
-                        <p>•</p>
-                        <p>Tags: {article.tags.join(', ')}</p>
-                      </>
-                    )}
-                  </div>
-                  <div className="text-base text-gray-900 dark:text-gray-100 leading-relaxed whitespace-pre-wrap font-inter">
-                    {article.content}
-                  </div>
-                </div>
-
-                {relatedArticles.length > 0 && (
-                  <div className="mt-12">
-                    <h4 className="text-xl font-semibold text-[#002E5D] dark:text-white mb-6 font-inter">
-                      Related Articles
-                    </h4>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                      {relatedArticles.map((related, idx) => (
-                        <ArticleCard key={related.slug || `related-${idx}`} article={related} index={idx} />
-                      ))}
-                    </div>
+                {block.type === 'meta' && (
+                  <p
+                    className="text-gray-600 dark:text-gray-400 text-sm mb-6 text-center"
+                    dangerouslySetInnerHTML={{ __html: block.content }}
+                  />
+                )}
+                {block.type === 'summary' && block.content && (
+                  <p
+                    className="text-lg italic mb-8 text-center"
+                    dangerouslySetInnerHTML={{ __html: block.content }}
+                  />
+                )}
+                {block.type === 'content' && (
+                  <div
+                    className="prose dark:prose-invert max-w-none"
+                    dangerouslySetInnerHTML={{ __html: block.content || 'No content provided' }}
+                  />
+                )}
+                {block.type === 'image' && block.src && (
+                  <div className="mb-6 mx-auto" style={{ textAlign: 'center' }}>
+                    <img
+                      src={block.src}
+                      alt="Content Image"
+                      className="rounded-lg"
+                      style={{
+                        width: `${block.width || 300}px`,
+                        height: `${block.height || 200}px`,
+                        objectFit: block.fitmode || 'contain',
+                      }}
+                    />
                   </div>
                 )}
-              </>
-            )}
-          </section>
+              </React.Fragment>
+            ))}
+          </article>
         </div>
-
-        {article && !loading && !error && (
-          <button
-            onClick={handleShare}
-            className="fixed bottom-4 right-4 bg-cyan-600 text-white rounded-full p-3 shadow-md hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 flex items-center gap-2 font-inter"
-            aria-label="Share article"
-          >
-            <ShareIcon className="w-5 h-5" />
-            Share
-          </button>
-        )}
       </div>
-    </ErrorBoundary>
+    </div>
   );
 };
 

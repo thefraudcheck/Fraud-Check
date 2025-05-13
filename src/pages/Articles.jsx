@@ -1,3 +1,4 @@
+// src/components/Articles.jsx
 import React, { useState, useEffect } from 'react';
 import Header from '../components/Header';
 import ArticleCard from '../components/ArticleCard';
@@ -47,12 +48,70 @@ function Articles() {
     const fetchArticles = async () => {
       try {
         setLoading(true);
-        const { data, error } = await supabase
+        const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
-          .select('*')
+          .select(`
+            *,
+            article_images (
+              id,
+              src,
+              x,
+              y,
+              zoom,
+              rotation,
+              width,
+              height,
+              fitmode,
+              image_type
+            ),
+            article_backgrounds (
+              id,
+              background_type,
+              background_data,
+              shapes
+            )
+          `)
           .order('date', { ascending: false });
-        if (error) throw error;
-        setArticles(data || []);
+
+        if (articlesError) throw articlesError;
+
+        const normalizedArticles = articlesData.map((article) => ({
+          ...article,
+          title: article.title,
+          summary: article.summary,
+          content: article.content,
+          category: article.category,
+          tags: Array.isArray(article.tags) ? article.tags : [],
+          heroImages: (article.article_images || [])
+            .filter(img => img.image_type === 'hero')
+            .sort((a, b) => b.id.localeCompare(a.id))
+            .map((img) => ({
+              ...img,
+              x: img.x ?? 0,
+              y: img.y ?? 0,
+              zoom: img.zoom ?? 1.0,
+              rotation: img.rotation ?? 0,
+              width: img.width,
+              height: img.width,
+              fitMode: img.fitmode ?? 'cover',
+            })),
+          cardImages: (article.article_images || [])
+            .filter(img => img.image_type === 'card')
+            .map((img) => ({
+              ...img,
+              x: img.x ?? 0,
+              y: img.y ?? 0,
+              zoom: img.zoom ?? 1.0,
+              rotation: img.rotation ?? 0,
+              width: img.width,
+              height: img.width,
+              fitMode: img.fitmode ?? 'cover',
+            })),
+          background: article.article_backgrounds?.[0] || null,
+        }));
+
+        console.log('Normalized articles:', normalizedArticles);
+        setArticles(normalizedArticles);
       } catch (err) {
         setError(`Failed to load articles: ${err.message}`);
         setArticles([]);
@@ -115,7 +174,7 @@ function Articles() {
                     key={article.slug || `article-${index}`}
                     article={article}
                     index={index}
-                    isEditorsPick={index === 0} // First article as Editor's Pick
+                    isEditorsPick={index === 0}
                   />
                 ))}
               </div>

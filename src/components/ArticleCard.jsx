@@ -1,74 +1,71 @@
+// src/components/ArticleCard.jsx
 import React from 'react';
 import { Link } from 'react-router-dom';
-import { ArrowRightIcon } from '@heroicons/react/24/outline';
 
-function ArticleCard({ article, index, isEditorsPick }) {
-  const { slug, title, summary, date, author, category } = article || {};
-
-  if (process.env.NODE_ENV !== 'production') {
-    console.log('ArticleCard props:', { slug, title });
+const formatDate = (date) => {
+  if (!date) return 'No Date';
+  try {
+    return new Date(date).toLocaleDateString('en-US', {
+      month: 'long',
+      day: 'numeric',
+      year: 'numeric',
+    });
+  } catch (error) {
+    console.error('Error formatting date:', error);
+    return 'Invalid Date';
   }
+};
 
-  // Format date
-  const formattedDate = date
-    ? new Date(date).toLocaleDateString('en-US', {
-        month: 'long',
-        day: 'numeric',
-        year: 'numeric',
-      })
-    : 'Unknown Date';
+const ArticleCard = ({ article, index, isEditorsPick }) => {
+  const imageUrl = article?.cardImages?.[0]?.src || article?.heroImages?.[0]?.src || null;
+  const title = article?.title || 'Untitled Article';
+  const summary = article?.summary || 'No summary available.';
+  const author = article?.author || 'Fraud Check Team';
+  const date = article?.date;
 
   return (
-    <Link
-      to={`/articles/${slug || 'unknown'}`}
-      className={`block bg-white dark:bg-slate-800 rounded-xl shadow-sm overflow-hidden font-inter ${
-        isEditorsPick ? 'col-span-full' : ''
-      } card-hover`}
-      style={{ animationDelay: `${index * 0.1}s` }}
-      onClick={() => {
-        if (process.env.NODE_ENV !== 'production') {
-          console.log('Navigating to article:', slug);
-        }
-      }}
-    >
-      <div className="relative">
-        {/* Placeholder Image */}
-        <div
-          className="w-full h-48 bg-gradient-to-r from-cyan-200 to-blue-200 rounded-t-xl"
-          style={{ aspectRatio: '16/9' }}
+    <div className="max-w-sm bg-white dark:bg-slate-700 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200 dark:border-slate-700">
+      {imageUrl ? (
+        <img
+          src={imageUrl}
+          alt={title}
+          className="w-full h-48 object-cover"
+          onError={(e) => {
+            console.error('Error loading image:', imageUrl);
+            e.target.src = 'https://via.placeholder.com/150';
+          }}
         />
+      ) : (
+        <div className="w-full h-48 bg-gray-200 dark:bg-slate-600 flex items-center justify-center">
+          <span className="text-gray-500 dark:text-gray-400">No Image</span>
+        </div>
+      )}
+      <div className="p-4">
         {isEditorsPick && (
-          <span className="absolute top-4 left-4 bg-red-200 text-red-800 text-xs font-semibold px-2 py-1 rounded-full flex items-center gap-1">
-            🔥 Editor’s Pick
+          <span className="inline-block bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-300 text-xs font-semibold px-2 py-1 rounded-full mb-2">
+            Editor's Pick
           </span>
         )}
-      </div>
-      <div className={`${isEditorsPick ? 'p-8' : 'p-6'} space-y-4`}>
-        {category && (
-          <span className="inline-block bg-cyan-100 text-cyan-800 text-xs font-semibold px-2 py-1 rounded-full">
-            {category}
-          </span>
-        )}
-        <h3
-          className={`${
-            isEditorsPick ? 'text-2xl' : 'text-xl'
-          } font-bold text-[#002E5D] dark:text-white line-clamp-2`}
-        >
-          {title || 'Untitled'}
-        </h3>
-        <p className="text-sm text-gray-600 dark:text-slate-300 line-clamp-3 flex-grow">
-          {summary || 'No summary available.'}
+        <h2 className="text-xl font-semibold text-gray-800 dark:text-white mb-1 truncate">{title}</h2>
+        <p className="text-sm text-gray-500 dark:text-gray-400 mb-2">
+          {formatDate(date)} • {author}
         </p>
-        <div className="flex justify-between items-center text-xs text-gray-500 dark:text-slate-400">
-          <span>{author || 'Unknown Author'}</span>
-          <span>{formattedDate}</span>
-        </div>
-        <div className="flex items-center gap-1 text-blue-600 font-medium text-sm hover:underline">
-          Read More <ArrowRightIcon className="w-4 h-4" />
-        </div>
+        <p className="text-gray-700 dark:text-gray-300 text-sm mb-3 line-clamp-3">{summary}</p>
+        <Link
+          to={`/articles/${article?.slug || '#'}`}
+          className="text-blue-600 dark:text-cyan-400 font-semibold hover:underline"
+          onClick={(e) => {
+            if (!article?.slug) {
+              e.preventDefault();
+              console.warn('Article slug is missing');
+            }
+          }}
+        >
+          Read More
+        </Link>
       </div>
-    </Link>
+    </div>
   );
-}
+};
 
 export default ArticleCard;
