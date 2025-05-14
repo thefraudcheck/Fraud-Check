@@ -42,12 +42,14 @@ function Articles() {
   const [articles, setArticles] = useState([]);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
+  const [debugInfo, setDebugInfo] = useState({});
 
   useEffect(() => {
     const fetchArticles = async () => {
       try {
         setLoading(true);
         console.log('Fetching articles from Supabase at:', new Date().toISOString());
+        console.log('Supabase URL:', 'https://ualzgryrkwktiqndotzo.supabase.co');
         const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
           .select(`
@@ -123,10 +125,16 @@ function Articles() {
 
         console.log('Normalized articles:', normalizedArticles);
         setArticles(normalizedArticles);
+        setDebugInfo({
+          articlesLength: normalizedArticles.length,
+          articlesSlugs: normalizedArticles.map((a) => a.slug),
+          fetchTime: new Date().toISOString(),
+        });
       } catch (err) {
         console.error('Fetch articles error:', err.message);
         setError(`Failed to load articles: ${err.message}`);
         setArticles([]);
+        setDebugInfo({ error: err.message, fetchTime: new Date().toISOString() });
       } finally {
         setLoading(false);
       }
@@ -223,6 +231,9 @@ function Articles() {
             ) : error ? (
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
                 <p className="text-red-600 text-lg font-inter">{error}</p>
+                <pre className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  {JSON.stringify(debugInfo, null, 2)}
+                </pre>
               </div>
             ) : articles.length === 0 ? (
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
@@ -234,7 +245,7 @@ function Articles() {
                     {
                       supabaseUrl: 'https://ualzgryrkwktiqndotzo.supabase.co',
                       articlesLength: articles.length,
-                      error,
+                      debugInfo,
                       timestamp: new Date().toISOString(),
                     },
                     null,
