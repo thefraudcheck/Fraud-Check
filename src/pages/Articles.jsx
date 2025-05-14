@@ -45,83 +45,39 @@ function Articles() {
   const [debugInfo, setDebugInfo] = useState({});
 
   useEffect(() => {
-    const fetchArticles = async () => {
+    const fetchArticles = async (retryCount = 0) => {
       try {
         setLoading(true);
         console.log('Fetching articles from Supabase at:', new Date().toISOString());
         console.log('Supabase URL:', 'https://ualzgryrkwktiqndotzo.supabase.co');
         const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
-          .select(`
-            *,
-            article_images (
-              id,
-              src,
-              x,
-              y,
-              zoom,
-              rotation,
-              width,
-              height,
-              fitmode,
-              image_type
-            ),
-            article_backgrounds (
-              id,
-              background_type,
-              background_data,
-              shapes
-            )
-          `)
+          .select('slug, title, summary, content, author, date, category, tags')
           .order('date', { ascending: false });
 
         if (articlesError) {
           console.error('Supabase error:', articlesError);
+          if (retryCount < 2) {
+            console.log('Retrying fetch, attempt:', retryCount + 1);
+            return setTimeout(() => fetchArticles(retryCount + 1), 1000);
+          }
           throw new Error(`Supabase error: ${articlesError.message}`);
         }
 
         console.log('Raw Supabase data:', articlesData);
 
-        const normalizedArticles = articlesData.map((article) => {
-          const cardImages = (article.article_images || [])
-            .filter((img) => img.image_type === 'card')
-            .map((img) => ({
-              ...img,
-              src: `${img.src}?t=${Date.now()}`,
-              x: img.x ?? 0,
-              y: img.y ?? 0,
-              zoom: img.zoom ?? 1.0,
-              rotation: img.rotation ?? 0,
-              width: img.width,
-              height: img.width,
-              fitMode: img.fitmode ?? 'cover',
-            }));
-
-          return {
-            ...article,
-            title: article.title || 'Untitled',
-            summary: article.summary || '',
-            content: article.content || '',
-            category: article.category || null,
-            tags: Array.isArray(article.tags) ? article.tags : [],
-            heroImages: (article.article_images || [])
-              .filter((img) => img.image_type === 'hero')
-              .map((img) => ({
-                ...img,
-                src: `${img.src}?t=${Date.now()}`,
-                x: img.x ?? 0,
-                y: img.y ?? 0,
-                zoom: img.zoom ?? 1.0,
-                rotation: img.rotation ?? 0,
-                width: img.width,
-                height: img.width,
-                fitMode: img.fitmode ?? 'cover',
-              })),
-            cardImages,
-            image: cardImages[0]?.src || 'https://via.placeholder.com/150',
-            background: article.article_backgrounds?.[0] || null,
-          };
-        });
+        const normalizedArticles = articlesData.map((article) => ({
+          ...article,
+          title: article.title || 'Untitled',
+          summary: article.summary || '',
+          content: article.content || '',
+          category: article.category || null,
+          tags: Array.isArray(article.tags) ? article.tags : [],
+          cardImages: [], // Temporary: No images for now
+          image: 'https://via.placeholder.com/150', // Fallback
+          heroImages: [],
+          background: null,
+        }));
 
         console.log('Normalized articles:', normalizedArticles);
         setArticles(normalizedArticles);
