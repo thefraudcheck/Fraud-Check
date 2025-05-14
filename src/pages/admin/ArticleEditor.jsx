@@ -67,22 +67,18 @@ class ErrorBoundary extends React.Component {
 
 const ArticleEditor = () => {
   const [articles, setArticles] = useState([]);
-  const [newArticle, setNewArticle] = useState(() => {
-    const savedDraft = localStorage.getItem('articleDraft');
-    const defaultArticle = {
-      slug: '',
-      title: '',
-      summary: '',
-      articleContent: '',
-      author: 'Fraud Check Team',
-      date: new Date().toISOString().split('T')[0],
-      heroType: 'none',
-      heroText: '',
-      heroImage: null,
-      cardImage: null,
-      layout: [],
-    };
-    return savedDraft ? { ...defaultArticle, ...JSON.parse(savedDraft) } : defaultArticle;
+  const [newArticle, setNewArticle] = useState({
+    slug: '',
+    title: '',
+    summary: '',
+    articleContent: '',
+    author: 'Fraud Check Team',
+    date: new Date().toISOString().split('T')[0],
+    heroType: 'none',
+    heroText: '',
+    heroImage: null,
+    cardImage: null,
+    layout: [],
   });
   const [editingArticle, setEditingArticle] = useState(null);
   const [error, setError] = useState('');
@@ -95,10 +91,6 @@ const ArticleEditor = () => {
   const [scrollPosition, setScrollPosition] = useState(0);
   const navigate = useNavigate();
   const containerRef = useRef(null);
-
-  useEffect(() => {
-    localStorage.setItem('articleDraft', JSON.stringify(newArticle));
-  }, [newArticle]);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -120,7 +112,7 @@ const ArticleEditor = () => {
       }
     };
     checkAuth();
-
+    localStorage.removeItem('articleDraft');
     const { data: authListener } = supabase.auth.onAuthStateChange((event, session) => {
       setIsAuthenticated(!!session);
       if (session) fetchArticles();
@@ -144,19 +136,28 @@ const ArticleEditor = () => {
   useEffect(() => {
     const container = containerRef.current;
     const handleScroll = () => {
-      if (container) setScrollPosition(container.scrollTop);
+      if (container && !modalState.isOpen) setScrollPosition(container.scrollTop);
     };
     if (container) container.addEventListener('scroll', handleScroll, { passive: true });
     return () => {
       if (container) container.removeEventListener('scroll', handleScroll);
     };
-  }, []);
+  }, [modalState.isOpen]);
 
   useEffect(() => {
     if (!modalState.isOpen && containerRef.current) {
       containerRef.current.scrollTop = scrollPosition;
     }
-  }, [modalState.isOpen, scrollPosition]);
+  }, [modalState.isOpen]);
+
+  const handleContainerClick = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (containerRef.current) {
+      setScrollPosition(containerRef.current.scrollTop);
+      window.scrollTo(0, containerRef.current.scrollTop);
+    }
+  };
 
   const fetchArticles = async () => {
     try {
@@ -185,7 +186,7 @@ const ArticleEditor = () => {
           ?.filter((img) => img.image_type === 'content')
           .map((img) => ({
             id: img.id || uuidv4(),
-            src: img.src,
+            src: `${img.src}?t=${Date.now()}`,
             width: img.width || 300,
             height: img.height || 200,
             fitmode: img.fitmode || 'contain',
@@ -194,10 +195,6 @@ const ArticleEditor = () => {
             position: { x: 50, y: 720 },
             zIndex: 5,
           })) || [];
-
-        const uniqueContentImages = Array.from(
-          new Map(contentImages.map((img) => [img.src, img])).values()
-        );
 
         return {
           ...article,
@@ -224,12 +221,12 @@ const ArticleEditor = () => {
             { id: uuidv4(), type: 'meta', content: `${article.date || 'No Date'} • ${article.author || 'Fraud Check Team'}`, position: { x: 50, y: 420 }, width: 1100, height: 30, zIndex: 2 },
             { id: uuidv4(), type: 'summary', content: article.summary || '', position: { x: 50, y: 460 }, width: 1100, height: 50, zIndex: 3 },
             { id: uuidv4(), type: 'content', content: article.content || '', position: { x: 50, y: 520 }, width: 1100, height: 200, zIndex: 4 },
-            ...uniqueContentImages,
+            ...contentImages,
           ],
         };
       });
 
-      console.log('Fetched articles:', normalizedArticles); // Debugging log
+      console.log('Fetched articles:', normalizedArticles);
       setArticles(normalizedArticles);
     } catch (err) {
       console.error('Fetch articles error:', err.message);
@@ -242,90 +239,90 @@ const ArticleEditor = () => {
   };
 
   const handleFileUpload = async (file, type, blockId = null) => {
-    if (!isAuthenticated) {
-      toast.error('Please log in to upload images.');
-      return;
-    }
-    if (!newArticle.slug) {
-      toast.error('Please set a slug before uploading images.');
-      return;
-    }
-    try {
-      setIsUploading(true);
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-      if (sessionError || !session) throw new Error('User not authenticated.');
-      if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
-      if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
+  if (!isAuthenticated) {
+    toast.error('Please log in to upload images.');
+    return;
+  }
+  if (!newArticle.slug) {
+    toast.error('Please set a slug before uploading images.');
+    return;
+  }
+  try {
+    setIsUploading(true);
+    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+    if (sessionError || !session) throw new Error('User not authenticated.');
+    if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
+    if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
 
-      const fileName = `${Date.now()}_${uuidv4()}.jpg`;
-      const cleanSlug = stripHTML(newArticle.slug);
-      const filePath = `${cleanSlug}/${fileName}`;
+    const fileName = `${Date.now()}_${uuidv4()}.jpg`;
+    const cleanSlug = stripHTML(newArticle.slug);
+    const filePath = `${cleanSlug}/${fileName}`;
 
-      console.log('Uploading file to Supabase:', filePath); // Debugging log
-      const { error: uploadError } = await supabase.storage
-        .from('article-images')
-        .upload(filePath, file, { upsert: true });
+    console.log('Uploading file to Supabase:', filePath);
+    const { error: uploadError } = await supabase.storage
+      .from('article-images')
+      .upload(filePath, file, { upsert: true });
 
-      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-      const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
-      if (!data.publicUrl) throw new Error('Failed to get public URL.');
+    const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
+    if (!data.publicUrl) throw new Error('Failed to get public URL.');
 
-      console.log('Public URL for uploaded image:', data.publicUrl); // Debugging log
+    console.log('Public URL for uploaded image:', data.publicUrl);
 
-      const imageData = {
-        id: uuidv4(),
-        src: `${data.publicUrl}?t=${Date.now()}`,
-        width: type === 'hero' ? 1200 : type === 'card' ? 320 : 300,
-        height: type === 'hero' ? 300 : type === 'card' ? 320 : 200,
-        fitmode: type === 'hero' ? 'cover' : 'contain',
-        image_type: type,
-        position: { x: 50, y: type === 'hero' ? 0 : 720 },
-        zIndex: type === 'hero' ? 0 : 5,
-      };
+    const imageData = {
+      id: uuidv4(),
+      src: `${data.publicUrl}?t=${Date.now()}`,
+      width: type === 'hero' ? 1200 : type === 'card' ? 320 : 300,
+      height: type === 'hero' ? 300 : type === 'card' ? 320 : 200,
+      fitmode: type === 'hero' ? 'cover' : 'contain',
+      image_type: type,
+      position: { x: 50, y: type === 'hero' ? 0 : 720 },
+      zIndex: type === 'hero' ? 0 : 5,
+    };
 
-      setNewArticle((prev) => {
-        let updatedLayout = [...prev.layout];
-        if (type === 'hero') {
-          updatedLayout = prev.layout.map((block) =>
-            block.type === 'hero'
-              ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
-              : block
-          );
-          return { ...prev, heroType: 'image', heroImage: imageData, layout: updatedLayout };
-        } else if (type === 'card') {
-          return { ...prev, cardImage: imageData };
-        } else if (type === 'content' && blockId) {
-          updatedLayout = prev.layout.map((block) =>
-            block.id === blockId
-              ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
-              : block
-          );
-          return { ...prev, layout: updatedLayout };
-        } else {
-          updatedLayout.push({
-            id: imageData.id,
-            type: 'image',
-            src: imageData.src,
-            width: imageData.width,
-            height: imageData.height,
-            fitmode: imageData.fitmode,
-            position: { x: 50, y: 720 },
-            zIndex: 5,
-          });
-          return { ...prev, layout: updatedLayout };
-        }
-      });
+    setNewArticle((prev) => {
+      let updatedLayout = [...prev.layout];
+      if (type === 'hero') {
+        updatedLayout = prev.layout.map((block) =>
+          block.type === 'hero'
+            ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
+            : block
+        );
+        return { ...prev, heroType: 'image', heroImage: imageData, layout: updatedLayout };
+      } else if (type === 'card') {
+        return { ...prev, cardImage: imageData };
+      } else if (type === 'content' && blockId) {
+        updatedLayout = prev.layout.map((block) =>
+          block.id === blockId
+            ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
+            : block
+        );
+        return { ...prev, layout: updatedLayout };
+      } else {
+        updatedLayout.push({
+          id: imageData.id,
+          type: 'image',
+          src: imageData.src,
+          width: imageData.width,
+          height: imageData.height,
+          fitmode: imageData.fitmode, // Fixed: Changed from page.jsximageData.fitmode
+          position: { x: 50, y: 720 },
+          zIndex: 5,
+        });
+        return { ...prev, layout: updatedLayout };
+      }
+    });
 
-      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
-    } catch (err) {
-      console.error('File upload error:', err.message);
-      setError(err.message);
-      toast.error(err.message);
-    } finally {
-      setIsUploading(false);
-    }
-  };
+    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
+  } catch (err) {
+    console.error('File upload error:', err.message);
+    setError(err.message);
+    toast.error(err.message);
+  } finally {
+    setIsUploading(false);
+  }
+};
 
   const handleSaveArticle = async (silent = false) => {
     if (!isAuthenticated) {
@@ -378,7 +375,7 @@ const ArticleEditor = () => {
           src: newArticle.cardImage.src.split('?')[0],
           width: 320,
           height: 320,
-          fitmode: newArticle.cardImage.fitmode,
+          fitmode: newArticle.cardImage.fitmode || 'cover',
           image_type: 'card',
         });
       }
@@ -401,8 +398,9 @@ const ArticleEditor = () => {
       });
 
       if (imagesToInsert.length > 0) {
-        console.log('Inserting images into article_images table:', imagesToInsert); // Debugging log
-        const { error: imageError } = await supabase.from('article_images').insert(imagesToInsert);
+        console.log('Inserting images into article_images table:', imagesToInsert);
+        const { error: imageError } = await supabase.from('article_images')
+          .upsert(imagesToInsert, { onConflict: ['article_slug', 'src', 'image_type'] });
         if (imageError) throw new Error(`Failed to save images: ${imageError.message}`);
       }
 
@@ -424,9 +422,9 @@ const ArticleEditor = () => {
         setEditingArticle(null);
         setSuccess('Article saved successfully.');
         toast.success('Article saved successfully!');
-        localStorage.removeItem('articleDraft');
       }
     } catch (err) {
+      console.error('Save article error:', err.message);
       setError(`Failed to save article: ${err.message}`);
       toast.error(`Failed to save article: ${err.message}`);
     }
@@ -492,7 +490,10 @@ const ArticleEditor = () => {
   const openEditor = (field, value, e, blockId = null) => {
     e.preventDefault();
     e.stopPropagation();
-    if (containerRef.current) setScrollPosition(containerRef.current.scrollTop);
+    if (containerRef.current) {
+      setScrollPosition(containerRef.current.scrollTop);
+      window.scrollTo(0, containerRef.current.scrollTop);
+    }
     setModalState({ isOpen: true, type: 'editor', data: { field, value, blockId } });
     setEditorValue(value || '');
     document.body.style.overflow = 'hidden';
@@ -695,97 +696,104 @@ const ArticleEditor = () => {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-[#f0fcff] to-[#e0f5fa] dark:bg-slate-900 text-gray-900 dark:text-gray-100 overflow-auto">
-        <style jsx>{`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-          .prose img {
-            border-radius: 0.5rem;
-            margin: 2rem auto;
-            max-width: 100%;
-            height: auto;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-          .drop-zone {
-            border: 2px dashed #0ea5e9;
-            border-radius: 12px;
-            padding: 24px;
-            text-align: center;
-            background: #f8fafc;
-            transition: background 0.3s ease;
-          }
-          .drop-zone.uploading {
-            background: #e0f2fe;
-            cursor: not-allowed;
-          }
-          .drop-zone.drag-over {
-            background: #e0f2fe;
-          }
-          .drop-zone .icon {
-            width: 40px;
-            height: 40px;
-            margin: 0 auto 16px;
-            color: #0ea5e9;
-          }
-          .drop-zone p {
-            margin: 8px 0;
-            color: #64748b;
-            font-family: 'Inter', sans-serif;
-          }
-          .drop-zone label {
-            color: #0ea5e9;
-            cursor: pointer;
-          }
-          .drop-zone label:hover {
-            text-decoration: underline;
-          }
-          .article-card {
-            transform: translateY(0);
-            transition: all 0.3s ease-in-out;
-            width: 100%;
-            max-width: 400px;
-            margin: 0 auto;
-          }
-          .article-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-          }
-          .card-glow {
-            position: relative;
-            background: linear-gradient(145deg, #ffffff, #e6f9fd);
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-            border: 1px solid rgba(14, 165, 233, 0.2);
-            border-radius: 1.5rem;
-          }
-          .card-glow::before {
-            content: '';
-            position: absolute;
-            inset: 0;
-            background: radial-gradient(circle at center, rgba(14,165,233,0.1) 0%, rgba(14,165,233,0) 70%);
-            z-index: -1;
-            border-radius: 1.5rem;
-          }
-          .card-glow-dark {
-            background: linear-gradient(145deg, #1e293b, #334155);
-          }
-          @media (max-width: 640px) {
-            .article-card {
+        <style>
+          {`
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+            .prose img {
+              border-radius: 0.5rem;
+              margin: 2rem auto;
               max-width: 100%;
-              margin: 0;
+              height: auto;
+              box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
             }
-            .article-grid {
-              display: flex;
-              flex-direction: column;
-              gap: 1.5rem;
-              align-items: center;
+            .drop-zone {
+              border: 2px dashed #0ea5e9;
+              border-radius: 12px;
+              padding: 24px;
+              text-align: center;
+              background: #f8fafc;
+              transition: background 0.3s ease;
             }
-          }
-        `}</style>
+            .drop-zone.uploading {
+              background: #e0f2fe;
+              cursor: not-allowed;
+            }
+            .drop-zone.drag-over {
+              background: #e0f2fe;
+            }
+            .drop-zone .icon {
+              width: 40px;
+              height: 40px;
+              margin: 0 auto 16px;
+              color: #0ea5e9;
+            }
+            .drop-zone p {
+              margin: 8px 0;
+              color: #64748b;
+              font-family: 'Inter', sans-serif;
+            }
+            .drop-zone label {
+              color: #0ea5e9;
+              cursor: pointer;
+            }
+            .drop-zone label:hover {
+              text-decoration: underline;
+            }
+            .article-card {
+              transform: translateY(0);
+              transition: all 0.3s ease-in-out;
+              width: 100%;
+              max-width: 400px;
+              margin: 0 auto;
+            }
+            .article-card:hover {
+              transform: translateY(-4px);
+              box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+            }
+            .card-glow {
+              position: relative;
+              background: linear-gradient(145deg, #ffffff, #e6f9fd);
+              box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+              border: 1px solid rgba(14, 165, 233, 0.2);
+              border-radius: 1.5rem;
+            }
+            .card-glow::before {
+              content: '';
+              position: absolute;
+              inset: 0;
+              background: radial-gradient(circle at center, rgba(14,165,233,0.1) 0%, rgba(14,165,233,0) 70%);
+              z-index: -1;
+              border-radius: 1.5rem;
+            }
+            .card-glow-dark {
+              background: linear-gradient(145deg, #1e293b, #334155);
+            }
+            @media (max-width: 640px) {
+              .article-card {
+                max-width: 100%;
+                margin: 0;
+              }
+              .article-grid {
+                display: flex;
+                flex-direction: column;
+                gap: 1.5rem;
+                align-items: center;
+              }
+            }
+          `}
+        </style>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
         <Toaster position="top-center" toastOptions={{ duration: 3000 }} />
-        <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16 py-8" ref={containerRef} style={{ overflowY: 'auto', maxHeight: '100vh' }}>
+        <div
+          className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16 py-8"
+          ref={containerRef}
+          onClick={handleContainerClick}
+          style={{ overflowY: 'auto', maxHeight: '100vh' }}
+        >
           <section className="mt-6">
             <Link
               to="/admin/dashboard"
@@ -939,206 +947,206 @@ const ArticleEditor = () => {
                           if (file && file.type.startsWith('image/')) await handleFileUpload(file, 'card');
                         }}
                         onDragOver={(e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.add('drag-over');
+                            e.preventDefault();
+                            e.currentTarget.classList.add('drag-over');
                         }}
                         onDragLeave={(e) => e.currentTarget.classList.remove('drag-over')}
                         onDrop={async (e) => {
-                          e.preventDefault();
-                          e.currentTarget.classList.remove('drag-over');
-                          const file = e.dataTransfer.files[0];
-                          if (file && file.type.startsWith('image/')) await handleFileUpload(file, 'card');
+                            e.preventDefault();
+                            e.currentTarget.classList.remove('drag-over');
+                            const file = e.dataTransfer.files[0];
+                            if (file && file.type.startsWith('image/')) await handleFileUpload(file, 'card');
                         }}
-                      >
+                        >
                         <PhotoIcon className="icon" />
                         <p>
-                          Drag and drop, paste, or{' '}
-                          <label className="cursor-pointer">
+                            Drag and drop, paste, or{' '}
+                            <label className="cursor-pointer">
                             click to upload
                             <input
-                              type="file"
-                              accept="image/png,image/jpeg"
-                              onChange={(e) => handleFileUpload(e.target.files[0], 'card')}
-                              className="hidden"
-                              disabled={isUploading}
+                                type="file"
+                                accept="image/png,image/jpeg"
+                                onChange={(e) => handleFileUpload(e.target.files[0], 'card')}
+                                className="hidden"
+                                disabled={isUploading}
                             />
-                          </label>
+                            </label>
                         </p>
                         <p className="text-sm mt-1">PNG or JPG, max 2MB, 320x320 recommended</p>
-                      </div>
+                        </div>
                     )}
-                  </div>
+                    </div>
                 </div>
 
                 <div className="mt-8">
-                  <h4 className="text-2xl font-semibold mb-6 text-[#002E5D] dark:text-white font-inter">Article Preview</h4>
-                  <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl shadow-sm p-8">
+                    <h4 className="text-2xl font-semibold mb-6 text-[#002E5D] dark:text-white font-inter">Article Preview</h4>
+                    <div className="bg-gray-50 dark:bg-slate-800 rounded-2xl shadow-sm p-8">
                     <div className="max-w-3xl mx-auto">
-                      {memoizedLayout.map((block) => (
+                        {memoizedLayout.map((block) => (
                         <div
-                          key={block.id}
-                          className={`layout-block ${block.type}`}
-                          style={{
+                            key={block.id}
+                            className={`layout-block ${block.type}`}
+                            style={{
                             position: 'relative',
                             width: '100%',
                             margin: block.type === 'hero' ? '0 auto 3rem' : '0.5rem auto',
-                          }}
+                            }}
                         >
-                          {block.type === 'hero' && block.src && (
+                            {block.type === 'hero' && block.src && (
                             <div className="relative w-full h-[32rem] rounded-2xl overflow-hidden shadow-xl">
-                              <img
+                                <img
                                 src={block.src}
                                 alt="Hero"
                                 className="w-full h-full object-cover"
                                 style={{ objectFit: block.fitmode }}
-                              />
-                              <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                              <div className="absolute bottom-10 left-10 right-10">
+                                />
+                                <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                                <div className="absolute bottom-10 left-10 right-10">
                                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 leading-tight">{stripHTML(newArticle.title)}</h1>
                                 <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHTML(newArticle.summary)}</p>
-                              </div>
+                                </div>
                             </div>
-                          )}
-                          {block.type === 'title' && (
+                            )}
+                            {block.type === 'title' && (
                             <h1
-                              className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 leading-tight"
-                              dangerouslySetInnerHTML={{ __html: block.content || 'Untitled' }}
+                                className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 leading-tight"
+                                dangerouslySetInnerHTML={{ __html: block.content || 'Untitled' }}
                             />
-                          )}
-                          {block.type === 'meta' && (
+                            )}
+                            {block.type === 'meta' && (
                             <div className="flex items-center justify-between mb-10 border-b border-gray-200 dark:border-gray-700 pb-4">
-                              <div className="flex items-center space-x-6 text-gray-600 dark:text-gray-400">
+                                <div className="flex items-center space-x-6 text-gray-600 dark:text-gray-400">
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-sm font-inter font-medium">{new Date(newArticle.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
+                                    <span className="text-sm font-inter font-medium">{new Date(newArticle.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</span>
                                 </div>
                                 <div className="flex items-center space-x-2">
-                                  <span className="text-sm font-inter font-medium">{newArticle.author}</span>
+                                    <span className="text-sm font-inter font-medium">{newArticle.author}</span>
                                 </div>
-                              </div>
+                                </div>
                             </div>
-                          )}
-                          {block.type === 'summary' && block.content && (
+                            )}
+                            {block.type === 'summary' && block.content && (
                             <p
-                              className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter mb-8"
-                              dangerouslySetInnerHTML={{ __html: block.content }}
+                                className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter mb-8"
+                                dangerouslySetInnerHTML={{ __html: block.content }}
                             />
-                          )}
-                          {block.type === 'content' && (
+                            )}
+                            {block.type === 'content' && (
                             <div
-                              className="prose prose-lg dark:prose-invert font-inter max-w-none"
-                              dangerouslySetInnerHTML={{ __html: block.content || 'No content provided' }}
+                                className="prose prose-lg dark:prose-invert font-inter max-w-none"
+                                dangerouslySetInnerHTML={{ __html: block.content || 'No content provided' }}
                             />
-                          )}
-                          {block.type === 'image' && block.src && (
+                            )}
+                            {block.type === 'image' && block.src && (
                             <div className="relative my-8 mx-auto" style={{ textAlign: 'center' }}>
-                              <img
+                                <img
                                 src={block.src}
                                 alt="Content Image"
                                 className="rounded-xl shadow-md"
                                 style={{
-                                  width: `${block.width || 300}px`,
-                                  height: `${block.height || 200}px`,
-                                  objectFit: block.fitmode,
+                                    width: `${block.width || 300}px`,
+                                    height: `${block.height || 200}px`,
+                                    objectFit: block.fitmode,
                                 }}
-                              />
-                              <button
+                                />
+                                <button
                                 onClick={() => deleteBlock(block.id)}
                                 className="absolute top-2 right-2 p-2 bg-red-600 text-white hover:bg-red-700 rounded-lg shadow-md transition-colors"
                                 title="Delete Image"
-                              >
+                                >
                                 <TrashIcon className="w-5 h-5" />
-                              </button>
+                                </button>
                             </div>
-                          )}
+                            )}
                         </div>
-                      ))}
+                        ))}
                     </div>
-                  </div>
+                    </div>
 
-                  <div className="mt-8 flex justify-end space-x-4">
+                    <div className="mt-8 flex justify-end space-x-4">
                     <button
-                      onClick={() => addBlock('image')}
-                      className="px-4 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-xl flex items-center font-inter font-medium transition-colors"
-                      title="Add Image"
+                        onClick={() => addBlock('image')}
+                        className="px-4 py-2 bg-cyan-600 text-white hover:bg-cyan-700 rounded-xl flex items-center font-inter font-medium transition-colors"
+                        title="Add Image"
                     >
-                      <PlusIcon className="w-5 h-5 mr-2" /> Add Image
+                        <PlusIcon className="w-5 h-5 mr-2" /> Add Image
                     </button>
                     <button
-                      onClick={() => handleSaveArticle()}
-                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl flex items-center font-inter font-medium transition-colors"
-                      disabled={!isAuthenticated || isUploading}
+                        onClick={() => handleSaveArticle()}
+                        className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl flex items-center font-inter font-medium transition-colors"
+                        disabled={!isAuthenticated || isUploading}
                     >
-                      <CheckCircleIcon className="w-5 h-5 mr-2" />
-                      Save Article
+                        <CheckCircleIcon className="w-5 h-5 mr-2" />
+                        Save Article
                     </button>
-                  </div>
+                    </div>
                 </div>
-              </section>
+                </section>
 
-              <section className="mb-12 card-glow dark:card-glow-dark rounded-2xl p-8">
+                <section className="mb-12 card-glow dark:card-glow-dark rounded-2xl p-8">
                 <h2 className="text-3xl font-bold mb-8 text-[#002E5D] dark:text-white font-inter">Existing Articles</h2>
                 {articles.length === 0 ? (
-                  <p className="text-gray-600 dark:text-gray-400 font-inter text-center">No articles available.</p>
+                    <p className="text-gray-600 dark:text-gray-400 font-inter text-center">No articles available.</p>
                 ) : (
-                  <div className="article-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <div className="article-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                     {articles.map((article) => (
-                      <div key={article.slug} className="article-card rounded-xl p-5 bg-gray-50 dark:bg-slate-700 shadow-sm transition-all">
+                        <div key={article.slug} className="article-card rounded-xl p-5 bg-gray-50 dark:bg-slate-700 shadow-sm transition-all">
                         <div className="relative mb-4">
-                          {article.cardImage?.src ? (
+                            {article.cardImage?.src ? (
                             <img
-                              src={article.cardImage.src}
-                              alt={article.title}
-                              className="w-full h-48 object-cover rounded-xl shadow-md"
+                                src={article.cardImage.src}
+                                alt={article.title}
+                                className="w-full h-48 object-cover rounded-xl shadow-md"
                             />
-                          ) : (
+                            ) : (
                             <div className="w-full h-48 bg-gray-200 dark:bg-slate-600 rounded-xl flex items-center justify-center">
-                              <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-500" />
+                                <PhotoIcon className="w-12 h-12 text-gray-400 dark:text-gray-500" />
                             </div>
-                          )}
+                            )}
                         </div>
                         <h3 className="text-xl font-semibold text-[#002E5D] dark:text-white font-inter mb-2 line-clamp-2">{stripHTML(article.title)}</h3>
                         <p className="text-sm text-gray-600 dark:text-gray-400 font-inter mb-2">
-                          {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No Date'} • {article.author}
+                            {article.date ? new Date(article.date).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }) : 'No Date'} • {article.author}
                         </p>
                         <p className="text-gray-700 dark:text-gray-300 font-inter mb-4 line-clamp-3">{stripHTML(article.summary)}</p>
                         <div className="flex space-x-4">
-                          <button
+                            <button
                             onClick={() => handleEditArticle(article)}
                             className="px-4 py-2 bg-blue-600 text-white hover:bg-blue-700 rounded-xl flex items-center font-inter font-medium transition-colors"
-                          >
+                            >
                             <PencilIcon className="w-4 h-4 mr-2" /> Edit
-                          </button>
-                          <button
+                            </button>
+                            <button
                             onClick={() => handleDeleteArticle(article.slug)}
                             className="px-4 py-2 bg-red-600 text-white hover:bg-red-700 rounded-xl flex items-center font-inter font-medium transition-colors"
-                          >
+                            >
                             <TrashIcon className="w-4 h-4 mr-2" /> Delete
-                          </button>
+                            </button>
                         </div>
-                      </div>
+                        </div>
                     ))}
-                  </div>
+                    </div>
                 )}
-              </section>
+                </section>
             </>
-          )}
+            )}
         </div>
 
         {modalState.isOpen && (
-          <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ overflowY: 'auto' }}>
+            <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50" style={{ overflowY: 'auto' }}>
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full mx-4 my-8 relative">
-              <button
+                <button
                 onClick={closeModal}
-                className="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
-              >
+                className="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-800 darkWf:hover:text-gray-200"
+                >
                 <XMarkIcon className="w-6 h-6" />
-              </button>
-              {modalState.type === 'editor' && (
+                </button>
+                {modalState.type === 'editor' && (
                 <>
-                  <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">
+                    <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">
                     Edit {modalState.data.field.replace(/([A-Z])/g, ' $1').trim().replace(/^./, (str) => str.toUpperCase())}
-                  </h2>
-                  <ReactQuill
+                    </h2>
+                    <ReactQuill
                     theme="snow"
                     value={editorValue}
                     onChange={setEditorValue}
@@ -1146,74 +1154,74 @@ const ArticleEditor = () => {
                     formats={quillFormats}
                     className="mb-4 bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
                     style={{ minHeight: '200px' }}
-                  />
-                  <div className="flex justify-end space-x-4">
+                    />
+                    <div className="flex justify-end space-x-4">
                     <button
-                      onClick={closeModal}
-                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
+                        onClick={closeModal}
+                        className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
                     >
-                      Cancel
+                        Cancel
                     </button>
                     <button
-                      onClick={saveEditor}
-                      className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
+                        onClick={saveEditor}
+                        className="px-6 py-2 bg-green-600 text-white hover:bg-green-700 rounded-xl font-inter font-medium transition-colors"
                     >
-                      Save
+                        Save
                     </button>
-                  </div>
+                    </div>
                 </>
-              )}
-              {modalState.type === 'image-upload' && (
+                )}
+                {modalState.type === 'image-upload' && (
                 <>
-                  <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">Upload Image</h2>
-                  <div
+                    <h2 className="text-2xl font-bold mb-4 text-[#002E5D] dark:text-white font-inter">Upload Image</h2>
+                    <div
                     className={`drop-zone ${isUploading ? 'uploading' : ''}`}
                     onPaste={async (e) => {
-                      const file = e.clipboardData.files[0];
-                      if (file && file.type.startsWith('image/')) await handleFileUpload(file, modalState.data.blockType);
+                        const file = e.clipboardData.files[0];
+                        if (file && file.type.startsWith('image/')) await handleFileUpload(file, modalState.data.blockType);
                     }}
                     onDragOver={(e) => {
-                      e.preventDefault();
-                      e.currentTarget.classList.add('drag-over');
+                        e.preventDefault();
+                        e.currentTarget.classList.add('drag-over');
                     }}
                     onDragLeave={(e) => e.currentTarget.classList.remove('drag-over')}
                     onDrop={async (e) => {
-                      e.preventDefault();
-                      e.currentTarget.classList.remove('drag-over');
-                      const file = e.dataTransfer.files[0];
-                      if (file && file.type.startsWith('image/')) await handleFileUpload(file, modalState.data.blockType);
+                        e.preventDefault();
+                        e.currentTarget.classList.remove('drag-over');
+                        const file = e.dataTransfer.files[0];
+                        if (file && file.type.startsWith('image/')) await handleFileUpload(file, modalState.data.blockType);
                     }}
-                  >
+                    >
                     <PhotoIcon className="icon" />
                     <p>
-                      Drag and drop, paste, or{' '}
-                      <label className="cursor-pointer">
+                        Drag and drop, paste, or{' '}
+                        <label className="cursor-pointer">
                         click to upload
                         <input
-                          type="file"
-                          accept="image/png,image/jpeg"
-                          onChange={(e) => handleFileUpload(e.target.files[0], modalState.data.blockType)}
-                          className="hidden"
-                          disabled={isUploading}
+                            type="file"
+                            accept="image/png,image/jpeg"
+                            onChange={(e) => handleFileUpload(e.target.files[0], modalState.data.blockType)}
+                            className="hidden"
+                            disabled={isUploading}
                         />
-                      </label>
+                        </label>
                     </p>
                     <p className="text-sm mt-1">PNG or JPG, max 2MB</p>
-                  </div>
-                  <div className="flex justify-end space-x-4 mt-4">
+                    </div>
+                    <div className="flex justify-end space-x-4 mt-4">
                     <button
-                      onClick={closeModal}
-                      className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
+                        onClick={closeModal}
+                        className="px-6 py-2 bg-gray-600 text-white hover:bg-gray-700 rounded-xl font-inter font-medium transition-colors"
                     >
-                      Cancel
+                        Cancel
                     </button>
-                  </div>
+                    </div>
                 </>
-              )}
+                )}
             </div>
-          </div>
+            </div>
         )}
-      </div>
+        </div>
     </ErrorBoundary>
   );
 };

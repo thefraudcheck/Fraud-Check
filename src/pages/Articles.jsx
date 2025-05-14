@@ -79,6 +79,7 @@ function Articles() {
             .filter(img => img.image_type === 'card')
             .map((img) => ({
               ...img,
+              src: `${img.src}?t=${Date.now()}`,
               x: img.x ?? 0,
               y: img.y ?? 0,
               zoom: img.zoom ?? 1.0,
@@ -97,9 +98,9 @@ function Articles() {
             tags: Array.isArray(article.tags) ? article.tags : [],
             heroImages: (article.article_images || [])
               .filter(img => img.image_type === 'hero')
-              .sort((a, b) => b.id.localeCompare(a.id))
               .map((img) => ({
                 ...img,
+                src: `${img.src}?t=${Date.now()}`,
                 x: img.x ?? 0,
                 y: img.y ?? 0,
                 zoom: img.zoom ?? 1.0,
@@ -109,7 +110,7 @@ function Articles() {
                 fitMode: img.fitmode ?? 'cover',
               })),
             cardImages,
-            image: cardImages[0]?.src || 'https://via.placeholder.com/150', // Set article.image for ArticleCard
+            image: cardImages[0]?.src || 'https://via.placeholder.com/150',
             background: article.article_backgrounds?.[0] || null,
           };
         });
@@ -139,6 +140,10 @@ function Articles() {
             transform: scale(1.02);
             box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
             transition: all 0.2s ease-in-out;
+          }
+          .article-card { width: 100%; max-width: 100%; }
+          @media (max-width: 640px) {
+            .article-grid { gap: 1rem; flex-direction: column; }
           }
         `}</style>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -172,7 +177,7 @@ function Articles() {
                 <p className="text-gray-500 dark:text-gray-400 text-lg font-inter">No articles found.</p>
               </div>
             ) : (
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="article-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                 {articles.map((article, index) => (
                   <ArticleCard
                     key={article.slug || `article-${index}`}

@@ -21,16 +21,15 @@ const stripHtmlTags = (text) => {
 };
 
 const ArticleCard = ({ article, index, isEditorsPick }) => {
-  const imageUrl = article?.image || 'https://via.placeholder.com/150';
+  const imageUrl = article?.cardImages?.[0]?.src || article?.image || 'https://via.placeholder.com/150';
   const title = stripHtmlTags(article?.title || 'Untitled Article');
   const summary = stripHtmlTags(article?.content || 'No summary available.');
   const author = stripHtmlTags(article?.author || 'Fraud Check Team');
   const date = article?.date;
-  // Ensure the slug is clean for use in URLs or upload keys
   const cleanSlug = stripHtmlTags(article?.slug || 'untitled-article');
 
   return (
-    <div className="max-w-sm bg-white dark:bg-slate-700 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200 dark:border-slate-700">
+    <div className="w-full bg-white dark:bg-slate-700 rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow duration-300 border border-gray-200 dark:border-slate-700">
       <img
         src={imageUrl}
         alt={title}

@@ -240,7 +240,12 @@ function AppContent({ resetErrorBoundary }) {
 
 function App() {
   return (
-    <Router>
+    <Router
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <ErrorBoundary>
         <AppContent resetErrorBoundary={() => document.querySelector('ErrorBoundary')?.resetError?.()} />
       </ErrorBoundary>
