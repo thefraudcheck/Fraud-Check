@@ -91,6 +91,7 @@ const ArticleEditor = () => {
   const [scrollPosition, setScrollPosition] = useState(0);
   const navigate = useNavigate();
   const containerRef = useRef(null);
+  const contentRef = useRef(null);
 
   useEffect(() => {
     const checkAuth = async () => {
@@ -239,90 +240,90 @@ const ArticleEditor = () => {
   };
 
   const handleFileUpload = async (file, type, blockId = null) => {
-  if (!isAuthenticated) {
-    toast.error('Please log in to upload images.');
-    return;
-  }
-  if (!newArticle.slug) {
-    toast.error('Please set a slug before uploading images.');
-    return;
-  }
-  try {
-    setIsUploading(true);
-    const { data: { session }, error: sessionError } = await supabase.auth.getSession();
-    if (sessionError || !session) throw new Error('User not authenticated.');
-    if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
-    if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
+    if (!isAuthenticated) {
+      toast.error('Please log in to upload images.');
+      return;
+    }
+    if (!newArticle.slug) {
+      toast.error('Please set a slug before uploading images.');
+      return;
+    }
+    try {
+      setIsUploading(true);
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      if (sessionError || !session) throw new Error('User not authenticated.');
+      if (!file || !file.type.startsWith('image/')) throw new Error('Only PNG or JPG allowed.');
+      if (file.size > 2 * 1024 * 1024) throw new Error('File too large. Max 2MB.');
 
-    const fileName = `${Date.now()}_${uuidv4()}.jpg`;
-    const cleanSlug = stripHTML(newArticle.slug);
-    const filePath = `${cleanSlug}/${fileName}`;
+      const fileName = `${Date.now()}_${uuidv4()}.jpg`;
+      const cleanSlug = stripHTML(newArticle.slug);
+      const filePath = `${cleanSlug}/${fileName}`;
 
-    console.log('Uploading file to Supabase:', filePath);
-    const { error: uploadError } = await supabase.storage
-      .from('article-images')
-      .upload(filePath, file, { upsert: true });
+      console.log('Uploading file to Supabase:', filePath);
+      const { error: uploadError } = await supabase.storage
+        .from('article-images')
+        .upload(filePath, file, { upsert: true });
 
-    if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
+      if (uploadError) throw new Error(`Upload failed: ${uploadError.message}`);
 
-    const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
-    if (!data.publicUrl) throw new Error('Failed to get public URL.');
+      const { data } = supabase.storage.from('article-images').getPublicUrl(filePath);
+      if (!data.publicUrl) throw new Error('Failed to get public URL.');
 
-    console.log('Public URL for uploaded image:', data.publicUrl);
+      console.log('Public URL for uploaded image:', data.publicUrl);
 
-    const imageData = {
-      id: uuidv4(),
-      src: `${data.publicUrl}?t=${Date.now()}`,
-      width: type === 'hero' ? 1200 : type === 'card' ? 320 : 300,
-      height: type === 'hero' ? 300 : type === 'card' ? 320 : 200,
-      fitmode: type === 'hero' ? 'cover' : 'contain',
-      image_type: type,
-      position: { x: 50, y: type === 'hero' ? 0 : 720 },
-      zIndex: type === 'hero' ? 0 : 5,
-    };
+      const imageData = {
+        id: uuidv4(),
+        src: `${data.publicUrl}?t=${Date.now()}`,
+        width: type === 'hero' ? 1200 : type === 'card' ? 320 : 300,
+        height: type === 'hero' ? 300 : type === 'card' ? 320 : 200,
+        fitmode: type === 'hero' ? 'cover' : 'contain',
+        image_type: type,
+        position: { x: 50, y: type === 'hero' ? 0 : 720 },
+        zIndex: type === 'hero' ? 0 : 5,
+      };
 
-    setNewArticle((prev) => {
-      let updatedLayout = [...prev.layout];
-      if (type === 'hero') {
-        updatedLayout = prev.layout.map((block) =>
-          block.type === 'hero'
-            ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
-            : block
-        );
-        return { ...prev, heroType: 'image', heroImage: imageData, layout: updatedLayout };
-      } else if (type === 'card') {
-        return { ...prev, cardImage: imageData };
-      } else if (type === 'content' && blockId) {
-        updatedLayout = prev.layout.map((block) =>
-          block.id === blockId
-            ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
-            : block
-        );
-        return { ...prev, layout: updatedLayout };
-      } else {
-        updatedLayout.push({
-          id: imageData.id,
-          type: 'image',
-          src: imageData.src,
-          width: imageData.width,
-          height: imageData.height,
-          fitmode: imageData.fitmode, // Fixed: Changed from page.jsximageData.fitmode
-          position: { x: 50, y: 720 },
-          zIndex: 5,
-        });
-        return { ...prev, layout: updatedLayout };
-      }
-    });
+      setNewArticle((prev) => {
+        let updatedLayout = [...prev.layout];
+        if (type === 'hero') {
+          updatedLayout = prev.layout.map((block) =>
+            block.type === 'hero'
+              ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
+              : block
+          );
+          return { ...prev, heroType: 'image', heroImage: imageData, layout: updatedLayout };
+        } else if (type === 'card') {
+          return { ...prev, cardImage: imageData };
+        } else if (type === 'content' && blockId) {
+          updatedLayout = prev.layout.map((block) =>
+            block.id === blockId
+              ? { ...block, src: imageData.src, width: imageData.width, height: imageData.height, fitmode: imageData.fitmode }
+              : block
+          );
+          return { ...prev, layout: updatedLayout };
+        } else {
+          updatedLayout.push({
+            id: imageData.id,
+            type: 'image',
+            src: imageData.src,
+            width: imageData.width,
+            height: imageData.height,
+            fitmode: imageData.fitmode,
+            position: { x: 50, y: 720 },
+            zIndex: 5,
+          });
+          return { ...prev, layout: updatedLayout };
+        }
+      });
 
-    toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
-  } catch (err) {
-    console.error('File upload error:', err.message);
-    setError(err.message);
-    toast.error(err.message);
-  } finally {
-    setIsUploading(false);
-  }
-};
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} image uploaded successfully.`);
+    } catch (err) {
+      console.error('File upload error:', err.message);
+      setError(err.message);
+      toast.error(err.message);
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const handleSaveArticle = async (silent = false) => {
     if (!isAuthenticated) {
@@ -784,6 +785,16 @@ const ArticleEditor = () => {
                 align-items: center;
               }
             }
+            .ql-container {
+              max-height: 500px;
+              overflow-y: auto;
+            }
+            .ql-editor {
+              min-height: 200px;
+              max-height: 500px;
+              overflow-y: auto;
+              scroll-behavior: smooth;
+            }
           `}
         </style>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
@@ -1033,9 +1044,49 @@ const ArticleEditor = () => {
                             )}
                             {block.type === 'content' && (
                             <div
-                                className="prose prose-lg dark:prose-invert font-inter max-w-none"
-                                dangerouslySetInnerHTML={{ __html: block.content || 'No content provided' }}
-                            />
+                                className="layout-block content my-4 mx-auto"
+                                style={{ maxWidth: '800px' }}
+                                ref={contentRef}
+                                onClick={() => {
+                                  if (contentRef.current) {
+                                    contentRef.current.querySelector('.ql-editor')?.scrollTo({ top: 0, behavior: 'smooth' });
+                                  }
+                                }}
+                            >
+                                <ReactQuill
+                                value={block.content}
+                                onChange={(value) => {
+                                    setNewArticle((prev) => ({
+                                    ...prev,
+                                    layout: prev.layout.map((b) =>
+                                        b.id === block.id ? { ...b, content: value } : b
+                                    ),
+                                    articleContent: block.id === memoizedLayout.find((b) => b.type === 'content')?.id ? value : prev.articleContent,
+                                    }));
+                                }}
+                                className="bg-gray-50 dark:bg-gray-800 rounded-xl shadow-sm"
+                                modules={{
+                                    toolbar: [
+                                    [{ header: [1, 2, false] }],
+                                    ['bold', 'italic', 'underline', 'strike'],
+                                    [{ list: 'ordered' }, { list: 'bullet' }],
+                                    ['link', 'image'],
+                                    ['clean'],
+                                    ],
+                                }}
+                                formats={[
+                                    'header',
+                                    'bold',
+                                    'italic',
+                                    'underline',
+                                    'strike',
+                                    'list',
+                                    'bullet',
+                                    'link',
+                                    'image',
+                                ]}
+                                />
+                            </div>
                             )}
                             {block.type === 'image' && block.src && (
                             <div className="relative my-8 mx-auto" style={{ textAlign: 'center' }}>
@@ -1137,7 +1188,7 @@ const ArticleEditor = () => {
             <div className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full mx-4 my-8 relative">
                 <button
                 onClick={closeModal}
-                className="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-800 darkWf:hover:text-gray-200"
+                className="absolute top-4 right-4 text-gray-600 dark:text-gray-400 hover:text-gray-800 dark:hover:text-gray-200"
                 >
                 <XMarkIcon className="w-6 h-6" />
                 </button>
