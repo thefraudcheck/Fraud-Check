@@ -47,6 +47,7 @@ function Articles() {
     const fetchArticles = async () => {
       try {
         setLoading(true);
+        console.log('Fetching articles from Supabase...');
         const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
           .select(`
@@ -72,11 +73,13 @@ function Articles() {
           `)
           .order('date', { ascending: false });
 
-        if (articlesError) throw articlesError;
+        if (articlesError) throw new Error(`Supabase error: ${articlesError.message}`);
+
+        console.log('Raw Supabase data:', articlesData);
 
         const normalizedArticles = articlesData.map((article) => {
           const cardImages = (article.article_images || [])
-            .filter(img => img.image_type === 'card')
+            .filter((img) => img.image_type === 'card')
             .map((img) => ({
               ...img,
               src: `${img.src}?t=${Date.now()}`,
@@ -91,13 +94,13 @@ function Articles() {
 
           return {
             ...article,
-            title: article.title,
-            summary: article.summary,
-            content: article.content,
-            category: article.category,
+            title: article.title || 'Untitled',
+            summary: article.summary || '',
+            content: article.content || '',
+            category: article.category || null,
             tags: Array.isArray(article.tags) ? article.tags : [],
             heroImages: (article.article_images || [])
-              .filter(img => img.image_type === 'hero')
+              .filter((img) => img.image_type === 'hero')
               .map((img) => ({
                 ...img,
                 src: `${img.src}?t=${Date.now()}`,
@@ -118,6 +121,7 @@ function Articles() {
         console.log('Normalized articles:', normalizedArticles);
         setArticles(normalizedArticles);
       } catch (err) {
+        console.error('Fetch articles error:', err.message);
         setError(`Failed to load articles: ${err.message}`);
         setArticles([]);
       } finally {
@@ -130,22 +134,47 @@ function Articles() {
   return (
     <ErrorBoundary>
       <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
-        <style jsx>{`
-          @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(10px); }
-            to { opacity: 1; transform: translateY(0); }
-          }
-          .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-          .card-hover:hover {
-            transform: scale(1.02);
-            box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
-            transition: all 0.2s ease-in-out;
-          }
-          .article-card { width: 100%; max-width: 100%; }
-          @media (max-width: 640px) {
-            .article-grid { gap: 1rem; flex-direction: column; }
-          }
-        `}</style>
+        <style>
+          {`
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(10px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+            .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+            .card-hover:hover {
+              transform: scale(1.02);
+              box-shadow: 0 10px 20px rgba(0, 0, 0, 0.1);
+              transition: all 0.2s ease-in-out;
+            }
+            .article-grid {
+              display: grid;
+              grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+              gap: 1.5rem;
+              padding: 0 1rem;
+            }
+            .article-card {
+              width: 100%;
+              max-width: 400px;
+              margin: 0 auto;
+              transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            @media (max-width: 640px) {
+              .article-grid {
+                grid-template-columns: 1fr;
+                gap: 1rem;
+                padding: 0 0.5rem;
+              }
+              .article-card {
+                max-width: 100%;
+                margin: 0;
+              }
+              .article-card img {
+                max-height: 200px;
+                object-fit: cover;
+              }
+            }
+          `}
+        </style>
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
         <Header />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 py-6">
@@ -158,7 +187,7 @@ function Articles() {
             />
             <div className="-mt-6">
               <h2 className="text-4xl font-bold text-[#002E5D] dark:text-white font-inter">Fraud Articles</h2>
-              <div className="mt-2 w-24 mx-auto border-b-2 border-cyan-200/50"></div>
+              <div className="mt-2 w-24 mx-auto dark:border-cyan-700 border-b-2 border-cyan-200/50"></div>
             </div>
             <p className="mt-4 text-lg text-gray-600 dark:text-slate-300 max-w-3xl mx-auto font-inter">
               Insights, breakdowns, and safety guides from the Fraud Check team.
@@ -168,16 +197,28 @@ function Articles() {
           <section className="mt-8">
             {loading ? (
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
-                <p className="text-gray-500 dark:text-gray-400 text-lg font-inter">Loading...</p>
+                <svg className="animate-spin h-8 w-8 text-cyan-600 mx-auto" viewBox="0 0 24 24">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path
+                    className="opacity-75"
+                    fill="currentColor"
+                    d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+                  />
+                </svg>
+                <p className="text-gray-500 dark:text-gray-400 text-lg font-inter mt-4">Loading...</p>
               </div>
             ) : error ? (
-              <p className="text-center text-red-600 p-4 font-inter">{error}</p>
+              <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
+                <p className="text-red-600 text-lg font-inter">{error}</p>
+              </div>
             ) : articles.length === 0 ? (
               <div className="bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 text-center">
-                <p className="text-gray-500 dark:text-gray-400 text-lg font-inter">No articles found.</p>
+                <p className="text-gray-500 dark:text-gray-400 text-lg font-inter">
+                  No articles found. Debug: Check Supabase connection or data.
+                </p>
               </div>
             ) : (
-              <div className="article-grid grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              <div className="article-grid">
                 {articles.map((article, index) => (
                   <ArticleCard
                     key={article.slug || `article-${index}`}
