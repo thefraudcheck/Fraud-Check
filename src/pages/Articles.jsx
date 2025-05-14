@@ -50,10 +50,17 @@ function Articles() {
         setLoading(true);
         console.log('Fetching articles from Supabase at:', new Date().toISOString());
         console.log('Supabase URL:', 'https://ualzgryrkwktiqndotzo.supabase.co');
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
         const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
           .select('slug, title, summary, content, author, date, category, tags')
-          .order('date', { ascending: false });
+          .order('date', { ascending: false })
+          .abortSignal(controller.signal);
+
+        clearTimeout(timeoutId);
 
         if (articlesError) {
           console.error('Supabase error:', articlesError);
@@ -73,7 +80,7 @@ function Articles() {
           content: article.content || '',
           category: article.category || null,
           tags: Array.isArray(article.tags) ? article.tags : [],
-          cardImages: [], // Temporary: No images for now
+          cardImages: [], // Temporary fallback
           image: 'https://via.placeholder.com/150', // Fallback
           heroImages: [],
           background: null,
