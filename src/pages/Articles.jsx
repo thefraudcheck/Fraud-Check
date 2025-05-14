@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import Header from '../components/Header';
-import ArticleCard from '../components/ArticleCard';
 import fraudCheckLogo from '../assets/fraud-check-logo.png';
 import { supabase } from '../utils/supabase';
 
@@ -43,6 +43,11 @@ function Articles() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState({});
+
+  const stripHtmlTags = (text) => {
+    if (!text) return '';
+    return text.replace(/<[^>]+>/g, '');
+  };
 
   useEffect(() => {
     const fetchArticles = async (retryCount = 0) => {
@@ -246,20 +251,36 @@ function Articles() {
                       debugInfo,
                       timestamp: new Date().toISOString(),
                     },
-                    null,
-                    2
+                    null, 2
                   )}
                 </pre>
               </div>
             ) : (
               <div className="article-grid">
                 {articles.map((article, index) => (
-                  <ArticleCard
+                  <Link
+                    to={`/articles/${article.slug}`}
                     key={article.slug || `article-${index}`}
-                    article={article}
-                    index={index}
-                    isEditorsPick={index === 0}
-                  />
+                    className="article-card bg-white dark:bg-slate-800 rounded-2xl shadow-sm p-6 card-hover animate-fadeIn"
+                    style={{ animationDelay: `${index * 0.1}s` }}
+                  >
+                    {article.image && (
+                      <img
+                        src={article.image}
+                        alt={article.title}
+                        className="w-full h-48 object-cover rounded-xl mb-4"
+                      />
+                    )}
+                    <h3 className="text-xl font-semibold text-[#002E5D] dark:text-white mb-2 font-inter">
+                      {stripHtmlTags(article.title)}
+                    </h3>
+                    <p className="text-gray-600 dark:text-gray-400 text-sm mb-4 font-inter">
+                      {stripHtmlTags(article.summary).slice(0, 100) + '...'}
+                    </p>
+                    <span className="text-xs text-gray-500 dark:text-gray-400 font-inter">
+                      Published: {new Date(article.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                    </span>
+                  </Link>
                 ))}
               </div>
             )}

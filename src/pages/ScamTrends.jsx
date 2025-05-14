@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   UserIcon,
   CurrencyDollarIcon,
@@ -67,12 +67,42 @@ const scamCategoryIcons = {
 };
 
 function ScamTrends() {
-  const [scamData, setScamData] = useState(null);
+  const defaultData = useMemo(() => ({
+    hero: {
+      title: 'Scam Trends',
+      subtitle: 'Stay informed about the latest scams.',
+      logo: '',
+      textColor: '#000000',
+    },
+    scamOfTheWeek: {
+      name: 'N/A',
+      description: '',
+      redFlags: [],
+      reportDate: '',
+      action: '',
+      source: '',
+      type: 'Phishing Scams',
+    },
+    pastScamOfTheWeek: [],
+    scamCategories: [],
+    weeklyStats: {
+      mostReported: 'None',
+      topDeliveryChannel: 'None',
+      highRiskScamsDetected: 'No data',
+      redFlags: [],
+      source: '',
+      reportDate: '',
+    },
+    quickAlerts: [],
+    userReportedScams: [],
+  }), []);
+
+  const [scamData, setScamData] = useState(defaultData);
   const [newScamReport, setNewScamReport] = useState({ name: '', description: '', redFlags: '', action: '', url: '' });
   const [userReports, setUserReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [scamOfTheWeek, setScamOfTheWeek] = useState(null);
+  const [scamOfTheWeek, setScamOfTheWeek] = useState(defaultData.scamOfTheWeek);
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('All');
   const [sortOption, setSortOption] = useState('Most Recent');
@@ -116,61 +146,22 @@ function ScamTrends() {
           throw new Error(`Supabase fetch error: ${error.message}`);
         }
 
+        let finalData = fetchedData?.data || defaultData;
+
         if (!fetchedData || !fetchedData.data) {
-          const initialData = {
-            hero: {
-              title: 'Scam Trends',
-              subtitle: 'Stay informed about the latest scams.',
-              logo: '',
-              textColor: '#000000',
-            },
-            scamOfTheWeek: {
-              name: 'N/A',
-              description: '',
-              redFlags: [],
-              reportDate: '',
-              action: '',
-              source: '',
-              type: 'Phishing Scams',
-            },
-            pastScamOfTheWeek: [],
-            scamCategories: [],
-            weeklyStats: {
-              mostReported: 'None',
-              topDeliveryChannel: 'None',
-              highRiskScamsDetected: 'No data',
-              redFlags: [],
-              source: '',
-              reportDate: '',
-            },
-            quickAlerts: [],
-            userReportedScams: [],
-          };
           const { error: insertError } = await supabase
             .from('scam_trends')
-            .insert([{ id: 1, data: initialData }]);
+            .insert([{ id: 1, data: defaultData }]);
 
           if (insertError) {
             throw new Error(`Failed to initialize data: ${insertError.message}`);
           }
-          setScamData(initialData);
-          setScamOfTheWeek(initialData.scamOfTheWeek);
-          setPastScams(initialData.pastScamOfTheWeek);
-          setUserReports(initialData.userReportedScams);
-        } else {
-          setScamData(fetchedData.data);
-          setScamOfTheWeek(fetchedData.data.scamOfTheWeek || {
-            name: 'N/A',
-            description: '',
-            redFlags: [],
-            reportDate: '',
-            action: '',
-            source: '',
-            type: 'Phishing Scams',
-          });
-          setPastScams(fetchedData.data.pastScamOfTheWeek || []);
-          setUserReports(fetchedData.data.userReportedScams || []);
         }
+
+        setScamData(finalData);
+        setScamOfTheWeek(finalData.scamOfTheWeek || defaultData.scamOfTheWeek);
+        setPastScams(finalData.pastScamOfTheWeek || []);
+        setUserReports(finalData.userReportedScams || []);
 
         const today = new Date();
         const currentDay = today.getDay();
@@ -182,7 +173,7 @@ function ScamTrends() {
         weekEnd.setDate(weekStart.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
 
-        const last7DaysReports = (fetchedData?.data?.userReportedScams || []).filter((report) => {
+        const last7DaysReports = (finalData.userReportedScams || []).filter((report) => {
           const reportDate = new Date(report.reportDate);
           return reportDate >= weekStart && reportDate <= weekEnd;
         });
@@ -190,7 +181,7 @@ function ScamTrends() {
         const typeCounts = {};
         last7DaysReports.forEach((report) => {
           let type = report.type || report.name || 'Unknown';
-          const matchingCategory = fetchedData?.data?.scamCategories?.find((category) =>
+          const matchingCategory = finalData.scamCategories?.find((category) =>
             type.toLowerCase().includes(category.name.toLowerCase().replace(' scams', ''))
           );
           type = matchingCategory ? matchingCategory.name : type;
@@ -208,13 +199,17 @@ function ScamTrends() {
       } catch (err) {
         console.error('Error loading scam trends:', err.message, err.stack);
         setError('Failed to load scam trends data. Please try again later.');
+        setScamData(defaultData);
+        setScamOfTheWeek(defaultData.scamOfTheWeek);
+        setPastScams([]);
+        setUserReports([]);
       } finally {
         setIsLoading(false);
       }
     };
 
     fetchScamTrends();
-  }, []);
+  }, [defaultData]);
 
   useEffect(() => {
     if (selectedScam) {
@@ -334,14 +329,12 @@ function ScamTrends() {
 
   const isHTML = (content) => /<[a-z][\s\S]*>/i.test(content);
 
-  // Reorder the scam categories for the desired layout
   const reorderedCategories = scamData?.scamCategories ? [...scamData.scamCategories] : [];
   if (reorderedCategories.length >= 24) {
     const threatScamIndex = reorderedCategories.findIndex(cat => cat.name === 'Threat Scams');
     const qrCodeScamIndex = reorderedCategories.findIndex(cat => cat.name === 'QR Code Scams');
     const subscriptionScamIndex = reorderedCategories.findIndex(cat => cat.name === 'Subscription Scams');
 
-    // Remove the specific scams from their current positions
     const threatScam = reorderedCategories[threatScamIndex];
     const qrCodeScam = reorderedCategories[qrCodeScamIndex];
     const subscriptionScam = reorderedCategories[subscriptionScamIndex];
@@ -350,31 +343,12 @@ function ScamTrends() {
     reorderedCategories.splice(qrCodeScamIndex > threatScamIndex ? qrCodeScamIndex - 1 : qrCodeScamIndex, 1);
     reorderedCategories.splice(subscriptionScamIndex > Math.min(threatScamIndex, qrCodeScamIndex) ? subscriptionScamIndex - 2 : subscriptionScamIndex, 1);
 
-    // Insert Threat Scams into Row 1 (position 7 to ensure it's in the first row)
     reorderedCategories.splice(7, 0, threatScam);
-
-    // Insert QR Code Scams into Row 2 (position 15 to ensure it's in the second row)
     reorderedCategories.splice(15, 0, qrCodeScam);
-
-    // Insert Subscription Scams into Row 3 (position 16 to ensure it's the first in the third row)
     reorderedCategories.splice(16, 0, subscriptionScam);
   }
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
-        <p className="text-lg text-gray-600 dark:text-gray-300 font-inter">Loading scam trends...</p>
-      </div>
-    );
-  }
-
-  if (error || !scamData || !scamOfTheWeek) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
-        <p className="text-lg text-red-500 font-inter">{error || 'An unexpected error occurred.'}</p>
-      </div>
-    );
-  }
+  if (!scamData) return null;
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
@@ -398,6 +372,7 @@ function ScamTrends() {
           .card-hover:hover {
             transform: translateY(-2px);
             box-shadow: 0 10px 30px rgba(14, 165, 233, 0.2);
+            border-color: #0ea5e9;
             transition: all 0.2s ease-in-out;
           }
           .card-glow {
@@ -414,6 +389,9 @@ function ScamTrends() {
             background: radial-gradient(circle at center, rgba(14,165,233,0.1) 0%, rgba(14,165,233,0) 70%);
             z-index: -1;
             border-radius: 1.5rem;
+          }
+          .card-glow-dark {
+            background: linear-gradient(145deg, #1e293b, #334155);
           }
           .chart-container {
             box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
@@ -450,6 +428,21 @@ function ScamTrends() {
             justify-content: space-between;
             margin-bottom: 2rem;
           }
+          .section-tag {
+            display: inline-flex;
+            align-items: center;
+            background: rgba(14, 165, 233, 0.1);
+            color: #0ea5e9;
+            padding: 0.25rem 0.75rem;
+            border-radius: 999 Microbiomepx;
+            font-size: 0.75rem;
+            font-weight: 500;
+            margin-bottom: 0.5rem;
+          }
+          .divider {
+            border-top: 1px solid rgba(14, 165, 233, 0.2);
+            margin: 2rem 0;
+          }
         `}
       </style>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
@@ -462,20 +455,20 @@ function ScamTrends() {
             className="h-40 md:h-40 max-h-32 md:max-h-40 mx-auto mb-0 object-contain"
           />
           <div className="-mt-4">
-            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-[#002E5D] font-inter">
+            <h1 className="text-3xl md:text-4xl font-bold mb-2 text-[#002E5D] dark:text-gray-100 font-inter">
               {scamData.hero.title}
             </h1>
-            <p className="text-lg text-gray-600 max-w-2xl mx-auto font-inter">
+            <p className="text-lg text-gray-600 dark:text-slate-300 max-w-2xl mx-auto font-weight-400 leading-relaxed font-inter">
               {scamData.hero.subtitle}
             </p>
           </div>
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-2 gap-6 animate-slideUp">
-          <div className="card-glow dark:from-slate-800 dark:to-slate-900 rounded-2xl px-6 py-4">
+          <div className="card-glow dark:card-glow-dark rounded-2xl px-6 py-4">
             <div className="flex items-center mb-4">
               <ShieldExclamationIcon className="w-6 h-6 text-cyan-700 mr-2" />
-              <h2 className="text-xl font-semibold text-[#002E5D] font-inter">Scam of the Week</h2>
+              <h2 className="text-xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">Scam of the Week</h2>
             </div>
             <div className="flex items-center gap-2 mb-2">
               <span className="inline-flex items-center bg-cyan-200 text-cyan-900 text-xs font-semibold px-2 py-1 rounded-full pill-shadow">
@@ -487,7 +480,7 @@ function ScamTrends() {
                 </span>
               )}
             </div>
-            <h3 className="text-lg font-medium text-[#002E5D] mb-2 font-inter">{scamOfTheWeek.name || 'N/A'}</h3>
+            <h3 className="text-lg font-medium text-[#002E5D] dark:text-gray-100 mb-2 font-inter">{scamOfTheWeek.name || 'N/A'}</h3>
             <div className="text-sm text-gray-600 dark:text-slate-300 mb-4 font-inter">
               {isHTML(scamOfTheWeek.description) ? (
                 <div dangerouslySetInnerHTML={{ __html: scamOfTheWeek.description }} />
@@ -495,7 +488,7 @@ function ScamTrends() {
                 parseDescription(scamOfTheWeek.description).map((section, idx) => (
                   <div key={idx}>
                     {section.type === 'heading' ? (
-                      <h4 className="text-md font-semibold text-[#002E5D] mb-2 font-inter">{section.content}</h4>
+                      <h4 className="text-md font-semibold text-[#002E5D] dark:text-gray-100 mb-2 font-inter">{section.content}</h4>
                     ) : (
                       <p className="mb-2 leading-relaxed">{section.content}</p>
                     )}
@@ -568,10 +561,10 @@ function ScamTrends() {
             </div>
           </div>
 
-          <div className="card-glow dark:from-slate-800 dark:to-slate-900 rounded-2xl px-6 py-4">
+          <div className="card-glow dark:card-glow-dark rounded-2xl px-6 py-4">
             <div className="flex items-center mb-4">
               <ChartPieIcon className="w-6 h-6 text-cyan-700 mr-2" />
-              <h2 className="text-xl font-semibold text-[#002E5D] font-inter">Weekly Stats</h2>
+              <h2 className="text-xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">Weekly Stats</h2>
             </div>
             <div className="space-y-4">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
@@ -607,254 +600,269 @@ function ScamTrends() {
           </div>
         </section>
 
-        <section className="animate-slideUp">
-          <h2 className="text-2xl font-semibold text-[#002E5D] mb-6 font-inter">Common Scam Types</h2>
-          <div>
-            {/* Row 1 */}
-            <div className="scam-row">
-              {reorderedCategories.slice(0, 8).map((category, idx) => {
-                const Icon = scamCategoryIcons[category.name] || ShieldExclamationIcon;
-                return (
-                  <div
-                    key={idx}
-                    className="card-glow circle-card dark:from-slate-800 dark:to-slate-900 card-hover"
-                    onClick={() => setSelectedScam(category)}
-                  >
-                    <div className="flex flex-col items-center">
-                      <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                      <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{category.name}</span>
-                    </div>
-                  </div>
-                );
-              })}
+        <section className="mt-8 animate-slideUp">
+          <div className="max-w-3xl mx-auto space-y-8 text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter text-base">
+            <div>
+              <span className="section-tag">Scam Categories</span>
+              <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">Common Scam Types</h2>
             </div>
-            {/* Row 2 */}
-            <div className="scam-row">
-              {reorderedCategories.slice(8, 16).map((category, idx) => {
-                const Icon = scamCategoryIcons[category.name] || ShieldExclamationIcon;
-                return (
-                  <div
-                    key={idx + 8}
-                    className="card-glow circle-card dark:from-slate-800 dark:to-slate-900 card-hover"
-                    onClick={() => setSelectedScam(category)}
-                  >
-                    <div className="flex flex-col items-center">
-                      <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                      <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{category.name}</span>
+            <div className="divider"></div>
+            <div>
+              <div className="scam-row">
+                {reorderedCategories.slice(0, 8).map((category, idx) => {
+                  const Icon = scamCategoryIcons[category.name] || ShieldExclamationIcon;
+                  return (
+                    <div
+                      key={idx}
+                      className="card-glow circle-card dark:card-glow-dark card-hover"
+                      onClick={() => setSelectedScam(category)}
+                    >
+                      <div className="flex flex-col items-center">
+                        <Icon className="w-8 h-8 text-cyan-700 mb-2" />
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{category.name}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
-            {/* Row 3 */}
-            <div className="scam-row">
-              {reorderedCategories.slice(16, 24).map((category, idx) => {
-                const Icon = scamCategoryIcons[category.name] || ShieldExclamationIcon;
-                return (
-                  <div
-                    key={idx + 16}
-                    className="card-glow circle-card dark:from-slate-800 dark:to-slate-900 card-hover"
-                    onClick={() => setSelectedScam(category)}
-                  >
-                    <div className="flex flex-col items-center">
-                      <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                      <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{category.name}</span>
+                  );
+                })}
+              </div>
+              <div className="scam-row">
+                {reorderedCategories.slice(8, 16).map((category, idx) => {
+                  const Icon = scamCategoryIcons[category.name] || ShieldExclamationIcon;
+                  return (
+                    <div
+                      key={idx + 8}
+                      className="card-glow circle-card dark:card-glow-dark card-hover"
+                      onClick={() => setSelectedScam(category)}
+                    >
+                      <div className="flex flex-col items-center">
+                        <Icon className="w-8 h-8 text-cyan-700 mb-2" />
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{category.name}</span>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
+                  );
+                })}
+              </div>
+              <div className="scam-row">
+                {reorderedCategories.slice(16, 24).map((category, idx) => {
+                  const Icon = scamCategoryIcons[category.name] || ShieldExclamationIcon;
+                  return (
+                    <div
+                      key={idx + 16}
+                      className="card-glow circle-card dark:card-glow-dark card-hover"
+                      onClick={() => setSelectedScam(category)}
+                    >
+                      <div className="flex flex-col items-center">
+                        <Icon className="w-8 h-8 text-cyan-700 mb-2" />
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{category.name}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             </div>
           </div>
         </section>
 
-        <section id="reports" className="animate-slideUp">
-          <h2 className="text-2xl font-semibold text-[#002E5D] mb-6 font-inter">Community-Reported Scams</h2>
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="relative flex-1">
-              <MagnifyingGlassIcon className="w-5 h-5 text-[#002E5D] absolute left-3 top-1/2 transform -translate-y-1/2" />
-              <input
-                type="text"
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search scam reports..."
-                className="w-full pl-10 p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-              />
+        <section id="reports" className="mt-8 animate-slideUp">
+          <div className="max-w-3xl mx-auto space-y-8 text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter text-base">
+            <div>
+              <span className="section-tag">Community Reports</span>
+              <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">Community-Reported Scams</h2>
             </div>
-            <select
-              value={filterType}
-              onChange={(e) => setFilterType(e.target.value)}
-              className="p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-            >
-              <option value="All">All Types</option>
-              {scamData.scamCategories?.map((category) => (
-                <option key={category.name} value={category.name.split(' ')[0]}>
-                  {category.name}
-                </option>
-              ))}
-            </select>
-            <select
-              value={sortOption}
-              onChange={(e) => setSortOption(e.target.value)}
-              className="p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-            >
-              <option value="Most Recent">Most Recent</option>
-              <option value="Oldest">Oldest</option>
-            </select>
-          </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {displayedReports.length > 0 ? (
-              displayedReports.map((report, idx) => (
-                <div key={idx} className="card-glow dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-hidden">
-                  <div className="bg-[#002E5D] text-white text-sm font-semibold px-4 py-2 font-inter">Reported Scam</div>
-                  <div className="px-6 py-4 space-y-3">
-                    <h3 className="text-lg font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{report.name || report.type || 'Unknown'}</h3>
-                    <div className="text-sm text-gray-600 dark:text-slate-300 font-inter">
-                      {isHTML(report.description) ? (
-                        <div dangerouslySetInnerHTML={{ __html: report.description }} />
-                      ) : (
-                        parseDescription(report.description).map((section, idx) => (
-                          <div key={idx}>
-                            {section.type === 'heading' ? (
-                              <h4 className="text-md font-semibold text-[#002E5D] dark:text-gray-100 mb-2 font-inter">{section.content}</h4>
-                            ) : (
-                              <p className="mb-2 leading-relaxed">{section.content}</p>
-                            )}
-                          </div>
-                        ))
-                      )}
-                    </div>
-                    <div className="flex flex-wrap gap-2">
-                      {report.redFlags?.map((flag, flagIdx) => (
-                        <span
-                          key={flagIdx}
-                          className="bg-red-200 text-red-800 text-xs font-medium rounded-full px-3 py-1 pill-shadow"
+            <div className="divider"></div>
+            <div className="flex flex-col sm:flex-row gap-4 mb-6">
+              <div className="relative flex-1">
+                <MagnifyingGlassIcon className="w-5 h-5 text-[#002E5D] dark:text-gray-100 absolute left-3 top-1/2 transform -translate-y-1/2" />
+                <input
+                  type="text"
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Search scam reports..."
+                  className="w-full pl-10 p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+                />
+              </div>
+              <select
+                value={filterType}
+                onChange={(e) => setFilterType(e.target.value)}
+                className="p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+              >
+                <option value="All">All Types</option>
+                {scamData.scamCategories?.map((category) => (
+                  <option key={category.name} value={category.name.split(' ')[0]}>
+                    {category.name}
+                  </option>
+                ))}
+              </select>
+              <select
+                value={sortOption}
+                onChange={(e) => setSortOption(e.target.value)}
+                className="p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+              >
+                <option value="Most Recent">Most Recent</option>
+                <option value="Oldest">Oldest</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {displayedReports.length > 0 ? (
+                displayedReports.map((report, idx) => (
+                  <div key={idx} className="card-glow dark:card-glow-dark rounded-2xl overflow-hidden card-hover">
+                    <div className="bg-[#002E5D] dark:bg-slate-600 text-white dark:text-gray-100 text-sm font-semibold px-4 py-2 font-inter">Reported Scam</div>
+                    <div className="px-6 py-4 space-y-3">
+                      <h3 className="text-lg font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{report.name || report.type || 'Unknown'}</h3>
+                      <div className="text-sm text-gray-600 dark:text-slate-300 font-inter">
+                        {isHTML(report.description) ? (
+                          <div dangerouslySetInnerHTML={{ __html: report.description }} />
+                        ) : (
+                          parseDescription(report.description).map((section, idx) => (
+                            <div key={idx}>
+                              {section.type === 'heading' ? (
+                                <h4 className="text-md font-semibold text-[#002E5D] dark:text-gray-100 mb-2 font-inter">{section.content}</h4>
+                              ) : (
+                                <p className="mb-2 leading-relaxed">{section.content}</p>
+                              )}
+                            </div>
+                          ))
+                        )}
+                      </div>
+                      <div className="flex flex-wrap gap-2">
+                        {report.redFlags?.map((flag, flagIdx) => (
+                          <span
+                            key={flagIdx}
+                            className="bg-red-200 text-red-800 text-xs font-medium rounded-full px-3 py-1 pill-shadow"
+                          >
+                            <ExclamationCircleIcon className="w-4 h-4 inline mr-1" /> {flag}
+                          </span>
+                        )) || <span className="text-sm text-gray-500 dark:text-slate-400">No red flags listed.</span>}
+                      </div>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
+                        Reported: {report.reportDate ? new Date(report.reportDate).toLocaleDateString() : 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
+                        Source: {report.source || 'N/A'}
+                      </p>
+                      <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
+                        Status: {report.status || 'N/A'}
+                      </p>
+                      {report.url && (
+                        <a
+                          href={report.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-[#00488A] dark:text-cyan-400 font-medium text-sm flex items-center hover:text-[#0077B6] dark:hover:text-cyan-500 font-inter"
                         >
-                          <ExclamationCircleIcon className="w-4 h-4 inline mr-1" /> {flag}
-                        </span>
-                      )) || <span className="text-sm text-gray-500 dark:text-slate-400">No red flags listed.</span>}
-                    </div>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                      Reported: {report.reportDate ? new Date(report.reportDate).toLocaleDateString() : 'N/A'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                      Source: {report.source || 'N/A'}
-                    </p>
-                    <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                      Status: {report.status || 'N/A'}
-                    </p>
-                    {report.url && (
-                      <a
-                        href={report.url}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-[#00488A] font-medium text-sm flex items-center hover:text-[#0077B6] font-inter"
+                          <LinkIcon className="w-4 h-4 mr-1" /> Related Link
+                        </a>
+                      )}
+                      <button
+                        onClick={() => setSelectedScam(report)}
+                        className="text-[#00488A] dark:text-cyan-400 font-medium text-sm flex items-center hover:text-[#0077B6] dark:hover:text-cyan-500 font-inter"
                       >
-                        <LinkIcon className="w-4 h-4 mr-1" /> Related Link
-                      </a>
-                    )}
-                    <button
-                      onClick={() => setSelectedScam(report)}
-                      className="text-[#00488A] font-medium text-sm flex items-center hover:text-[#0077B6] font-inter"
-                    >
-                      Learn More
-                      <ArrowRightIcon className="w-4 h-4 ml-1" />
-                    </button>
+                        Learn More
+                        <ArrowRightIcon className="w-4 h-4 ml-1" />
+                      </button>
+                    </div>
                   </div>
-                </div>
-              ))
-            ) : (
-              <p className="text-gray-500 dark:text-slate-400 font-inter">No community reports available.</p>
+                ))
+              ) : (
+                <p className="text-gray-500 dark:text-slate-400 font-inter">No community reports available.</p>
+              )}
+            </div>
+            {filteredReports.length > 3 && (
+              <div className="text-center mt-6">
+                <button
+                  onClick={() => setShowAllReports(!showAllReports)}
+                  className="text-[#00488A] dark:text-cyan-400 font-medium text-sm flex items-center mx-auto hover:text-[#0077B6] dark:hover:text-cyan-500 font-inter"
+                >
+                  {showAllReports ? 'Show Less' : 'View All Reports'}
+                  <ArrowRightIcon className="w-4 h-4 ml-1" />
+                </button>
+              </div>
             )}
           </div>
-          {filteredReports.length > 3 && (
-            <div className="text-center mt-6">
-              <button
-                onClick={() => setShowAllReports(!showAllReports)}
-                className="text-[#00488A] font-medium text-sm flex items-center mx-auto hover:text-[#0077B6] font-inter"
-              >
-                {showAllReports ? 'Show Less' : 'View All Reports'}
-                <ArrowRightIcon className="w-4 h-4 ml-1" />
-              </button>
-            </div>
-          )}
         </section>
 
-        <section className="animate-slideUp">
-          <h2 className="text-2xl font-semibold text-[#002E5D] mb-6 font-inter">Report a Scam</h2>
-          <div className="card-glow dark:from-slate-800 dark:to-slate-900 rounded-2xl p-6">
-            <form onSubmit={handleReportSubmit} className="space-y-4">
-              <div>
-                <label htmlFor="scam-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
-                  Scam Name
-                </label>
-                <input
-                  id="scam-name"
-                  type="text"
-                  value={newScamReport.name}
-                  onChange={(e) => setNewScamReport({ ...newScamReport, name: e.target.value })}
-                  placeholder="e.g., Fake PayPal Invoice"
-                  className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-                />
-              </div>
-              <div>
-                <label htmlFor="scam-description" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
-                  Description
-                </label>
-                <textarea
-                  id="scam-description"
-                  value={newScamReport.description}
-                  onChange={(e) => setNewScamReport({ ...newScamReport, description: e.target.value })}
-                  placeholder="Describe the scam in detail..."
-                  rows={4}
-                  className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-                />
-              </div>
-              <div>
-                <label htmlFor="scam-red-flags" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
-                  Red Flags (comma-separated)
-                </label>
-                <input
-                  id="scam-red-flags"
-                  type="text"
-                  value={newScamReport.redFlags}
-                  onChange={(e) => setNewScamReport({ ...newScamReport, redFlags: e.target.value })}
-                  placeholder="e.g., Unsolicited email, Suspicious link"
-                  className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-                />
-              </div>
-              <div>
-                <label htmlFor="scam-action" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
-                  Recommended Action
-                </label>
-                <input
-                  id="scam-action"
-                  type="text"
-                  value={newScamReport.action}
-                  onChange={(e) => setNewScamReport({ ...newScamReport, action: e.target.value })}
-                  placeholder="e.g., Verify with official website"
-                  className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-                />
-              </div>
-              <div>
-                <label htmlFor="scam-url" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
-                  Related URL (optional)
-                </label>
-                <input
-                  id="scam-url"
-                  type="url"
-                  value={newScamReport.url}
-                  onChange={(e) => setNewScamReport({ ...newScamReport, url: e.target.value })}
-                  placeholder="e.g., https://www.example.com"
-                  className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
-                />
-              </div>
-              <button
-                type="submit"
-                className="w-full bg-[#002E5D] text-white font-semibold py-2 rounded-lg hover:bg-[#00488A] transition-colors font-inter"
-              >
-                Submit Report
-              </button>
-            </form>
+        <section className="mt-8 animate-slideUp">
+          <div className="max-w-3xl mx-auto space-y-8 text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter text-base">
+            <div>
+              <span className="section-tag">Report a Scam</span>
+              <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">Help Us Track Scams</h2>
+            </div>
+            <div className="divider"></div>
+            <div className="card-glow dark:card-glow-dark rounded-2xl p-6">
+              <form onSubmit={handleReportSubmit} className="space-y-4">
+                <div>
+                  <label htmlFor="scam-name" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
+                    Scam Name
+                  </label>
+                  <input
+                    id="scam-name"
+                    type="text"
+                    value={newScamReport.name}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, name: e.target.value })}
+                    placeholder="e.g., Fake PayPal Invoice"
+                    className="mt-1 w-full p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="scam-description" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
+                    Description
+                  </label>
+                  <textarea
+                    id="scam-description"
+                    value={newScamReport.description}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, description: e.target.value })}
+                    placeholder="Describe the scam in detail..."
+                    rows={4}
+                    className="mt-1 w-full p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="scam-red-flags" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
+                    Red Flags (comma-separated)
+                  </label>
+                  <input
+                    id="scam-red-flags"
+                    type="text"
+                    value={newScamReport.redFlags}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, redFlags: e.target.value })}
+                    placeholder="e.g., Unsolicited email, Suspicious link"
+                    className="mt-1 w-full p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="scam-action" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
+                    Recommended Action
+                  </label>
+                  <input
+                    id="scam-action"
+                    type="text"
+                    value={newScamReport.action}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, action: e.target.value })}
+                    placeholder="e.g., Verify with official website"
+                    className="mt-1 w-full p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+                  />
+                </div>
+                <div>
+                  <label htmlFor="scam-url" className="block text-sm font-medium text-gray-700 dark:text-gray-200 font-inter">
+                    Related URL (optional)
+                  </label>
+                  <input
+                    id="scam-url"
+                    type="url"
+                    value={newScamReport.url}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, url: e.target.value })}
+                    placeholder="e.g., https://www.example.com"
+                    className="mt-1 w-full p-2 rounded-lg bg-white dark:bg-slate-700 text-[#002E5D] dark:text-gray-100 border border-[#002E5D] dark:border-slate-600 font-inter"
+                  />
+                </div>
+                <button
+                  type="submit"
+                  className="w-full bg-[#002E5D] dark:bg-cyan-700 text-white font-semibold py-2 rounded-lg hover:bg-[#00488A] dark:hover:bg-cyan-600 transition-colors font-inter"
+                >
+                  Submit Report
+                </button>
+              </form>
+            </div>
           </div>
         </section>
 
@@ -868,7 +876,7 @@ function ScamTrends() {
                 <h3 className="text-xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{selectedScam.name}</h3>
                 <button
                   onClick={() => setSelectedScam(null)}
-                  className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
+                  className="text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-300"
                 >
                   <XMarkIcon className="w-6 h-6" />
                 </button>
@@ -910,7 +918,7 @@ function ScamTrends() {
                       href={selectedScam.url}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-[#00488A] font-medium text-sm flex items-center hover:text-[#0077B6] font-inter"
+                      className="text-[#00488A] dark:text-cyan-400 font-medium text-sm flex items-center hover:text-[#0077B6] dark:hover:text-cyan-500 font-inter"
                     >
                       <LinkIcon className="w-4 h-4 mr-1" /> {selectedScam.url}
                     </a>

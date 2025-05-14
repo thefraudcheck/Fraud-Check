@@ -20,7 +20,6 @@ const ArticleDetail = () => {
     const fetchArticle = async () => {
       try {
         setLoading(true);
-        // Fetch the main article
         const { data: articleData, error: articleError } = await supabase
           .from('articles')
           .select(`
@@ -59,7 +58,6 @@ const ArticleDetail = () => {
 
         setArticle(normalizedArticle);
 
-        // Fetch related articles (same category, excluding current article)
         const { data: relatedData, error: relatedError } = await supabase
           .from('articles')
           .select(`
@@ -89,7 +87,6 @@ const ArticleDetail = () => {
 
         setRelatedArticles(normalizedRelated);
 
-        // Fetch other articles (recent articles, excluding current and related articles)
         const relatedSlugs = normalizedRelated.map(item => item.slug);
         const { data: otherData, error: otherError } = await supabase
           .from('articles')
@@ -191,17 +188,98 @@ const ArticleDetail = () => {
           to { opacity: 1; transform: translateY(0); }
         }
         .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-        .prose img {
+        .layout-block {
+          margin-bottom: 1.5rem;
+          padding: 0.5rem;
+        }
+        .layout-block.hero {
+          margin-bottom: 2rem;
+        }
+        .layout-block.title {
+          font-size: 2.5rem;
+          font-weight: 700;
+          line-height: 1.2;
+          margin: 1rem 0;
+          color: #002E5D;
+        }
+        .layout-block.dark .title {
+          color: #ffffff;
+        }
+        .layout-block.meta {
+          font-size: 0.875rem;
+          color: #4b5563;
+          margin: 0.5rem 0;
+        }
+        .layout-block.dark .meta {
+          color: #9ca3af;
+        }
+        .layout-block.summary {
+          font-size: 1.125rem;
+          line-height: 1.5;
+          margin: 0.75rem 0;
+          color: #374151;
+        }
+        .layout-block.dark .summary {
+          color: #d1d5db;
+        }
+        .layout-block.content {
+          font-size: 1rem;
+          line-height: 1.75;
+          margin: 1rem 0;
+          color: #374151;
+        }
+        .layout-block.dark .content {
+          color: #d1d5db;
+        }
+        .layout-block.content h1 {
+          font-size: 2.5rem;
+          font-weight: 800;
+          color: #002E5D;
+          margin-top: 0;
+          margin-bottom: 1.5rem;
+        }
+        .layout-block.dark .content h1 {
+          color: #ffffff;
+        }
+        .layout-block.content h2 {
+          font-size: 2rem;
+          font-weight: 700;
+          color: #002E5D;
+          margin-top: 2rem;
+          margin-bottom: 1rem;
+        }
+        .layout-block.dark .content h2 {
+          color: #ffffff;
+        }
+        .layout-block.content h3 {
+          font-size: 1.5rem;
+          font-weight: 600;
+          color: #002E5D;
+          margin-top: 1.5rem;
+          margin-bottom: 0.75rem;
+        }
+        .layout-block.dark .content h3 {
+          color: #ffffff;
+        }
+        .layout-block.content p {
+          margin-bottom: 1.25rem;
+        }
+        .layout-block.content ul, .layout-block.content ol {
+          margin-bottom: 1.25rem;
+          padding-left: 2rem;
+        }
+        .layout-block.content li {
+          margin-bottom: 0.5rem;
+        }
+        .layout-block.image {
+          border-radius: 8px;
+        }
+        .layout-block.content img {
           border-radius: 0.5rem;
           margin: 2rem auto;
           max-width: 100%;
           height: auto;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-        }
-        .article-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-          transition: all 0.3s ease-in-out;
         }
         .card-glow {
           position: relative;
@@ -221,10 +299,14 @@ const ArticleDetail = () => {
         .card-glow-dark {
           background: linear-gradient(145deg, #1e293b, #334155);
         }
+        .article-card:hover {
+          transform: translateY(-4px);
+          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+          transition: all 0.3s ease-in-out;
+        }
       `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
-      {/* Navigation */}
       <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16 py-8">
         <Link
           to="/articles"
@@ -235,96 +317,75 @@ const ArticleDetail = () => {
         </Link>
       </div>
 
-      {/* Hero Section */}
-      <div className="relative max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16 mb-16">
-        {article.heroType === 'image' && article.heroImage?.src ? (
-          <div className="relative w-full h-[32rem] rounded-2xl overflow-hidden shadow-xl">
-            <img
-              src={article.heroImage.src}
-              alt={stripHtmlTags(article.title)}
-              className="w-full h-full object-cover"
-              style={{ objectFit: article.heroImage.fitmode || 'cover' }}
-            />
-            <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-            <div className="absolute bottom-10 left-10 right-10">
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
-                {stripHtmlTags(article.title)}
-              </h1>
-              <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
-            </div>
-          </div>
-        ) : article.heroType === 'linear' ? (
-          <div
-            className="relative w-full h-[32rem] rounded-2xl overflow-hidden shadow-xl"
-            style={{
-              background: `linear-gradient(${article.gradientAngle}deg, ${article.gradientColor1}, ${article.gradientColor2})`,
-            }}
-          >
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="text-center px-10">
-                <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
-                  {stripHtmlTags(article.title)}
-                </h1>
-                <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
-              </div>
-            </div>
-          </div>
-        ) : (
-          <div className="py-16 text-center">
-            <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 animate-fadeIn leading-tight">
-              {stripHtmlTags(article.title)}
-            </h1>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter">{stripHtmlTags(article.summary)}</p>
-          </div>
-        )}
-      </div>
-
-      {/* Main Content */}
       <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16 pb-16">
         <div className="flex flex-col lg:flex-row gap-12">
-          {/* Article Body */}
           <div className="flex-1">
             <div className="max-w-3xl mx-auto">
-              {/* Meta Information */}
-              <div className="flex items-center justify-between mb-10 border-b border-gray-200 dark:border-gray-700 pb-4">
-                <div className="flex items-center space-x-6 text-gray-600 dark:text-gray-400">
-                  <div className="flex items-center space-x-2">
-                    <ClockIcon className="w-5 h-5" />
-                    <span className="text-sm font-inter font-medium">{formatDate(article.date)}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
-                    <UserIcon className="w-5 h-5" />
-                    <span className="text-sm font-inter font-medium">{stripHtmlTags(article.author || 'Fraud Check Team')}</span>
+              {article.heroType === 'image' && article.heroImage?.src && (
+                <div className="layout-block hero dark:layout-block dark">
+                  <div className="relative w-full h-[32rem] rounded-2xl overflow-hidden shadow-xl">
+                    <img
+                      src={article.heroImage.src}
+                      alt={stripHtmlTags(article.title)}
+                      className="w-full h-full object-cover"
+                      style={{ objectFit: article.heroImage.fitmode || 'cover' }}
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                    <div className="absolute bottom-10 left-10 right-10">
+                      <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
+                        {stripHtmlTags(article.title)}
+                      </h1>
+                      <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
+                    </div>
                   </div>
                 </div>
-                <button
-                  onClick={handleShare}
-                  className="flex items-center space-x-2 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500 transition-colors font-inter font-medium"
-                >
-                  <ShareIcon className="w-5 h-5" />
-                  <span className="text-sm">Share</span>
-                </button>
+              )}
+              <div className="layout-block title dark:layout-block dark">
+                <h1 dangerouslySetInnerHTML={{ __html: article.title || 'Untitled' }} />
               </div>
-
-              {/* Article Content */}
-              <div className="prose prose-lg dark:prose-invert font-inter max-w-none">
+              <div className="layout-block meta dark:layout-block dark">
+                <div className="flex items-center justify-between mb-10 border-b border-gray-200 dark:border-gray-700 pb-4">
+                  <div className="flex items-center space-x-6">
+                    <div className="flex items-center space-x-2">
+                      <ClockIcon className="w-5 h-5" />
+                      <span className="text-sm font-inter font-medium">{formatDate(article.date)}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <UserIcon className="w-5 h-5" />
+                      <span className="text-sm font-inter font-medium">{stripHtmlTags(article.author || 'Fraud Check Team')}</span>
+                    </div>
+                  </div>
+                  <button
+                    onClick={handleShare}
+                    className="flex items-center space-x-2 text-cyan-600 dark:text-cyan-400 hover:text-cyan-700 dark:hover:text-cyan-500 transition-colors font-inter font-medium"
+                  >
+                    <ShareIcon className="w-5 h-5" />
+                    <span className="text-sm">Share</span>
+                  </button>
+                </div>
+              </div>
+              {article.summary && (
+                <div className="layout-block summary dark:layout-block dark">
+                  <p dangerouslySetInnerHTML={{ __html: article.summary }} />
+                </div>
+              )}
+              <div className="layout-block content dark:layout-block dark">
                 <div dangerouslySetInnerHTML={{ __html: article.content || 'No content provided' }} />
                 {article.contentImages && Array.isArray(article.contentImages) && article.contentImages.map((img, index) => (
-                  <img
-                    key={index}
-                    src={img.src}
-                    alt={`Content Image ${index + 1}`}
-                    className="rounded-lg my-8"
-                    style={{
-                      width: `${img.width || 300}px`,
-                      height: `${img.height || 200}px`,
-                      objectFit: img.fitmode || 'contain',
-                    }}
-                  />
+                  <div key={index} className="layout-block image">
+                    <img
+                      src={img.src}
+                      alt={`Content Image ${index + 1}`}
+                      className="rounded-lg my-8"
+                      style={{
+                        width: `${img.width || 300}px`,
+                        height: `${img.height || 200}px`,
+                        objectFit: img.fitmode || 'contain',
+                      }}
+                    />
+                  </div>
                 ))}
               </div>
-
-              {/* Tags */}
               {article.tags && Array.isArray(article.tags) && article.tags.length > 0 && (
                 <div className="mt-12">
                   <div className="flex flex-wrap gap-3">
@@ -341,8 +402,6 @@ const ArticleDetail = () => {
               )}
             </div>
           </div>
-
-          {/* Sidebar: Other Articles */}
           <aside className="lg:w-80 lg:sticky lg:top-24 lg:self-start">
             <div className="card-glow dark:card-glow-dark rounded-2xl p-6">
               <h3 className="text-2xl font-semibold text-[#002E5D] dark:text-white font-inter mb-6">Other Articles</h3>
@@ -370,7 +429,6 @@ const ArticleDetail = () => {
         </div>
       </div>
 
-      {/* Related Articles */}
       {relatedArticles && Array.isArray(relatedArticles) && relatedArticles.length > 0 && (
         <div className="bg-gray-50 dark:bg-slate-800 py-16">
           <div className="max-w-[90rem] mx-auto px-4 sm:px-6 lg:px-16">
