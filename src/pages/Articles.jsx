@@ -47,7 +47,7 @@ function Articles() {
     const fetchArticles = async () => {
       try {
         setLoading(true);
-        console.log('Fetching articles from Supabase...');
+        console.log('Fetching articles from Supabase at:', new Date().toISOString());
         const { data: articlesData, error: articlesError } = await supabase
           .from('articles')
           .select(`
@@ -73,7 +73,10 @@ function Articles() {
           `)
           .order('date', { ascending: false });
 
-        if (articlesError) throw new Error(`Supabase error: ${articlesError.message}`);
+        if (articlesError) {
+          console.error('Supabase error:', articlesError);
+          throw new Error(`Supabase error: ${articlesError.message}`);
+        }
 
         console.log('Raw Supabase data:', articlesData);
 
@@ -148,15 +151,25 @@ function Articles() {
             }
             .article-grid {
               display: grid;
-              grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+              grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
               gap: 1.5rem;
               padding: 0 1rem;
+              width: 100%;
+              box-sizing: border-box;
             }
             .article-card {
               width: 100%;
               max-width: 400px;
               margin: 0 auto;
               transition: transform 0.3s ease, box-shadow 0.3s ease;
+              display: block;
+              visibility: visible;
+            }
+            .article-card img {
+              width: 100%;
+              height: 192px;
+              object-fit: cover;
+              border-radius: 12px;
             }
             @media (max-width: 640px) {
               .article-grid {
@@ -216,6 +229,18 @@ function Articles() {
                 <p className="text-gray-500 dark:text-gray-400 text-lg font-inter">
                   No articles found. Debug: Check Supabase connection or data.
                 </p>
+                <pre className="text-sm text-gray-600 dark:text-gray-400 mt-2">
+                  {JSON.stringify(
+                    {
+                      supabaseUrl: 'https://ualzgryrkwktiqndotzo.supabase.co',
+                      articlesLength: articles.length,
+                      error,
+                      timestamp: new Date().toISOString(),
+                    },
+                    null,
+                    2
+                  )}
+                </pre>
               </div>
             ) : (
               <div className="article-grid">
