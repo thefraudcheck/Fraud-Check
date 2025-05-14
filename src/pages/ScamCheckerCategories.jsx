@@ -80,13 +80,48 @@ function ScamCheckerCategories() {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.innerHTML = `
+      @keyframes slideIn {
+        from {
+          opacity: 0;
+          transform: translateY(20px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+      @keyframes fadeIn {
+        from {
+          opacity: 0;
+        }
+        to {
+          opacity: 1;
+        }
+      }
+      .animate-slideIn {
+        animation: slideIn 0.3s ease-out forwards;
+      }
+      .animate-fadeIn {
+        animation: fadeIn 0.3s ease-out forwards;
+      }
+    `;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
+
   const formatTimestamp = (date) => {
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
 
   const handleOptionClick = (value) => {
     if (!selectedCategory) {
-      // Handle initial category selection
       if (!dynamicPaymentFlows[value] || !dynamicPaymentFlows[value][0]) {
         setMessages((prev) => [
           ...prev,
@@ -126,7 +161,6 @@ function ScamCheckerCategories() {
         setCurrentStep(1);
       }, 1000);
     } else if (selectedCategory === 'other' && currentStep === 1) {
-      // Handle Q1 redirect for "Other" category
       const redirectMap = {
         'purchase-or-item': 'marketplace',
         'helping-service': 'service-provider',
@@ -171,7 +205,6 @@ function ScamCheckerCategories() {
           },
         ]);
       } else {
-        // Proceed with "Other" flow
         setAnswers((prev) => [...prev, value]);
         setMessages((prev) => [
           ...prev,
@@ -195,7 +228,6 @@ function ScamCheckerCategories() {
         }, 1000);
       }
     } else {
-      // Handle subsequent questions
       const flow = dynamicPaymentFlows[selectedCategory];
       if (!flow || currentStep > flow.length) {
         setMessages((prev) => [
@@ -344,7 +376,7 @@ function ScamCheckerCategories() {
       <Header />
       <section className="flex-grow flex flex-col px-4 sm:px-6 py-8">
         <div className="w-full max-w-6xl mx-auto flex flex-col flex-grow">
-          <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col min-h-[600px] h-[80vh] w-full">
+          <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col min-h-[800px] h-[85vh] w-full">
             <div className="p-6 border-b border-gray-200 dark:border-slate-700 flex items-center gap-4 bg-white dark:bg-slate-850">
               <img
                 src={fraudCheckLogo}
@@ -413,6 +445,10 @@ function ScamCheckerCategories() {
                               <ResultCard
                                 isScam={msg.resultData.riskLevel === 'High Risk'}
                                 message={msg.resultData.summary}
+                                riskLevel={msg.resultData.riskLevel}
+                                redFlags={msg.resultData.redFlags}
+                                bestPractices={msg.resultData.bestPractices}
+                                missedBestPractices={msg.resultData.missedBestPractices}
                               />
                               {msg.resultData.redFlags.length > 0 && (
                                 <div className="mt-4 bg-red-100 dark:bg-red-900/20 p-3 rounded-md">
@@ -535,32 +571,6 @@ function ScamCheckerCategories() {
           </div>
         </div>
       </section>
-      <style jsx>{`
-        @keyframes slideIn {
-          from {
-            opacity: 0;
-            transform: translateY(20px);
-          }
-          to {
-            opacity: 1;
-            transform: translateY(0);
-          }
-        }
-        @keyframes fadeIn {
-          from {
-            opacity: 0;
-          }
-          to {
-            opacity: 1;
-          }
-        }
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-out forwards;
-        }
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-out forwards;
-        }
-      `}</style>
     </div>
   );
 }

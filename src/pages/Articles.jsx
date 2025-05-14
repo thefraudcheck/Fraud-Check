@@ -53,9 +53,6 @@ function Articles() {
     const fetchArticles = async (retryCount = 0) => {
       try {
         setLoading(true);
-        console.log('Fetching articles from Supabase at:', new Date().toISOString());
-        console.log('Supabase URL:', 'https://ualzgryrkwktiqndotzo.supabase.co');
-
         const controller = new AbortController();
         const timeoutId = setTimeout(() => controller.abort(), 10000);
 
@@ -73,17 +70,14 @@ function Articles() {
         clearTimeout(timeoutId);
 
         if (articlesError) {
-          console.error('Supabase error:', articlesError);
           if (retryCount < 2) {
-            console.log('Retrying fetch, attempt:', retryCount + 1);
             return setTimeout(() => fetchArticles(retryCount + 1), 1000);
           }
           throw new Error(`Supabase error: ${articlesError.message}`);
         }
 
-        console.log('Raw Supabase data:', articlesData);
-
         const normalizedArticles = articlesData.map((article) => {
+          const cleanedSlug = (article.slug || '').replace(/<[^>]*>?/gm, '');
           const cardImages = (article.article_images || [])
             .filter((img) => img.image_type === 'card')
             .map((img) => ({
@@ -98,10 +92,9 @@ function Articles() {
               fitMode: img.fitmode ?? 'cover',
             }));
 
-          console.log('Card images for', article.slug, ':', cardImages);
-
           return {
             ...article,
+            slug: cleanedSlug,
             title: article.title || 'Untitled',
             summary: article.summary || '',
             content: article.content || '',
@@ -126,7 +119,6 @@ function Articles() {
           };
         });
 
-        console.log('Normalized articles:', normalizedArticles);
         setArticles(normalizedArticles);
         setDebugInfo({
           articlesLength: normalizedArticles.length,
@@ -134,7 +126,6 @@ function Articles() {
           fetchTime: new Date().toISOString(),
         });
       } catch (err) {
-        console.error('Fetch articles error:', err.message);
         setError(`Failed to load articles: ${err.message}`);
         setArticles([]);
         setDebugInfo({ error: err.message, fetchTime: new Date().toISOString() });
@@ -251,7 +242,8 @@ function Articles() {
                       debugInfo,
                       timestamp: new Date().toISOString(),
                     },
-                    null, 2
+                    null,
+                    2
                   )}
                 </pre>
               </div>

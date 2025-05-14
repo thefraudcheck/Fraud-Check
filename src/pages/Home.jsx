@@ -205,14 +205,14 @@ function Home() {
 
   if (isLoading) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <p>Loading...</p>
+      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
+        <p className="text-gray-900 dark:text-white font-inter">Loading...</p>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen">
+    <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
       <Header />
       <div className="w-full">
         <Hero className="overflow-visible" onStartScamCheck={handleStartScamCheck} heroData={pageData.hero} />

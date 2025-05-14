@@ -20,6 +20,7 @@ const ArticleDetail = () => {
     const fetchArticle = async () => {
       try {
         setLoading(true);
+        const cleanedSlug = slug.replace(/<[^>]*>?/gm, '');
         const { data: articleData, error: articleError } = await supabase
           .from('articles')
           .select(`
@@ -37,7 +38,7 @@ const ArticleDetail = () => {
               background_data
             )
           `)
-          .eq('slug', slug)
+          .eq('slug', cleanedSlug)
           .single();
 
         if (articleError) throw new Error(`Failed to fetch article: ${articleError.message}`);
@@ -72,7 +73,7 @@ const ArticleDetail = () => {
             )
           `)
           .eq('category', normalizedArticle.category)
-          .neq('slug', slug)
+          .neq('slug', cleanedSlug)
           .limit(3);
 
         if (relatedError) throw new Error(`Failed to fetch related articles: ${relatedError.message}`);
@@ -99,7 +100,7 @@ const ArticleDetail = () => {
               image_type
             )
           `)
-          .not('slug', 'in', `(${[slug, ...relatedSlugs].join(',')})`)
+          .not('slug', 'in', `(${[cleanedSlug, ...relatedSlugs].join(',')})`)
           .order('date', { ascending: false })
           .limit(3);
 
@@ -121,6 +122,85 @@ const ArticleDetail = () => {
     };
     fetchArticle();
   }, [slug]);
+
+  useEffect(() => {
+    const styleElement = document.createElement('style');
+    styleElement.type = 'text/css';
+    styleElement.innerHTML = `
+      @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+      }
+      .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
+      .prose img {
+        border-radius: 0.5rem;
+        margin: 0.25rem auto;
+        max-width: 100%;
+        height: auto;
+      }
+      .prose h1 {
+        font-size: 2rem;
+        font-weight: 700;
+        margin: 0.25rem 0;
+        color: #374151;
+      }
+      .prose h2 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin: 0.25rem 0;
+        color: #374151;
+      }
+      .prose h3 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin: 0.25rem 0;
+        color: #374151;
+      }
+      .prose p {
+        font-size: 1rem;
+        margin: 0.25rem 0;
+        color: #374151;
+      }
+      .prose ul, .prose ol {
+        margin: 0.25rem 0;
+        padding-left: 1.5rem;
+      }
+      .prose li {
+        margin: 0.25rem 0;
+      }
+      .prose.dark h1, .prose.dark h2, .prose.dark h3, .prose.dark p {
+        color: #d1d5db;
+      }
+      .article-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
+        transition: all 0.3s ease-in-out;
+      }
+      .card-glow {
+        position: relative;
+        background: linear-gradient(145deg, #ffffff, #e6f9fd);
+        box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
+        border: 1px solid rgba(14, 165, 233, 0.2);
+        border-radius: 1.5rem;
+      }
+      .card-glow::before {
+        content: '';
+        position: absolute;
+        inset: 0;
+        background: radial-gradient(circle at center, rgba(14,165,233,0.1) 0%, rgba(14,165,233,0) 70%);
+        z-index: -1;
+        border-radius: 1.5rem;
+      }
+      .card-glow-dark {
+        background: linear-gradient(145deg, #1e293b, #334155);
+      }
+    `;
+    document.head.appendChild(styleElement);
+
+    return () => {
+      document.head.removeChild(styleElement);
+    };
+  }, []);
 
   const formatDate = (date) => {
     if (!date) return 'No Date';
@@ -182,75 +262,6 @@ const ArticleDetail = () => {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#f0fcff] to-[#e0f5fa] dark:bg-slate-900 text-gray-900 dark:text-gray-100">
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(10px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-fadeIn { animation: fadeIn 0.5s ease-out forwards; }
-        .prose img {
-          border-radius: 0.5rem;
-          margin: 0.25rem auto;
-          max-width: 100%;
-          height: auto;
-        }
-        .prose h1 {
-          font-size: 2rem;
-          font-weight: 700;
-          margin: 0.25rem 0;
-          color: #374151;
-        }
-        .prose h2 {
-          font-size: 1.5rem;
-          font-weight: 600;
-          margin: 0.25rem 0;
-          color: #374151;
-        }
-        .prose h3 {
-          font-size: 1.25rem;
-          font-weight: 600;
-          margin: 0.25rem 0;
-          color: #374151;
-        }
-        .prose p {
-          font-size: 1rem;
-          margin: 0.25rem 0;
-          color: #374151;
-        }
-        .prose ul, .prose ol {
-          margin: 0.25rem 0;
-          padding-left: 1.5rem;
-        }
-        .prose li {
-          margin: 0.25rem 0;
-        }
-        .prose.dark h1, .prose.dark h2, .prose.dark h3, .prose.dark p {
-          color: #d1d5db;
-        }
-        .article-card:hover {
-          transform: translateY(-4px);
-          box-shadow: 0 8px 16px rgba(0, 0, 0, 0.15);
-          transition: all 0.3s ease-in-out;
-        }
-        .card-glow {
-          position: relative;
-          background: linear-gradient(145deg, #ffffff, #e6f9fd);
-          box-shadow: 0 6px 16px rgba(0, 0, 0, 0.05);
-          border: 1px solid rgba(14, 165, 233, 0.2);
-          border-radius: 1.5rem;
-        }
-        .card-glow::before {
-          content: '';
-          position: absolute;
-          inset: 0;
-          background: radial-gradient(circle at center, rgba(14,165,233,0.1) 0%, rgba(14,165,233,0) 70%);
-          z-index: -1;
-          border-radius: 1.5rem;
-        }
-        .card-glow-dark {
-          background: linear-gradient(145deg, #1e293b, #334155);
-        }
-      `}</style>
       <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
 
       {/* Navigation */}

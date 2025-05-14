@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HashRouter as Router, Routes, Route, useLocation, Link, Navigate } from 'react-router-dom';
 import { supabase } from './utils/supabase';
 import Home from './pages/Home';
@@ -67,10 +67,7 @@ const ProtectedRoute = ({ children }) => {
     let mounted = true;
 
     const checkSession = async () => {
-      console.log('🔐 Checking Supabase session...');
       const { data: { session }, error } = await supabase.auth.getSession();
-      console.log('✅ Session from getSession:', session);
-
       if (error) {
         console.error('❌ Supabase session error:', error);
       }
@@ -79,9 +76,7 @@ const ProtectedRoute = ({ children }) => {
         setUser(session.user);
         setLoading(false);
       } else {
-        // Fallback: wait for auth state change (in case session is late)
         supabase.auth.getUser().then(({ data: userData }) => {
-          console.log('🔄 Fallback getUser():', userData?.user);
           if (userData?.user && mounted) {
             setUser(userData.user);
           }
@@ -93,7 +88,6 @@ const ProtectedRoute = ({ children }) => {
     checkSession();
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, session) => {
-      console.log('📡 Supabase auth state changed:', _event);
       if (session?.user && mounted) {
         setUser(session.user);
         setLoading(false);
@@ -107,7 +101,6 @@ const ProtectedRoute = ({ children }) => {
   }, []);
 
   if (loading) {
-    console.log('⏳ Waiting for session...');
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
         <svg className="animate-spin h-8 w-8 text-cyan-600" viewBox="0 0 24 24">
@@ -123,7 +116,6 @@ const ProtectedRoute = ({ children }) => {
   }
 
   if (!user) {
-    console.warn('🚫 No authenticated user. Redirecting to /login');
     return <Navigate to="/login" replace />;
   }
 
@@ -134,7 +126,6 @@ function AppContent({ resetErrorBoundary }) {
   const location = useLocation();
 
   useEffect(() => {
-    console.log('📍 Current pathname:', location.pathname);
     if (resetErrorBoundary) {
       resetErrorBoundary();
     }
@@ -220,7 +211,6 @@ function AppContent({ resetErrorBoundary }) {
         path="*"
         element={
           <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900 text-gray-900 dark:text-white">
-            {console.log('Wildcard route hit')}
             <div className="text-center">
               <h1 className="text-4xl font-bold mb-4 font-inter">404 - Page Not Found</h1>
               <p className="text-lg mb-4 font-inter">The page you are looking for does not exist.</p>
@@ -240,12 +230,7 @@ function AppContent({ resetErrorBoundary }) {
 
 function App() {
   return (
-    <Router
-      future={{
-        v7_startTransition: true,
-        v7_relativeSplatPath: true,
-      }}
-    >
+    <Router>
       <ErrorBoundary>
         <AppContent resetErrorBoundary={() => document.querySelector('ErrorBoundary')?.resetError?.()} />
       </ErrorBoundary>
