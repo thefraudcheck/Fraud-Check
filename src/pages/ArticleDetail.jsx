@@ -48,6 +48,9 @@ const ArticleDetail = () => {
           .eq('slug', cleanedSlug)
           .single();
 
+        console.log('Fetched article title:', articleData.title);
+        console.log('Decoded title:', decodeHtmlEntities(articleData.title));
+
         if (articleError) throw new Error(`Failed to fetch article: ${articleError.message}`);
         if (!articleData) throw new Error('Article not found');
 
