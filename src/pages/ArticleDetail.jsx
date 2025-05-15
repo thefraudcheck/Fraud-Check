@@ -3,6 +3,13 @@ import { useParams, Link } from 'react-router-dom';
 import { ArrowLeftIcon, ShareIcon, ClockIcon, UserIcon } from '@heroicons/react/24/outline';
 import { supabase } from '../utils/supabase';
 
+const decodeHtmlEntities = (str) => {
+  if (!str) return str;
+  const textarea = document.createElement('textarea');
+  textarea.innerHTML = str;
+  return textarea.value;
+};
+
 const ArticleDetail = () => {
   const { slug } = useParams();
   const [article, setArticle] = useState(null);
@@ -49,6 +56,10 @@ const ArticleDetail = () => {
 
         const normalizedArticle = {
           ...articleData,
+          title: decodeHtmlEntities(articleData.title),
+          summary: decodeHtmlEntities(articleData.summary),
+          content: decodeHtmlEntities(articleData.content),
+          author: decodeHtmlEntities(articleData.author),
           heroImage,
           contentImages,
           heroType: heroImage ? 'image' : (articleData.article_backgrounds?.[0]?.background_type || 'none'),
@@ -80,9 +91,9 @@ const ArticleDetail = () => {
 
         const normalizedRelated = (relatedData || []).map(item => ({
           ...item,
-          title: stripHtmlTags(item.title || 'Untitled Article'),
-          summary: stripHtmlTags(item.summary || 'No summary available.'),
-          author: stripHtmlTags(item.author || 'Fraud Check Team'),
+          title: decodeHtmlEntities(stripHtmlTags(item.title || 'Untitled Article')),
+          summary: decodeHtmlEntities(stripHtmlTags(item.summary || 'No summary available.')),
+          author: decodeHtmlEntities(stripHtmlTags(item.author || 'Fraud Check Team')),
           image: (item.article_images || []).filter(img => img.image_type === 'card')[0]?.src || 'https://via.placeholder.com/150',
         }));
 
@@ -108,7 +119,7 @@ const ArticleDetail = () => {
 
         const normalizedOther = (otherData || []).map(item => ({
           ...item,
-          title: stripHtmlTags(item.title || 'Untitled Article'),
+          title: decodeHtmlEntities(stripHtmlTags(item.title || 'Untitled Article')),
           image: (item.article_images || []).filter(img => img.image_type === 'card')[0]?.src || 'https://via.placeholder.com/150',
         }));
 
@@ -218,8 +229,8 @@ const ArticleDetail = () => {
 
   const handleShare = async () => {
     const shareData = {
-      title: stripHtmlTags(article?.title || 'Article'),
-      text: stripHtmlTags(article?.summary || 'Check out this article!'),
+      title: decodeHtmlEntities(stripHtmlTags(article?.title || 'Article')),
+      text: decodeHtmlEntities(stripHtmlTags(article?.summary || 'Check out this article!')),
       url: window.location.href,
     };
     try {
@@ -281,16 +292,16 @@ const ArticleDetail = () => {
           <div className="relative w-full h-[32rem] rounded-2xl overflow-hidden">
             <img
               src={article.heroImage.src}
-              alt={stripHtmlTags(article.title)}
+              alt={decodeHtmlEntities(stripHtmlTags(article.title))}
               className="w-full h-full object-cover"
               style={{ objectFit: article.heroImage.fitmode || 'cover' }}
             />
             <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
             <div className="absolute bottom-10 left-10 right-10">
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
-                {stripHtmlTags(article.title)}
+                {decodeHtmlEntities(stripHtmlTags(article.title))}
               </h1>
-              <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
+              <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{decodeHtmlEntities(stripHtmlTags(article.summary))}</p>
             </div>
           </div>
         ) : article.heroType === 'linear' ? (
@@ -303,18 +314,18 @@ const ArticleDetail = () => {
             <div className="absolute inset-0 flex items-center justify-center">
               <div className="text-center px-10">
                 <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white font-inter mb-4 animate-fadeIn leading-tight">
-                  {stripHtmlTags(article.title)}
+                  {decodeHtmlEntities(stripHtmlTags(article.title))}
                 </h1>
-                <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{stripHtmlTags(article.summary)}</p>
+                <p className="text-lg sm:text-xl text-gray-100 font-inter opacity-90">{decodeHtmlEntities(stripHtmlTags(article.summary))}</p>
               </div>
             </div>
           </div>
         ) : (
           <div className="py-8 text-center">
             <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-[#002E5D] dark:text-white font-inter mb-4 animate-fadeIn leading-tight">
-              {stripHtmlTags(article.title)}
+              {decodeHtmlEntities(stripHtmlTags(article.title))}
             </h1>
-            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter">{stripHtmlTags(article.summary)}</p>
+            <p className="text-lg sm:text-xl text-gray-600 dark:text-gray-300 font-inter">{decodeHtmlEntities(stripHtmlTags(article.summary))}</p>
           </div>
         )}
       </div>
@@ -334,7 +345,7 @@ const ArticleDetail = () => {
                   </div>
                   <div className="flex items-center space-x-2">
                     <UserIcon className="w-5 h-5" />
-                    <span className="text-sm font-inter font-medium">{stripHtmlTags(article.author || 'Fraud Check Team')}</span>
+                    <span className="text-sm font-inter font-medium">{decodeHtmlEntities(stripHtmlTags(article.author || 'Fraud Check Team'))}</span>
                   </div>
                 </div>
                 <button
@@ -348,9 +359,9 @@ const ArticleDetail = () => {
 
               {/* Article Content */}
               <div className="prose prose-lg dark:prose-invert font-inter max-w-none">
-                <div dangerouslySetInnerHTML={{ __html: article.title || 'Untitled' }} />
-                {article.summary && <div dangerouslySetInnerHTML={{ __html: article.summary }} />}
-                <div dangerouslySetInnerHTML={{ __html: article.content || 'No content provided' }} />
+                <div dangerouslySetInnerHTML={{ __html: decodeHtmlEntities(article.title || 'Untitled') }} />
+                {article.summary && <div dangerouslySetInnerHTML={{ __html: decodeHtmlEntities(article.summary) }} />}
+                <div dangerouslySetInnerHTML={{ __html: decodeHtmlEntities(article.content || 'No content provided') }} />
                 {article.contentImages && Array.isArray(article.contentImages) && article.contentImages.map((img, index) => (
                   <img
                     key={index}
@@ -375,7 +386,7 @@ const ArticleDetail = () => {
                         key={index}
                         className="inline-block bg-cyan-100 dark:bg-cyan-900 text-cyan-800 dark:text-cyan-300 text-sm font-semibold px-4 py-1.5 rounded-full font-inter"
                       >
-                        {stripHtmlTags(tag)}
+                        {decodeHtmlEntities(stripHtmlTags(tag))}
                       </span>
                     ))}
                   </div>
@@ -397,11 +408,11 @@ const ArticleDetail = () => {
                   >
                     <img
                       src={other.image}
-                      alt={other.title}
+                      alt={decodeHtmlEntities(other.title)}
                       className="w-16 h-16 rounded-lg object-cover shadow-sm"
                     />
                     <div className="flex-1">
-                      <h4 className="text-base font-semibold text-gray-800 dark:text-white font-inter line-clamp-2">{other.title}</h4>
+                      <h4 className="text-base font-semibold text-gray-800 dark:text-white font-inter line-clamp-2">{decodeHtmlEntities(other.title)}</h4>
                       <p className="text-xs text-gray-500 dark:text-gray-400 font-inter mt-1">{formatDate(other.date)}</p>
                     </div>
                   </Link>
@@ -425,16 +436,16 @@ const ArticleDetail = () => {
                 >
                   <img
                     src={related.image}
-                    alt={related.title}
+                    alt={decodeHtmlEntities(related.title)}
                     className="w-full h-52 object-cover"
                   />
                   <div className="p-5">
                     <h3 className="text-xl font-semibold text-gray-800 dark:text-white mb-2 line-clamp-2 font-inter">
-                      {related.title}
+                      {decodeHtmlEntities(related.title)}
                     </h3>
-                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">{related.summary}</p>
+                    <p className="text-gray-600 dark:text-gray-300 text-sm mb-4 line-clamp-3">{decodeHtmlEntities(related.summary)}</p>
                     <p className="text-gray-500 dark:text-gray-400 text-xs mb-4 font-inter">
-                      {formatDate(related.date)} • {related.author}
+                      {formatDate(related.date)} • {decodeHtmlEntities(related.author)}
                     </p>
                     <Link
                       to={`/articles/${related.slug}`}
