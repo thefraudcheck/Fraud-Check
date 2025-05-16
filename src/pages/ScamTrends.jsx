@@ -100,7 +100,15 @@ const sanitizeText = (text) => {
 };
 
 function ScamTrends() {
-  const [scamData, setScamData] = useState(null);
+  const [scamData, setScamData] = useState({
+    hero: { title: '', subtitle: '', logo: '', textColor: '#000000' },
+    scamOfTheWeek: { name: '', description: '', redFlags: [], reportDate: '', action: '', type: '', headings: { redFlags: 'Red Flags', action: 'What to Do' } },
+    pastScamOfTheWeek: [],
+    scamCategories: [],
+    weeklyStats: { mostReported: 'None', topDeliveryChannel: 'None', highRiskScamsDetected: 'No data', redFlags: [], reportDate: '', headings: { redFlags: 'Red Flags' } },
+    quickAlerts: [],
+    userReportedScams: [],
+  });
   const [newScamReport, setNewScamReport] = useState({ name: '', description: '', redFlags: '', action: '', url: '' });
   const [userReports, setUserReports] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -140,39 +148,39 @@ function ScamTrends() {
       setError(null);
       try {
         const initialScamData = getScamTrendsData();
-        setScamData(initialScamData);
+        setScamData(initialScamData || scamData);
         setScamOfTheWeek({
-          name: sanitizeText(initialScamData.scamOfTheWeek?.name || 'N/A'),
-          description: initialScamData.scamOfTheWeek?.description || '',
-          redFlags: initialScamData.scamOfTheWeek?.redFlags?.map(flag => sanitizeText(flag)) || [],
-          reportDate: sanitizeText(initialScamData.scamOfTheWeek?.reportDate || ''),
-          action: initialScamData.scamOfTheWeek?.action || '',
-          source: sanitizeText(initialScamData.scamOfTheWeek?.source || ''),
-          type: sanitizeText(initialScamData.scamOfTheWeek?.type || 'Phishing Scams'),
-          headings: initialScamData.scamOfTheWeek?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+          name: sanitizeText(initialScamData?.scamOfTheWeek?.name || 'N/A'),
+          description: initialScamData?.scamOfTheWeek?.description || '',
+          redFlags: initialScamData?.scamOfTheWeek?.redFlags?.map(flag => sanitizeText(flag)) || [],
+          reportDate: sanitizeText(initialScamData?.scamOfTheWeek?.reportDate || ''),
+          action: initialScamData?.scamOfTheWeek?.action || '',
+          source: sanitizeText(initialScamData?.scamOfTheWeek?.source || ''),
+          type: sanitizeText(initialScamData?.scamOfTheWeek?.type || 'Phishing Scams'),
+          headings: initialScamData?.scamOfTheWeek?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
         });
-        setPastScams(initialScamData.pastScamOfTheWeek?.map(scam => ({
+        setPastScams(initialScamData?.pastScamOfTheWeek?.map(scam => ({
           ...scam,
-          name: sanitizeText(scam.name),
-          description: scam.description || '',
-          redFlags: scam.redFlags?.map(flag => sanitizeText(flag)) || [],
-          reportDate: sanitizeText(scam.reportDate),
-          action: scam.action || '',
-          source: sanitizeText(scam.source),
-          headings: scam.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+          name: sanitizeText(scam?.name || ''),
+          description: scam?.description || '',
+          redFlags: scam?.redFlags?.map(flag => sanitizeText(flag)) || [],
+          reportDate: sanitizeText(scam?.reportDate || ''),
+          action: scam?.action || '',
+          source: sanitizeText(scam?.source || ''),
+          headings: scam?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
         })) || []);
-        setUserReports(initialScamData.userReportedScams?.map(report => ({
+        setUserReports(initialScamData?.userReportedScams?.map(report => ({
           ...report,
-          name: sanitizeText(report.name),
-          type: sanitizeText(report.type),
-          description: report.description || '',
-          redFlags: report.redFlags?.map(flag => sanitizeText(flag)) || [],
-          action: report.action || '',
-          url: sanitizeText(report.url),
-          source: sanitizeText(report.source),
-          reportDate: sanitizeText(report.reportDate),
-          status: sanitizeText(report.status),
-          headings: report.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+          name: sanitizeText(report?.name || ''),
+          type: sanitizeText(report?.type || ''),
+          description: report?.description || '',
+          redFlags: report?.redFlags?.map(flag => sanitizeText(flag)) || [],
+          action: report?.action || '',
+          url: sanitizeText(report?.url || ''),
+          source: sanitizeText(report?.source || ''),
+          reportDate: sanitizeText(report?.reportDate || ''),
+          status: sanitizeText(report?.status || ''),
+          headings: report?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
         })) || []);
 
         const { data: fetchedData, error } = await supabase
@@ -185,7 +193,7 @@ function ScamTrends() {
           throw new Error(`Supabase fetch error: ${error.message}`);
         }
 
-        let updatedScamData = initialScamData;
+        let updatedScamData = initialScamData || scamData;
         if (!fetchedData || !fetchedData.data) {
           const initialData = {
             hero: {
@@ -228,60 +236,60 @@ function ScamTrends() {
           updatedScamData = initialData;
         } else {
           updatedScamData = {
-            ...initialScamData,
+            ...scamData,
             ...fetchedData.data,
             scamOfTheWeek: {
-              ...fetchedData.data.scamOfTheWeek,
-              name: sanitizeText(fetchedData.data.scamOfTheWeek?.name),
-              description: fetchedData.data.scamOfTheWeek?.description || '',
-              redFlags: fetchedData.data.scamOfTheWeek?.redFlags?.map(flag => sanitizeText(flag)) || [],
-              reportDate: sanitizeText(fetchedData.data.scamOfTheWeek?.reportDate),
-              action: fetchedData.data.scamOfTheWeek?.action || '',
-              source: sanitizeText(fetchedData.data.scamOfTheWeek?.source),
-              type: sanitizeText(fetchedData.data.scamOfTheWeek?.type),
-              headings: fetchedData.data.scamOfTheWeek?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
-            } || initialScamData.scamOfTheWeek,
-            pastScamOfTheWeek: fetchedData.data.pastScamOfTheWeek?.map(scam => ({
+              ...fetchedData.data?.scamOfTheWeek,
+              name: sanitizeText(fetchedData.data?.scamOfTheWeek?.name || ''),
+              description: fetchedData.data?.scamOfTheWeek?.description || '',
+              redFlags: fetchedData.data?.scamOfTheWeek?.redFlags?.map(flag => sanitizeText(flag)) || [],
+              reportDate: sanitizeText(fetchedData.data?.scamOfTheWeek?.reportDate || ''),
+              action: fetchedData.data?.scamOfTheWeek?.action || '',
+              source: sanitizeText(fetchedData.data?.scamOfTheWeek?.source || ''),
+              type: sanitizeText(fetchedData.data?.scamOfTheWeek?.type || ''),
+              headings: fetchedData.data?.scamOfTheWeek?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+            },
+            pastScamOfTheWeek: fetchedData.data?.pastScamOfTheWeek?.map(scam => ({
               ...scam,
-              name: sanitizeText(scam.name),
-              description: scam.description || '',
-              redFlags: scam.redFlags?.map(flag => sanitizeText(flag)) || [],
-              reportDate: sanitizeText(scam.reportDate),
-              action: scam.action || '',
-              source: sanitizeText(scam.source),
-              headings: scam.headings || { redFlags: 'Red Flags', action: 'What to Do' },
-            })) || initialScamData.pastScamOfTheWeek,
-            userReportedScams: fetchedData.data.userReportedScams?.map(report => ({
+              name: sanitizeText(scam?.name || ''),
+              description: scam?.description || '',
+              redFlags: scam?.redFlags?.map(flag => sanitizeText(flag)) || [],
+              reportDate: sanitizeText(scam?.reportDate || ''),
+              action: scam?.action || '',
+              source: sanitizeText(scam?.source || ''),
+              headings: scam?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+            })) || [],
+            userReportedScams: fetchedData.data?.userReportedScams?.map(report => ({
               ...report,
-              name: sanitizeText(report.name),
-              type: sanitizeText(report.type),
-              description: report.description || '',
-              redFlags: report.redFlags?.map(flag => sanitizeText(flag)) || [],
-              action: report.action || '',
-              url: sanitizeText(report.url),
-              source: sanitizeText(report.source),
-              reportDate: sanitizeText(report.reportDate),
-              status: sanitizeText(report.status),
-              headings: report.headings || { redFlags: 'Red Flags', action: 'What to Do' },
-            })) || initialScamData.userReportedScams,
-            scamCategories: fetchedData.data.scamCategories?.map(category => ({
+              name: sanitizeText(report?.name || ''),
+              type: sanitizeText(report?.type || ''),
+              description: report?.description || '',
+              redFlags: report?.redFlags?.map(flag => sanitizeText(flag)) || [],
+              action: report?.action || '',
+              url: sanitizeText(report?.url || ''),
+              source: sanitizeText(report?.source || ''),
+              reportDate: sanitizeText(report?.reportDate || ''),
+              status: sanitizeText(report?.status || ''),
+              headings: report?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+            })) || [],
+            scamCategories: fetchedData.data?.scamCategories?.map(category => ({
               ...category,
-              name: sanitizeText(category.name),
-              description: category.description || '',
-              redFlags: category.redFlags?.map(flag => sanitizeText(flag)) || [],
-              action: category.action || '',
-              url: sanitizeText(category.url),
-              source: sanitizeText(category.source),
-              reportDate: sanitizeText(category.reportDate),
-              headings: category.headings || { redFlags: 'Red Flags', action: 'What to Do' },
-            })) || initialScamData.scamCategories,
+              name: sanitizeText(category?.name || ''),
+              description: category?.description || '',
+              redFlags: category?.redFlags?.map(flag => sanitizeText(flag)) || [],
+              action: category?.action || '',
+              url: sanitizeText(category?.url || ''),
+              source: sanitizeText(category?.source || ''),
+              reportDate: sanitizeText(category?.reportDate || ''),
+              headings: category?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+            })) || [],
           };
         }
 
         setScamData(updatedScamData);
-        setScamOfTheWeek(updatedScamData.scamOfTheWeek);
-        setPastScams(updatedScamData.pastScamOfTheWeek);
-        setUserReports(updatedScamData.userReportedScams);
+        setScamOfTheWeek(updatedScamData?.scamOfTheWeek || {});
+        setPastScams(updatedScamData?.pastScamOfTheWeek || []);
+        setUserReports(updatedScamData?.userReportedScams || []);
 
         const today = new Date();
         const currentDay = today.getDay();
@@ -293,16 +301,16 @@ function ScamTrends() {
         weekEnd.setDate(weekStart.getDate() + 6);
         weekEnd.setHours(23, 59, 59, 999);
 
-        const last7DaysReports = (updatedScamData.userReportedScams || []).filter((report) => {
-          const reportDate = new Date(sanitizeText(report.reportDate));
+        const last7DaysReports = (updatedScamData?.userReportedScams || []).filter((report) => {
+          const reportDate = new Date(sanitizeText(report?.reportDate || ''));
           return reportDate >= weekStart && reportDate <= weekEnd;
         });
 
         const typeCounts = {};
         last7DaysReports.forEach((report) => {
-          let type = sanitizeText(report.type || report.name || 'Unknown');
-          const matchingCategory = updatedScamData.scamCategories?.find((category) =>
-            type.toLowerCase().includes(sanitizeText(category.name).toLowerCase().replace(' scams', ''))
+          let type = sanitizeText(report?.type || report?.name || 'Unknown');
+          const matchingCategory = updatedScamData?.scamCategories?.find((category) =>
+            type.toLowerCase().includes(sanitizeText(category?.name || '').toLowerCase().replace(' scams', ''))
           );
           type = matchingCategory ? sanitizeText(matchingCategory.name) : type;
           typeCounts[type] = (typeCounts[type] || 0) + 1;
@@ -339,16 +347,16 @@ function ScamTrends() {
         if (data?.data?.userReportedScams) {
           setUserReports(data.data.userReportedScams.map(report => ({
             ...report,
-            name: sanitizeText(report.name),
-            type: sanitizeText(report.type),
-            description: report.description || '',
-            redFlags: report.redFlags?.map(flag => sanitizeText(flag)) || [],
-            action: report.action || '',
-            url: sanitizeText(report.url),
-            source: sanitizeText(report.source),
-            reportDate: sanitizeText(report.reportDate),
-            status: sanitizeText(report.status),
-            headings: report.headings || { redFlags: 'Red Flags', action: 'What to Do' },
+            name: sanitizeText(report?.name || ''),
+            type: sanitizeText(report?.type || ''),
+            description: report?.description || '',
+            redFlags: report?.redFlags?.map(flag => sanitizeText(flag)) || [],
+            action: report?.action || '',
+            url: sanitizeText(report?.url || ''),
+            source: sanitizeText(report?.source || ''),
+            reportDate: sanitizeText(report?.reportDate || ''),
+            status: sanitizeText(report?.status || ''),
+            headings: report?.headings || { redFlags: 'Red Flags', action: 'What to Do' },
           })));
         }
       } catch (err) {
@@ -421,15 +429,15 @@ function ScamTrends() {
       weekEnd.setHours(23, 59, 59, 999);
 
       const last7DaysReports = updatedReports.filter((report) => {
-        const reportDate = new Date(sanitizeText(report.reportDate));
+        const reportDate = new Date(sanitizeText(report?.reportDate || ''));
         return reportDate >= weekStart && reportDate <= weekEnd;
       });
 
       const typeCounts = {};
       last7DaysReports.forEach((report) => {
-        let type = sanitizeText(report.type || report.name || 'Unknown');
-        const matchingCategory = scamData.scamCategories?.find((category) =>
-          type.toLowerCase().includes(sanitizeText(category.name).toLowerCase().replace(' scams', ''))
+        let type = sanitizeText(report?.type || report?.name || 'Unknown');
+        const matchingCategory = scamData?.scamCategories?.find((category) =>
+          type.toLowerCase().includes(sanitizeText(category?.name || '').toLowerCase().replace(' scams', ''))
         );
         type = matchingCategory ? sanitizeText(matchingCategory.name) : type;
         typeCounts[type] = (typeCounts[type] || 0) + 1;
@@ -454,12 +462,12 @@ function ScamTrends() {
   const filteredReports = userReports
     .filter(
       (report) =>
-        (sanitizeText(report.name) || sanitizeText(report.type) || '').toLowerCase().includes(searchQuery.toLowerCase()) &&
-        (filterType === 'All' || (sanitizeText(report.name) || sanitizeText(report.type) || '').includes(filterType))
+        (sanitizeText(report?.name || '') || sanitizeText(report?.type || '')).toLowerCase().includes(searchQuery.toLowerCase()) &&
+        (filterType === 'All' || (sanitizeText(report?.name || '') || sanitizeText(report?.type || '')).includes(filterType))
     )
     .sort((a, b) => {
-      if (sortOption === 'Most Recent') return new Date(sanitizeText(b.reportDate) || 0) - new Date(sanitizeText(a.reportDate) || 0);
-      if (sortOption === 'Oldest') return new Date(sanitizeText(a.reportDate) || 0) - new Date(sanitizeText(b.reportDate) || 0);
+      if (sortOption === 'Most Recent') return new Date(sanitizeText(b?.reportDate || '') || 0) - new Date(sanitizeText(a?.reportDate || '') || 0);
+      if (sortOption === 'Oldest') return new Date(sanitizeText(a?.reportDate || '') || 0) - new Date(sanitizeText(b?.reportDate || '') || 0);
       return 0;
     });
 
@@ -472,9 +480,9 @@ function ScamTrends() {
 
   const reorderedCategories = scamData?.scamCategories ? [...scamData.scamCategories] : [];
   if (reorderedCategories.length >= 24) {
-    const threatScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat.name) === 'Threat Scams');
-    const qrCodeScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat.name) === 'QR Code Scams');
-    const subscriptionScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat.name) === 'Subscription Scams');
+    const threatScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'Threat Scams');
+    const qrCodeScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'QR Code Scams');
+    const subscriptionScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'Subscription Scams');
 
     const threatScam = reorderedCategories[threatScamIndex];
     const qrCodeScam = reorderedCategories[qrCodeScamIndex];
@@ -592,10 +600,10 @@ function ScamTrends() {
             />
             <div className="-mt-4">
               <h1 className="text-3xl md:text-4xl font-bold mb-2 text-[#002E5D] font-inter">
-                {sanitizeText(scamData?.hero.title) || 'Scam Trends'}
+                {sanitizeText(scamData?.hero?.title || '') || 'Scam Trends'}
               </h1>
               <p className="text-lg text-gray-600 max-w-2xl mx-auto font-inter">
-                {sanitizeText(scamData?.hero.subtitle) || 'Stay informed about the latest scams.'}
+                {sanitizeText(scamData?.hero?.subtitle || '') || 'Stay informed about the latest scams.'}
               </p>
             </div>
           </section>
@@ -612,11 +620,11 @@ function ScamTrends() {
                 </span>
                 {scamOfTheWeek?.type && (
                   <span className="inline-flex items-center bg-cyan-200 text-cyan-900 text-xs font-semibold px-2 py-1 rounded-full pill-shadow">
-                    {sanitizeText(scamOfTheWeek.type)}
+                    {sanitizeText(scamOfTheWeek?.type || '')}
                   </span>
                 )}
               </div>
-              <h3 className="text-lg font-medium text-[#002E5D] mb-2 font-inter">{sanitizeText(scamOfTheWeek?.name) || 'N/A'}</h3>
+              <h3 className="text-lg font-medium text-[#002E5D] mb-2 font-inter">{sanitizeText(scamOfTheWeek?.name || '') || 'N/A'}</h3>
               <div
                 className="text-sm text-gray-600 dark:text-slate-300 mb-4 font-inter scam-content"
                 dangerouslySetInnerHTML={{ __html: scamOfTheWeek?.description || 'No description provided.' }}
@@ -660,15 +668,15 @@ function ScamTrends() {
                     {pastScams.length > 0 ? (
                       pastScams.map((pastScam, idx) => (
                         <div key={idx} className="bg-slate-100 dark:bg-slate-700 p-4 rounded-lg">
-                          <h4 className="text-md font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(pastScam.name) || 'N/A'}</h4>
+                          <h4 className="text-md font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(pastScam?.name || '') || 'N/A'}</h4>
                           <div
                             className="text-sm text-gray-600 dark:text-slate-300 font-inter scam-content"
-                            dangerouslySetInnerHTML={{ __html: pastScam.description || 'No description provided.' }}
+                            dangerouslySetInnerHTML={{ __html: pastScam?.description || 'No description provided.' }}
                           />
                           <div className="mt-2">
-                            <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{pastScam.headings?.redFlags || 'Red Flags'}</h5>
+                            <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{pastScam?.headings?.redFlags || 'Red Flags'}</h5>
                             <div className="flex flex-wrap gap-2">
-                              {pastScam.redFlags?.length > 0 ? (
+                              {pastScam?.redFlags?.length > 0 ? (
                                 pastScam.redFlags.map((flag, flagIdx) => (
                                   <span key={flagIdx} className="bg-red-200 text-red-800 text-xs font-medium rounded-full px-3 py-1 pill-shadow">
                                     <ExclamationCircleIcon className="w-4 h-4 inline mr-1" /> {sanitizeText(flag)}
@@ -679,9 +687,9 @@ function ScamTrends() {
                               )}
                             </div>
                           </div>
-                          {pastScam.action && (
+                          {pastScam?.action && (
                             <div className="mt-2">
-                              <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{pastScam.headings?.action || 'What to Do'}</h5>
+                              <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{pastScam?.headings?.action || 'What to Do'}</h5>
                               <div
                                 className="text-sm text-gray-600 dark:text-slate-300 font-inter scam-content"
                                 dangerouslySetInnerHTML={{ __html: pastScam.action }}
@@ -689,7 +697,7 @@ function ScamTrends() {
                             </div>
                           )}
                           <p className="text-xs text-gray-500 dark:text-slate-400 font-inter mt-1">
-                            Reported: {pastScam.reportDate ? new Date(sanitizeText(pastScam.reportDate)).toLocaleDateString() : 'N/A'}
+                            Reported: {pastScam?.reportDate ? new Date(sanitizeText(pastScam.reportDate)).toLocaleDateString() : 'N/A'}
                           </p>
                         </div>
                       ))
@@ -745,7 +753,7 @@ function ScamTrends() {
             <div>
               <div className="scam-row">
                 {reorderedCategories.slice(0, 8).map((category, idx) => {
-                  const Icon = scamCategoryIcons[sanitizeText(category.name)] || ShieldExclamationIcon;
+                  const Icon = scamCategoryIcons[sanitizeText(category?.name || '')] || ShieldExclamationIcon;
                   return (
                     <div
                       key={idx}
@@ -754,7 +762,7 @@ function ScamTrends() {
                     >
                       <div className="flex flex-col items-center">
                         <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category.name)}</span>
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category?.name || '')}</span>
                       </div>
                     </div>
                   );
@@ -762,7 +770,7 @@ function ScamTrends() {
               </div>
               <div className="scam-row">
                 {reorderedCategories.slice(8, 16).map((category, idx) => {
-                  const Icon = scamCategoryIcons[sanitizeText(category.name)] || ShieldExclamationIcon;
+                  const Icon = scamCategoryIcons[sanitizeText(category?.name || '')] || ShieldExclamationIcon;
                   return (
                     <div
                       key={idx + 8}
@@ -771,7 +779,7 @@ function ScamTrends() {
                     >
                       <div className="flex flex-col items-center">
                         <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category.name)}</span>
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category?.name || '')}</span>
                       </div>
                     </div>
                   );
@@ -779,7 +787,7 @@ function ScamTrends() {
               </div>
               <div className="scam-row">
                 {reorderedCategories.slice(16, 24).map((category, idx) => {
-                  const Icon = scamCategoryIcons[sanitizeText(category.name)] || ShieldExclamationIcon;
+                  const Icon = scamCategoryIcons[sanitizeText(category?.name || '')] || ShieldExclamationIcon;
                   return (
                     <div
                       key={idx + 16}
@@ -788,7 +796,7 @@ function ScamTrends() {
                     >
                       <div className="flex flex-col items-center">
                         <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category.name)}</span>
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category?.name || '')}</span>
                       </div>
                     </div>
                   );
@@ -817,8 +825,8 @@ function ScamTrends() {
               >
                 <option value="All">All Types</option>
                 {scamData?.scamCategories?.map((category) => (
-                  <option key={category.name} value={sanitizeText(category.name).split(' ')[0]}>
-                    {sanitizeText(category.name)}
+                  <option key={category?.name || ''} value={sanitizeText(category?.name || '').split(' ')[0]}>
+                    {sanitizeText(category?.name || '')}
                   </option>
                 ))}
               </select>
@@ -837,13 +845,13 @@ function ScamTrends() {
                   <div key={idx} className="card-glow dark:from-slate-800 dark:to-slate-900 rounded-2xl overflow-hidden">
                     <div className="bg-[#002E5D] text-white text-sm font-semibold px-4 py-2 font-inter">Reported Scam</div>
                     <div className="px-6 py-4 space-y-3">
-                      <h3 className="text-lg font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(report.name || report.type || 'Unknown')}</h3>
+                      <h3 className="text-lg font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(report?.name || report?.type || 'Unknown')}</h3>
                       <div
                         className="text-sm text-gray-600 dark:text-slate-300 font-inter scam-content"
-                        dangerouslySetInnerHTML={{ __html: report.description || 'No description provided.' }}
+                        dangerouslySetInnerHTML={{ __html: report?.description || 'No description provided.' }}
                       />
                       <div className="flex flex-wrap gap-2">
-                        {report.redFlags?.map((flag, flagIdx) => (
+                        {report?.redFlags?.map((flag, flagIdx) => (
                           <span
                             key={flagIdx}
                             className="bg-red-200 text-red-800 text-xs font-medium rounded-full px-3 py-1 pill-shadow"
@@ -852,9 +860,9 @@ function ScamTrends() {
                           </span>
                         )) || <span className="text-sm text-gray-600 dark:text-slate-400">No red flags listed.</span>}
                       </div>
-                      {report.action && (
+                      {report?.action && (
                         <div>
-                          <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{report.headings?.action || 'What to Do'}</h5>
+                          <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{report?.headings?.action || 'What to Do'}</h5>
                           <div
                             className="text-sm text-gray-600 dark:text-slate-300 font-inter scam-content"
                             dangerouslySetInnerHTML={{ __html: report.action }}
@@ -862,15 +870,15 @@ function ScamTrends() {
                         </div>
                       )}
                       <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                        Reported: {report.reportDate ? new Date(sanitizeText(report.reportDate)).toLocaleDateString() : 'N/A'}
+                        Reported: {report?.reportDate ? new Date(sanitizeText(report.reportDate)).toLocaleDateString() : 'N/A'}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                        Source: {sanitizeText(report.source) || 'N/A'}
+                        Source: {sanitizeText(report?.source || '') || 'N/A'}
                       </p>
                       <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                        Status: {sanitizeText(report.status) || 'N/A'}
+                        Status: {sanitizeText(report?.status || '') || 'N/A'}
                       </p>
-                      {report.url && (
+                      {report?.url && (
                         <a
                           href={sanitizeText(report.url)}
                           target="_blank"
@@ -993,7 +1001,7 @@ function ScamTrends() {
                 className="bg-white dark:bg-slate-800 rounded-2xl p-6 max-w-2xl w-full mx-4 max-h-[80vh] overflow-y-auto scrollbar-thin"
               >
                 <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(selectedScam.name)}</h3>
+                  <h3 className="text-xl font-semibold text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(selectedScam?.name || '')}</h3>
                   <button
                     onClick={() => setSelectedScam(null)}
                     className="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300"
@@ -1003,29 +1011,29 @@ function ScamTrends() {
                 </div>
                 <div
                   className="text-sm text-gray-600 dark:text-slate-300 font-inter mb-4 scam-content"
-                  dangerouslySetInnerHTML={{ __html: selectedScam.description || 'No description provided.' }}
+                  dangerouslySetInnerHTML={{ __html: selectedScam?.description || 'No description provided.' }}
                 />
                 <div className="space-y-4">
                   <div>
-                    <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{selectedScam.headings?.redFlags || 'Red Flags'}</h5>
+                    <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{selectedScam?.headings?.redFlags || 'Red Flags'}</h5>
                     <div className="flex flex-wrap gap-2">
-                      {selectedScam.redFlags?.map((flag, idx) => (
+                      {selectedScam?.redFlags?.map((flag, idx) => (
                         <span key={idx} className="bg-red-200 text-red-800 text-xs font-medium rounded-full px-3 py-1 pill-shadow">
                           <ExclamationCircleIcon className="w-4 h-4 inline mr-1" /> {sanitizeText(flag)}
                         </span>
                       )) || <span className="text-sm text-gray-600 dark:text-slate-400">No red flags listed.</span>}
                     </div>
                   </div>
-                  {selectedScam.action && (
+                  {selectedScam?.action && (
                     <div>
-                      <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{selectedScam.headings?.action || 'What to Do'}</h5>
+                      <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">{selectedScam?.headings?.action || 'What to Do'}</h5>
                       <div
                         className="text-sm text-gray-600 dark:text-slate-300 font-inter scam-content"
                         dangerouslySetInnerHTML={{ __html: selectedScam.action }}
                       />
                     </div>
                   )}
-                  {selectedScam.url && (
+                  {selectedScam?.url && (
                     <div>
                       <h5 className="font-medium text-sm text-gray-800 dark:text-gray-200 mb-2 font-inter">Related Link</h5>
                       <a
@@ -1039,10 +1047,10 @@ function ScamTrends() {
                     </div>
                   )}
                   <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">
-                    Reported: {selectedScam.reportDate ? new Date(sanitizeText(selectedScam.reportDate)).toLocaleDateString() : 'N/A'}
+                    Reported: {selectedScam?.reportDate ? new Date(sanitizeText(selectedScam.reportDate)).toLocaleDateString() : 'N/A'}
                   </p>
-                  {selectedScam.status && (
-                    <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">Status: {sanitizeText(selectedScam.status)}</p>
+                  {selectedScam?.status && (
+                    <p className="text-xs text-gray-500 dark:text-slate-400 font-inter">Status: {sanitizeText(selectedScam?.status || '')}</p>
                   )}
                 </div>
               </div>
