@@ -480,21 +480,30 @@ function ScamTrends() {
 
   const reorderedCategories = scamData?.scamCategories ? [...scamData.scamCategories] : [];
   if (reorderedCategories.length >= 24) {
+    // Find indices
     const threatScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'Threat Scams');
     const qrCodeScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'QR Code Scams');
     const subscriptionScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'Subscription Scams');
+    const rentalScamIndex = reorderedCategories.findIndex(cat => sanitizeText(cat?.name || '') === 'Rental Scams');
 
-    const threatScam = reorderedCategories[threatScamIndex];
-    const qrCodeScam = reorderedCategories[qrCodeScamIndex];
-    const subscriptionScam = reorderedCategories[subscriptionScamIndex];
+    // Store categories
+    const threatScam = threatScamIndex !== -1 ? reorderedCategories[threatScamIndex] : null;
+    const qrCodeScam = qrCodeScamIndex !== -1 ? reorderedCategories[qrCodeScamIndex] : null;
+    const subscriptionScam = subscriptionScamIndex !== -1 ? reorderedCategories[subscriptionScamIndex] : null;
+    const rentalScam = rentalScamIndex !== -1 ? reorderedCategories[rentalScamIndex] : null;
 
-    reorderedCategories.splice(threatScamIndex, 1);
-    reorderedCategories.splice(qrCodeScamIndex > threatScamIndex ? qrCodeScamIndex - 1 : qrCodeScamIndex, 1);
-    reorderedCategories.splice(subscriptionScamIndex > Math.min(threatScamIndex, qrCodeScamIndex) ? subscriptionScamIndex - 2 : subscriptionScamIndex, 1);
+    // Remove categories (in reverse order to avoid index issues)
+    const indicesToRemove = [threatScamIndex, qrCodeScamIndex, subscriptionScamIndex, rentalScamIndex].filter(i => i !== -1).sort((a, b) => b - a);
+    indicesToRemove.forEach(index => reorderedCategories.splice(index, 1));
 
-    reorderedCategories.splice(7, 0, threatScam);
-    reorderedCategories.splice(15, 0, qrCodeScam);
-    reorderedCategories.splice(16, 0, subscriptionScam);
+    // Insert categories at desired positions
+    if (threatScam) reorderedCategories.splice(7, 0, threatScam);
+    if (qrCodeScam) reorderedCategories.splice(15, 0, qrCodeScam);
+    if (subscriptionScam) reorderedCategories.splice(16, 0, subscriptionScam);
+    if (rentalScam) reorderedCategories.splice(17, 0, rentalScam);
+
+    // Debug log
+    console.log('Reordered Categories:', reorderedCategories.map(cat => sanitizeText(cat?.name || '')));
   }
 
   useEffect(() => {
@@ -569,6 +578,18 @@ function ScamTrends() {
         display: flex;
         justify-content: space-between;
         margin-bottom: 2rem;
+      }
+      @media (max-width: 639px) {
+        .scam-row {
+          flex-wrap: wrap;
+          justify-content: center;
+          gap: 1rem;
+        }
+        .circle-card {
+          width: 100px;
+          height: 100px;
+          min-width: 90px;
+        }
       }
       .scam-content p {
         margin: 0.5em 0;
@@ -754,6 +775,7 @@ function ScamTrends() {
               <div className="scam-row">
                 {reorderedCategories.slice(0, 8).map((category, idx) => {
                   const Icon = scamCategoryIcons[sanitizeText(category?.name || '')] || ShieldExclamationIcon;
+                  console.log(`Card ${idx}: ${sanitizeText(category?.name || '')}`); // Debug log
                   return (
                     <div
                       key={idx}
@@ -762,7 +784,9 @@ function ScamTrends() {
                     >
                       <div className="flex flex-col items-center">
                         <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category?.name || '')}</span>
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">
+                          {sanitizeText(category?.name || 'Unknown')}
+                        </span>
                       </div>
                     </div>
                   );
@@ -771,6 +795,7 @@ function ScamTrends() {
               <div className="scam-row">
                 {reorderedCategories.slice(8, 16).map((category, idx) => {
                   const Icon = scamCategoryIcons[sanitizeText(category?.name || '')] || ShieldExclamationIcon;
+                  console.log(`Card ${idx + 8}: ${sanitizeText(category?.name || '')}`); // Debug log
                   return (
                     <div
                       key={idx + 8}
@@ -779,7 +804,9 @@ function ScamTrends() {
                     >
                       <div className="flex flex-col items-center">
                         <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category?.name || '')}</span>
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">
+                          {sanitizeText(category?.name || 'Unknown')}
+                        </span>
                       </div>
                     </div>
                   );
@@ -788,6 +815,7 @@ function ScamTrends() {
               <div className="scam-row">
                 {reorderedCategories.slice(16, 24).map((category, idx) => {
                   const Icon = scamCategoryIcons[sanitizeText(category?.name || '')] || ShieldExclamationIcon;
+                  console.log(`Card ${idx + 16}: ${sanitizeText(category?.name || '')}`); // Debug log
                   return (
                     <div
                       key={idx + 16}
@@ -796,7 +824,9 @@ function ScamTrends() {
                     >
                       <div className="flex flex-col items-center">
                         <Icon className="w-8 h-8 text-cyan-700 mb-2" />
-                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">{sanitizeText(category?.name || '')}</span>
+                        <span className="text-sm font-medium text-[#002E5D] dark:text-gray-100 font-inter">
+                          {sanitizeText(category?.name || 'Unknown')}
+                        </span>
                       </div>
                     </div>
                   );
