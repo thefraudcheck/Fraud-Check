@@ -62,6 +62,16 @@ const initialAdviceData = {
   },
   categories: [],
   tipArchive: [],
+  faq: [
+    {
+      question: 'How can I protect my personal information online?',
+      answer: '<p>Use strong, unique passwords, enable two-factor authentication, and avoid sharing sensitive information on unsecured websites. Check our tips above for more details.</p>',
+    },
+    {
+      question: 'What should I do if I suspect a scam?',
+      answer: '<p>Do not engage with the scammer, report the incident to the relevant authorities, and review our advice on recognizing scam signs.</p>',
+    },
+  ],
 };
 
 // Function to render icons dynamically
@@ -76,12 +86,23 @@ const validateData = (data) => {
     console.warn('Data validation failed: Data is null or not an object');
     return false;
   }
-  if (!data.tipOfTheWeek || !data.categories || !data.tipArchive) {
-    console.warn('Data validation failed: Missing tipOfTheWeek, categories, or tipArchive');
+  if (!data.tipOfTheWeek || !data.categories || !data.tipArchive || !data.faq) {
+    console.warn('Data validation failed: Missing tipOfTheWeek, categories, tipArchive, or faq');
     return false;
   }
-  if (!Array.isArray(data.categories) || !Array.isArray(data.tipArchive)) {
-    console.warn('Data validation failed: categories or tipArchive is not an array');
+  if (!Array.isArray(data.categories) || !Array.isArray(data.tipArchive) || !Array.isArray(data.faq)) {
+    console.warn('Data validation failed: categories, tipArchive, or faq is not an array');
+    return false;
+  }
+  const faqValid = data.faq.every(
+    (faqItem) =>
+      faqItem &&
+      typeof faqItem === 'object' &&
+      typeof faqItem.question === 'string' &&
+      typeof faqItem.answer === 'string'
+  );
+  if (!faqValid) {
+    console.warn('Data validation failed: Invalid FAQ structure');
     return false;
   }
   return data.categories.every((cat, index) => {
@@ -114,6 +135,7 @@ const validateData = (data) => {
 function Advice() {
   const [categories, setCategories] = useState([]);
   const [tipOfTheWeek, setTipOfTheWeek] = useState({});
+  const [faq, setFaq] = useState([]);
   const [selectedTip, setSelectedTip] = useState(null);
   const [expandedCategories, setExpandedCategories] = useState({});
   const [searchQuery, setSearchQuery] = useState('');
@@ -148,6 +170,7 @@ function Advice() {
         console.log('Advice data fetched successfully from Supabase:', adviceResponse.data);
         setCategories(adviceResponse.data.categories);
         setTipOfTheWeek(adviceResponse.data.tipOfTheWeek);
+        setFaq(adviceResponse.data.faq);
 
         setContent(
           contentResponse.data || {
@@ -159,6 +182,7 @@ function Advice() {
         console.error('Fetch Error:', err);
         setCategories(initialAdviceData.categories);
         setTipOfTheWeek(initialAdviceData.tipOfTheWeek);
+        setFaq(initialAdviceData.faq);
         setContent({
           footerAbout: 'Fraud Check is your free tool for staying safe online. Built by fraud experts to help real people avoid modern scams.',
           footerCopyright: '© 2025 Fraud Check. All rights reserved.',
@@ -412,22 +436,16 @@ function Advice() {
           </h2>
           <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 border border-gray-200 dark:border-slate-700">
             <div className="space-y-6">
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
-                  How can I protect my personal information online?
-                </h3>
-                <p className="text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter">
-                  Use strong, unique passwords, enable two-factor authentication, and avoid sharing sensitive information on unsecured websites. Check our tips above for more details.
-                </p>
-              </div>
-              <div>
-                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
-                  What should I do if I suspect a scam?
-                </h3>
-                <p className="text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter">
-                  Do not engage with the scammer, report the incident to the relevant authorities, and review our advice on recognizing scam signs.
-                </p>
-              </div>
+              {faq.map((faqItem, idx) => (
+                <div key={idx}>
+                  <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
+                    {faqItem.question}
+                  </h3>
+                  <div className="prose text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter">
+                    <div dangerouslySetInnerHTML={{ __html: faqItem.answer || '' }} />
+                  </div>
+                </div>
+              ))}
             </div>
           </div>
         </section>
