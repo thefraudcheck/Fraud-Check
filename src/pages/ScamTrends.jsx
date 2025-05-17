@@ -957,7 +957,7 @@ function ScamTrends() {
                     id="scam-name"
                     type="text"
                     value={newScamReport.name}
-                    onChange={(e) => setNewScamReport({ ...newScamReport, name: sanitizeText(e.target.value) })}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, name: e.target.value })}
                     placeholder="e.g., Fake PayPal Invoice"
                     className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
                   />
@@ -969,7 +969,7 @@ function ScamTrends() {
                   <textarea
                     id="scam-description"
                     value={newScamReport.description}
-                    onChange={(e) => setNewScamReport({ ...newScamReport, description: sanitizeText(e.target.value) })}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, description: e.target.value })}
                     placeholder="Describe the scam in detail..."
                     rows={4}
                     className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
@@ -983,7 +983,7 @@ function ScamTrends() {
                     id="scam-red-flags"
                     type="text"
                     value={newScamReport.redFlags}
-                    onChange={(e) => setNewScamReport({ ...newScamReport, redFlags: sanitizeText(e.target.value) })}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, redFlags: e.target.value })}
                     placeholder="e.g., Unsolicited email, Suspicious link"
                     className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
                   />
@@ -996,7 +996,7 @@ function ScamTrends() {
                     id="scam-action"
                     type="text"
                     value={newScamReport.action}
-                    onChange={(e) => setNewScamReport({ ...newScamReport, action: sanitizeText(e.target.value) })}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, action: e.target.value })}
                     placeholder="e.g., Verify with official website"
                     className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
                   />
@@ -1009,7 +1009,7 @@ function ScamTrends() {
                     id="scam-url"
                     type="url"
                     value={newScamReport.url}
-                    onChange={(e) => setNewScamReport({ ...newScamReport, url: sanitizeText(e.target.value) })}
+                    onChange={(e) => setNewScamReport({ ...newScamReport, url: e.target.value })}
                     placeholder="e.g., https://www.example.com"
                     className="mt-1 w-full p-2 rounded-lg bg-white text-[#002E5D] border border-[#002E5D] font-inter"
                   />

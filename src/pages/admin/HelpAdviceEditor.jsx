@@ -23,6 +23,82 @@ import {
   TrashIcon,
   ChevronDownIcon,
   ChevronUpIcon,
+  BellIcon,
+  BoltIcon,
+  BugAntIcon,
+  CameraIcon,
+  ChartBarIcon,
+  ChatBubbleLeftIcon,
+  CloudIcon,
+  CogIcon,
+  CursorArrowRaysIcon,
+  DevicePhoneMobileIcon,
+  DocumentCheckIcon,
+  DocumentTextIcon,
+  EyeIcon,
+  EyeSlashIcon,
+  FingerPrintIcon,
+  FireIcon,
+  FlagIcon,
+  FolderIcon,
+  GlobeAltIcon,
+  HandRaisedIcon,
+  HomeIcon,
+  InboxIcon,
+  InformationCircleIcon,
+  LightBulbIcon,
+  LockOpenIcon,
+  MagnifyingGlassIcon,
+  MapPinIcon,
+  PaperClipIcon,
+  PencilIcon,
+  QuestionMarkCircleIcon,
+  RocketLaunchIcon,
+  ServerIcon,
+  SignalIcon,
+  SparklesIcon,
+  StarIcon,
+  TagIcon,
+  UserCircleIcon,
+  VideoCameraIcon,
+  WalletIcon,
+  WrenchIcon,
+  ArchiveBoxIcon,
+  ArrowPathIcon,
+  AtSymbolIcon,
+  BookmarkIcon,
+  BriefcaseIcon,
+  CalendarIcon,
+  ChatBubbleOvalLeftIcon,
+  CircleStackIcon,
+  ClockIcon,
+  CodeBracketIcon,
+  CubeTransparentIcon,
+  DeviceTabletIcon,
+  DocumentDuplicateIcon,
+  ExclamationCircleIcon,
+  FaceFrownIcon,
+  FaceSmileIcon,
+  FilmIcon,
+  GiftIcon,
+  HeartIcon,
+  NewspaperIcon,
+  NoSymbolIcon,
+  PaperAirplaneIcon,
+  PhotoIcon,
+  PuzzlePieceIcon,
+  QrCodeIcon,
+  ReceiptPercentIcon,
+  ScaleIcon,
+  ScissorsIcon,
+  ShareIcon,
+  SpeakerWaveIcon,
+  Square3Stack3DIcon,
+  TableCellsIcon,
+  TicketIcon,
+  UserGroupIcon,
+  VariableIcon,
+  XCircleIcon,
 } from '@heroicons/react/24/outline';
 import ReactQuill from 'react-quill';
 import 'react-quill/dist/quill.snow.css';
@@ -30,7 +106,6 @@ import { supabase } from '../../utils/supabase';
 import { debounce } from 'lodash';
 import { toast, Toaster } from 'react-hot-toast';
 
-// Icon options for dropdown
 const iconOptions = [
   { name: 'ExclamationTriangleIcon', component: <ExclamationTriangleIcon className="w-6 h-6 text-cyan-700" /> },
   { name: 'LockClosedIcon', component: <LockClosedIcon className="w-6 h-6 text-cyan-700" /> },
@@ -49,9 +124,84 @@ const iconOptions = [
   { name: 'ClipboardDocumentCheckIcon', component: <ClipboardDocumentCheckIcon className="w-6 h-6 text-cyan-700" /> },
   { name: 'BuildingLibraryIcon', component: <BuildingLibraryIcon className="w-6 h-6 text-cyan-700" /> },
   { name: 'ShieldExclamationIcon', component: <ShieldExclamationIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'BellIcon', component: <BellIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'BoltIcon', component: <BoltIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'BugAntIcon', component: <BugAntIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CameraIcon', component: <CameraIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ChartBarIcon', component: <ChartBarIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ChatBubbleLeftIcon', component: <ChatBubbleLeftIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CloudIcon', component: <CloudIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CogIcon', component: <CogIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CursorArrowRaysIcon', component: <CursorArrowRaysIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'DevicePhoneMobileIcon', component: <DevicePhoneMobileIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'DocumentCheckIcon', component: <DocumentCheckIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'DocumentTextIcon', component: <DocumentTextIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'EyeIcon', component: <EyeIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'EyeSlashIcon', component: <EyeSlashIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FingerPrintIcon', component: <FingerPrintIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FireIcon', component: <FireIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FlagIcon', component: <FlagIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FolderIcon', component: <FolderIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'GlobeAltIcon', component: <GlobeAltIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'HandRaisedIcon', component: <HandRaisedIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'HomeIcon', component: <HomeIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'InboxIcon', component: <InboxIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'InformationCircleIcon', component: <InformationCircleIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'LightBulbIcon', component: <LightBulbIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'LockOpenIcon', component: <LockOpenIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'MagnifyingGlassIcon', component: <MagnifyingGlassIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'MapPinIcon', component: <MapPinIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'PaperClipIcon', component: <PaperClipIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'PencilIcon', component: <PencilIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'QuestionMarkCircleIcon', component: <QuestionMarkCircleIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'RocketLaunchIcon', component: <RocketLaunchIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ServerIcon', component: <ServerIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'SignalIcon', component: <SignalIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'SparklesIcon', component: <SparklesIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'StarIcon', component: <StarIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'TagIcon', component: <TagIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'UserCircleIcon', component: <UserCircleIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'VideoCameraIcon', component: <VideoCameraIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'WalletIcon', component: <WalletIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'WrenchIcon', component: <WrenchIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ArchiveBoxIcon', component: <ArchiveBoxIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ArrowPathIcon', component: <ArrowPathIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'AtSymbolIcon', component: <AtSymbolIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'BookmarkIcon', component: <BookmarkIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'BriefcaseIcon', component: <BriefcaseIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CalendarIcon', component: <CalendarIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ChatBubbleOvalLeftIcon', component: <ChatBubbleOvalLeftIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CircleStackIcon', component: <CircleStackIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ClockIcon', component: <ClockIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CodeBracketIcon', component: <CodeBracketIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'CubeTransparentIcon', component: <CubeTransparentIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'DeviceTabletIcon', component: <DeviceTabletIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'DocumentDuplicateIcon', component: <DocumentDuplicateIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ExclamationCircleIcon', component: <ExclamationCircleIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FaceFrownIcon', component: <FaceFrownIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FaceSmileIcon', component: <FaceSmileIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'FilmIcon', component: <FilmIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'GiftIcon', component: <GiftIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'HeartIcon', component: <HeartIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'NewspaperIcon', component: <NewspaperIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'NoSymbolIcon', component: <NoSymbolIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'PaperAirplaneIcon', component: <PaperAirplaneIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'PhotoIcon', component: <PhotoIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'PuzzlePieceIcon', component: <PuzzlePieceIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'QrCodeIcon', component: <QrCodeIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ReceiptPercentIcon', component: <ReceiptPercentIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ScaleIcon', component: <ScaleIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ScissorsIcon', component: <ScissorsIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'ShareIcon', component: <ShareIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'SpeakerWaveIcon', component: <SpeakerWaveIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'Square3Stack3DIcon', component: <Square3Stack3DIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'TableCellsIcon', component: <TableCellsIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'TicketIcon', component: <TicketIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'UserGroupIcon', component: <UserGroupIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'VariableIcon', component: <VariableIcon className="w-6 h-6 text-cyan-700" /> },
+  { name: 'XCircleIcon', component: <XCircleIcon className="w-6 h-6 text-cyan-700" /> },
 ];
 
-// Quill editor configuration
 const quillModules = {
   toolbar: [
     [{ font: [] }],
@@ -83,17 +233,25 @@ const quillFormats = [
   'link',
 ];
 
-// Function to render icons dynamically
 const renderIcon = (iconName) => {
   const icon = iconOptions.find((opt) => opt.name === iconName);
   return icon ? icon.component : <ShieldCheckIcon className="w-6 h-6 text-cyan-700" />;
 };
 
-// Validate data structure
 const validateData = (data) => {
   if (!data || typeof data !== 'object') return false;
-  if (!data.tipOfTheWeek || !data.categories || !data.tipArchive) return false;
-  if (!Array.isArray(data.categories) || !Array.isArray(data.tipArchive)) return false;
+  if (!data.tipOfTheWeek || !data.categories || !data.tipArchive || !data.faq) return false;
+  if (!Array.isArray(data.categories) || !Array.isArray(data.tipArchive) || !Array.isArray(data.faq)) return false;
+  
+  const faqValid = data.faq.every(
+    (faqItem) =>
+      faqItem &&
+      typeof faqItem === 'object' &&
+      typeof faqItem.question === 'string' &&
+      typeof faqItem.answer === 'string'
+  );
+  if (!faqValid) return false;
+
   return data.categories.every(
     (cat) =>
       cat &&
@@ -128,9 +286,8 @@ function HelpAdviceEditor() {
   const [history, setHistory] = useState([]);
   const [historyIndex, setHistoryIndex] = useState(-1);
   const tipRefs = useRef({});
-  const hasFetched = useRef(false); // Prevent multiple fetches
+  const hasFetched = useRef(false);
 
-  // Templates for new content
   const newTipTemplate = useMemo(
     () => ({
       title: 'New Tip',
@@ -155,6 +312,14 @@ function HelpAdviceEditor() {
     [newTipTemplate]
   );
 
+  const newFaqTemplate = useMemo(
+    () => ({
+      question: 'New FAQ Question',
+      answer: '<p>Enter the answer here.</p>',
+    }),
+    []
+  );
+
   const initialData = useMemo(
     () => ({
       tipOfTheWeek: {
@@ -172,11 +337,20 @@ function HelpAdviceEditor() {
       },
       tipArchive: [],
       categories: [newCategoryTemplate],
+      faq: [
+        {
+          question: 'How can I protect my personal information online?',
+          answer: '<p>Use strong, unique passwords, enable two-factor authentication, and avoid sharing sensitive information on unsecured websites. Check our tips above for more details.</p>',
+        },
+        {
+          question: 'What should I do if I suspect a scam?',
+          answer: '<p>Do not engage with the scammer, report the incident to the relevant authorities, and review our advice on recognizing scam signs.</p>',
+        },
+      ],
     }),
     [newCategoryTemplate]
   );
 
-  // Fetch data from Supabase only once
   useEffect(() => {
     if (hasFetched.current) return;
     hasFetched.current = true;
@@ -218,7 +392,6 @@ function HelpAdviceEditor() {
     fetchData();
   }, [initialData]);
 
-  // Auto-save with debounce
   const debouncedSave = useMemo(
     () =>
       debounce(async (newData) => {
@@ -243,7 +416,6 @@ function HelpAdviceEditor() {
     []
   );
 
-  // Update data and history
   const updateData = (newData) => {
     if (!validateData(newData)) {
       toast.error('Invalid data structure, cannot update.');
@@ -257,7 +429,6 @@ function HelpAdviceEditor() {
     debouncedSave(newData);
   };
 
-  // Undo/Redo
   const undo = () => {
     if (historyIndex <= 0) return;
     const prevIndex = historyIndex - 1;
@@ -274,14 +445,12 @@ function HelpAdviceEditor() {
     toast('Redo applied', { duration: 1500 });
   };
 
-  // Reset selectedCategory if it no longer exists
   useEffect(() => {
     if (selectedCategory && data && !data.categories.some((cat) => cat.category === selectedCategory)) {
       setSelectedCategory(null);
     }
   }, [data, selectedCategory]);
 
-  // Manual save
   const handleSave = async () => {
     setIsSaving(true);
     try {
@@ -313,7 +482,6 @@ function HelpAdviceEditor() {
     navigate('/admin/dashboard');
   };
 
-  // Tip of the Week Handlers
   const updateTipOfTheWeek = (field, value) => {
     updateData({
       ...data,
@@ -414,7 +582,6 @@ function HelpAdviceEditor() {
     toast.success('Tip deleted!');
   };
 
-  // Category/Tip Handlers
   const updateCategory = (categoryIndex, field, value) => {
     if (categoryIndex < 0 || categoryIndex >= data.categories.length) return;
     updateData({
@@ -574,6 +741,33 @@ function HelpAdviceEditor() {
     }));
   };
 
+  const updateFaq = (faqIndex, field, value) => {
+    if (faqIndex < 0 || faqIndex >= data.faq.length) return;
+    updateData({
+      ...data,
+      faq: data.faq.map((faqItem, idx) =>
+        idx === faqIndex ? { ...faqItem, [field]: value } : faqItem
+      ),
+    });
+  };
+
+  const addFaq = () => {
+    updateData({
+      ...data,
+      faq: [...data.faq, newFaqTemplate],
+    });
+    toast.success('New FAQ added!');
+  };
+
+  const removeFaq = (faqIndex) => {
+    if (faqIndex < 0 || faqIndex >= data.faq.length) return;
+    updateData({
+      ...data,
+      faq: data.faq.filter((_, idx) => idx !== faqIndex),
+    });
+    toast.success('FAQ removed!');
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50 dark:bg-slate-900">
@@ -674,7 +868,7 @@ function HelpAdviceEditor() {
               />
             </div>
             <div className="mb-4">
-              <label className="block text-sm font-medium text-gray-700 dark:text-grainitialDatay-300 mb-1 font-inter">
+              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
                 Link
               </label>
               <input
@@ -873,6 +1067,61 @@ function HelpAdviceEditor() {
           ) : (
             <p className="text-gray-600 dark:text-slate-300 font-inter">No archived tips.</p>
           )}
+        </section>
+
+        <section className="mb-8">
+          <h2 className="text-2xl font-semibold mb-4 font-inter">Frequently Asked Questions</h2>
+          <div className="bg-white dark:bg-slate-800 rounded-lg shadow-sm p-6">
+            <div className="flex justify-end mb-4">
+              <button
+                onClick={addFaq}
+                className="flex items-center gap-1 px-4 py-2 bg-gradient-to-r from-cyan-700 to-cyan-600 text-white rounded-lg font-medium hover:bg-cyan-500 transition-all duration-200 font-inter"
+              >
+                <PlusIcon className="w-4 h-4" /> Add FAQ
+              </button>
+            </div>
+            <div className="space-y-6">
+              {data.faq.map((faqItem, faqIdx) => (
+                <div key={faqIdx} className="border border-gray-200 dark:border-slate-600 rounded-lg p-4">
+                  <div className="flex justify-between items-center mb-2">
+                    <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
+                      FAQ #{faqIdx + 1}
+                    </h4>
+                    <button
+                      onClick={() => removeFaq(faqIdx)}
+                      className="p-2 text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-600"
+                    >
+                      <TrashIcon className="w-5 h-5" />
+                    </button>
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                      Question
+                    </label>
+                    <input
+                      type="text"
+                      value={faqItem.question || ''}
+                      onChange={(e) => updateFaq(faqIdx, 'question', e.target.value)}
+                      className="w-full p-2 border border-gray-300 dark:border-slate-600 rounded-lg bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100 focus:outline-none focus:ring-2 focus:ring-cyan-500 font-inter"
+                    />
+                  </div>
+                  <div className="mb-4">
+                    <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-1 font-inter">
+                      Answer
+                    </label>
+                    <ReactQuill
+                      theme="snow"
+                      value={faqItem.answer || ''}
+                      onChange={(value) => updateFaq(faqIdx, 'answer', value)}
+                      modules={quillModules}
+                      formats={quillFormats}
+                      className="bg-white dark:bg-slate-700 text-gray-900 dark:text-gray-100"
+                    />
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         </section>
 
         <section>

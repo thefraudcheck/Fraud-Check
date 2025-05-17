@@ -30,10 +30,9 @@ function Home() {
       { icon: 'exclamation-triangle', title: 'Instant Scam Checker', description: 'Answer a few questions and get an instant risk assessment, tailored to your situation.' },
     ],
     tipOfTheWeek: { title: '🛡️ Tip of the Week', text: 'Always verify before you trust. Scammers often pretend to be your bank, HMRC, or other trusted providers to create a false sense of urgency. Never act on unexpected messages alone — always use the company’s official website or app to verify what’s real.', whatToDo: ['Verify via official channels.', 'Report to Action Fraud.'], link: '/help-advice', icon: 'ShieldCheckIcon' },
-    whatToDoIf: [
-      { title: 'Been Scammed', preview: 'Act fast to report and mitigate damage if you’ve been defrauded.', whatToDo: ['Contact your bank within 24 hours to freeze funds or initiate a chargeback.', 'Report to Action Fraud online or call 0300 123 2040 with all evidence.', 'Change passwords and enable 2FA on affected accounts.'], icon: 'ExclamationTriangleIcon', link: '/help-advice#been-scammed' },
-      { title: 'Paid Wrong Person', preview: 'Steps to take if you’ve sent money to the wrong person.', whatToDo: ['Contact your bank immediately to attempt to reverse the transaction.', 'Provide transaction details to your bank.', 'Report to Action Fraud if fraudulent.'], icon: 'CreditCardIcon', link: '/help-advice#wrong-person' },
-      { title: 'Shared Bank Details', preview: 'Protect yourself if you’ve shared sensitive bank information.', whatToDo: ['Notify your bank immediately to secure your account.', 'Monitor your account for unauthorized transactions.', 'Change online banking passwords and enable 2FA.'], icon: 'KeyIcon', link: '/help-advice#shared-details' },
+    faq: [
+      { question: 'How can I protect my personal information online?', answer: 'Use strong, unique passwords, enable two-factor authentication, and avoid sharing sensitive information on unsecured websites. Check our tips above for more details.' },
+      { question: 'What should I do if I suspect a scam?', answer: 'Do not engage with the scammer, report the incident to the relevant authorities, and review our advice on recognizing scam signs.' },
     ],
   }), []);
 
@@ -42,7 +41,7 @@ function Home() {
   const [articles, setArticles] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [error, setError] = useState(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [isLoadingArticles, setIsLoadingArticles] = useState(true);
   const navigate = useNavigate();
   const location = useLocation();
@@ -50,30 +49,47 @@ function Home() {
   useEffect(() => {
     const fetchContent = async () => {
       try {
-        setIsLoading(true);
         const { data, error } = await supabase.from('home_content').select('*');
         if (error) throw new Error(`Supabase fetch error: ${error.message}`);
 
         const settingsRecord = data.find((record) => record.type === '__SETTINGS__');
         const keyFeatures = data.filter((record) => record.type === 'key_feature');
-        const whatToDoIf = data.filter((record) => record.type === 'what_to_do_if');
 
         const settings = settingsRecord ? settingsRecord.content : {};
-        setPageData({
+        setPageData((prevData) => ({
+          ...prevData,
           hero: { ...defaultPageData.hero, ...settings.hero, image: settings.hero?.image === '/assets/fraud-check-image.png' ? fraudCheckImage : settings.hero?.image || fraudCheckImage },
           keyFeatures: keyFeatures.length > 0 ? keyFeatures.map((feature) => ({ id: feature.id, ...feature.content })) : defaultPageData.keyFeatures,
           tipOfTheWeek: settings.tipOfTheWeek || defaultPageData.tipOfTheWeek,
-          whatToDoIf: whatToDoIf.length > 0 ? whatToDoIf.map((scenario) => ({ id: scenario.id, ...scenario.content })) : defaultPageData.whatToDoIf,
-        });
+        }));
       } catch (err) {
         console.error('Error fetching homepage content:', err);
         setError('Failed to load homepage content. Using defaults.');
-        setPageData(defaultPageData);
-      } finally {
-        setIsLoading(false);
       }
     };
+
+    const fetchFAQ = async () => {
+      try {
+        const { data, error } = await supabase
+          .from('help_advice')
+          .select('data')
+          .eq('id', 1)
+          .maybeSingle();
+        if (error) throw new Error(`Supabase FAQ fetch error: ${error.message}`);
+
+        const faqData = data?.data?.faq || defaultPageData.faq;
+        setPageData((prevData) => ({
+          ...prevData,
+          faq: faqData,
+        }));
+      } catch (err) {
+        console.error('Error fetching FAQ content:', err);
+        setError('Failed to load FAQ content. Using defaults.');
+      }
+    };
+
     fetchContent();
+    fetchFAQ();
   }, [defaultPageData]);
 
   useEffect(() => {
@@ -203,14 +219,6 @@ function Home() {
     ExclamationTriangleIcon: AlertTriangle,
   };
 
-  if (isLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
-        <p className="text-gray-900 dark:text-white font-inter">Loading...</p>
-      </div>
-    );
-  }
-
   return (
     <div className="min-h-screen bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
       <Header />
@@ -324,21 +332,20 @@ function Home() {
             </div>
           </div>
           <div className="bg-white dark:bg-gray-800 rounded-3xl shadow-md p-8 card-hover">
-            <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 mb-6 font-inter text-center">What To Do If…</h2>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-10">
-              {pageData.whatToDoIf.slice(0, 3).map((scenario, idx) => {
-                const Icon = iconMap[scenario.icon] || ShieldCheckIcon;
-                return (
-                  <div key={scenario.id || idx} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col items-center card-hover">
-                    <Icon className="w-8 h-8 text-cyan-700 dark:text-cyan-300 mb-3" aria-hidden="true" />
-                    <h3 className="text-base font-medium text-[#002E5D] dark:text-gray-100 mb-3 font-inter text-center">{scenario.title}</h3>
-                    <Link to={scenario.link} className="mt-auto bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label={`Learn what to do if ${scenario.title.toLowerCase()}`}>Learn More</Link>
-                  </div>
-                );
-              })}
+            <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-gray-100 mb-6 font-inter text-center">Frequently Asked Questions</h2>
+            <div className="grid grid-cols-1 gap-4 mb-10">
+              {pageData.faq.slice(0, 2).map((item, idx) => (
+                <div key={idx} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-4 flex flex-col card-hover">
+                  <h3 className="text-base font-medium text-[#002E5D] dark:text-gray-100 mb-3 font-inter">{item.question}</h3>
+                  <div
+                    className="text-sm text-gray-600 dark:text-gray-400 font-inter faq-content"
+                    dangerouslySetInnerHTML={{ __html: item.answer }}
+                  />
+                </div>
+              ))}
             </div>
             <div className="text-center">
-              <Link to="/help-advice" className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="See all scenarios">See All</Link>
+              <Link to="/help-advice" className="inline-block bg-gradient-to-r from-cyan-700 to-cyan-600 dark:from-cyan-600 dark:to-cyan-500 text-white px-4 py-2 rounded-full font-medium shadow-sm hover:bg-cyan-500 hover:shadow-md active:scale-95 transition-all duration-100 text-sm font-inter" aria-label="See all FAQs">See All</Link>
             </div>
           </div>
         </div>

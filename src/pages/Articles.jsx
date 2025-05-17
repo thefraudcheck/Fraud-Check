@@ -44,9 +44,19 @@ function Articles() {
   const [loading, setLoading] = useState(true);
   const [debugInfo, setDebugInfo] = useState({});
 
+  // Function to decode HTML entities (e.g., &amp; to &)
+  const decodeHtmlEntities = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    const textarea = document.createElement('textarea');
+    textarea.innerHTML = text;
+    return textarea.value;
+  };
+
   const stripHtmlTags = (text) => {
     if (!text) return '';
-    return text.replace(/<[^>]+>/g, '');
+    // First decode HTML entities, then strip tags
+    const decodedText = decodeHtmlEntities(text);
+    return decodedText.replace(/<[^>]+>/g, '');
   };
 
   useEffect(() => {
@@ -77,7 +87,7 @@ function Articles() {
         }
 
         const normalizedArticles = articlesData.map((article) => {
-          const cleanedSlug = (article.slug || '').replace(/<[^>]*>?/gm, '');
+          const cleanedSlug = stripHtmlTags(article.slug || ''); // Updated to use new stripHtmlTags
           const cardImages = (article.article_images || [])
             .filter((img) => img.image_type === 'card')
             .map((img) => ({
@@ -95,9 +105,9 @@ function Articles() {
           return {
             ...article,
             slug: cleanedSlug,
-            title: article.title || 'Untitled',
-            summary: article.summary || '',
-            content: article.content || '',
+            title: stripHtmlTags(article.title || 'Untitled'), // Updated to use new stripHtmlTags
+            summary: stripHtmlTags(article.summary || ''), // Updated to use new stripHtmlTags
+            content: stripHtmlTags(article.content || ''), // Updated to use new stripHtmlTags
             category: article.category || null,
             tags: Array.isArray(article.tags) ? article.tags : [],
             cardImages,

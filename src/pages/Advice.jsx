@@ -359,22 +359,34 @@ function Advice() {
                 </h3>
                 <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
                   {(expandedCategories[idx] ? category.tips : category.tips.slice(0, 3)).map((tip, tipIdx) => (
-                    <button
+                    <div
                       key={tipIdx}
-                      onClick={() => openTipModal(tip)}
-                      className="relative bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 flex items-start gap-4 border border-gray-200 dark:border-slate-700 card-hover transition-all duration-200 text-left"
+                      className="relative bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 border border-gray-200 dark:border-slate-700 card-hover transition-all duration-200 text-left"
                     >
                       <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/5 to-transparent opacity-0 hover:opacity-100 transition-opacity duration-200 rounded-3xl pointer-events-none"></div>
-                      {renderIcon(tip.icon, 'w-6 h-6 text-cyan-700')}
-                      <div>
-                        <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
-                          {tip.title}
-                        </h4>
-                        <div className="prose text-sm text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter">
-                          <div dangerouslySetInnerHTML={{ __html: tip.preview || '' }} />
-                        </div>
+                      <div className="flex flex-col flex-grow">
+                        <button
+                          onClick={() => openTipModal(tip)}
+                          className="text-left"
+                        >
+                          <div className="inline-flex items-center gap-2">
+                            {renderIcon(tip.icon, 'w-[1.125rem] h-[1.125rem] text-cyan-700')}
+                            <h4 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
+                              {tip.title}
+                            </h4>
+                          </div>
+                          <div className="prose text-sm text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter mt-2">
+                            <div dangerouslySetInnerHTML={{ __html: tip.preview || '' }} />
+                          </div>
+                        </button>
                       </div>
-                    </button>
+                      <div className="absolute bottom-2 left-2">
+                        <ArrowRightIcon
+                          onClick={() => openTipModal(tip)}
+                          className="w-5 h-5 text-cyan-700 dark:text-cyan-500 hover:text-cyan-500 dark:hover:text-cyan-300 cursor-pointer"
+                        />
+                      </div>
+                    </div>
                   ))}
                 </div>
                 {category.tips.length > 3 && (
@@ -392,6 +404,32 @@ function Advice() {
               No results found. Try a different search term.
             </p>
           )}
+        </section>
+
+        <section className="mt-8 animate-fadeIn">
+          <h2 className="text-2xl font-semibold text-[#002E5D] dark:text-white mb-4 font-inter">
+            Frequently Asked Questions
+          </h2>
+          <div className="bg-gradient-to-br from-white to-gray-50 dark:from-slate-800 dark:to-slate-900 rounded-3xl shadow-[0_6px_16px_rgba(0,0,0,0.05)] p-6 border border-gray-200 dark:border-slate-700">
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
+                  How can I protect my personal information online?
+                </h3>
+                <p className="text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter">
+                  Use strong, unique passwords, enable two-factor authentication, and avoid sharing sensitive information on unsecured websites. Check our tips above for more details.
+                </p>
+              </div>
+              <div>
+                <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 font-inter">
+                  What should I do if I suspect a scam?
+                </h3>
+                <p className="text-gray-600 dark:text-slate-300 font-weight-400 leading-relaxed font-inter">
+                  Do not engage with the scammer, report the incident to the relevant authorities, and review our advice on recognizing scam signs.
+                </p>
+              </div>
+            </div>
+          </div>
         </section>
 
         {selectedTip && (
