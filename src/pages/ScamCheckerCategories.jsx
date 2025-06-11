@@ -102,31 +102,43 @@ function ScamCheckerCategories() {
           opacity: 1;
         }
       }
-      .animate-slideIn {
+      .animate-slide-in {
         animation: slideIn 0.3s ease-out forwards;
       }
-      .animate-fadeIn {
+      .animate-fade-in {
         animation: fadeIn 0.3s ease-out forwards;
       }
       .pill-button {
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        padding: 0.75rem 1.25rem;
-        font-size: 1rem;
-        line-height: 1.5rem;
+        gap: 0.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        font-weight: 600;
+        line-height: 1.25rem;
         border-radius: 9999px;
-        white-space: normal;
-        word-break: break-word;
-        text-align: left;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
         max-width: 100%;
-        flex-wrap: wrap;
+        height: 2.5rem;
+        background: linear-gradient(to right, #0e7490, #0ea5e9);
+        color: white;
+        border: 1px solid #075985;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+      }
+      .pill-button > svg {
+        flex-shrink: 0;
+        width: 1rem;
+        height: 1rem;
       }
       @media (max-width: 767px) {
         .pill-button {
-          padding: 0.375rem 0.75rem;
+          white-space: normal;
+          height: auto;
           font-size: 0.75rem;
-          line-height: 1.25rem;
+          padding: 0.5rem 0.75rem;
         }
       }
     `;
@@ -413,22 +425,22 @@ function ScamCheckerCategories() {
               {messages.map((msg, index) => (
                 <div
                   key={index}
-                  className={`flex ${msg.sender === 'bot' ? 'justify-start items-start gap-x-3' : 'justify-end items-end gap-x-3'} animate-slideIn`}
+                  className={`flex ${msg.sender === 'bot' ? 'justify-start items-start gap-x-3' : 'justify-end items-end gap-x-3'} animate-slide-in`}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  {msg.sender === 'bot' && (
+                  {/* 
                     <img
                       src={botImage}
                       alt="Bot Avatar"
                       className="w-6 h-6 rounded-full shadow-sm flex-shrink-0 mt-1"
                     />
-                  )}
+                  */}
                   <div className={`flex flex-col ${msg.sender === 'bot' ? 'max-w-[80%]' : 'max-w-[80%]'}`}>
                     <div className={`flex ${msg.sender === 'bot' ? 'justify-start' : 'justify-end'} items-end`}>
                       {msg.sender === 'bot' ? (
                         <div className="flex flex-col">
                           {msg.text && (
-                            <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 py-2 rounded-xl shadow-sm border border-slate-600">
+                            <div className="bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-xl shadow-sm border border-cyan-800">
                               <p className="text-sm font-sans leading-relaxed">{msg.text}</p>
                             </div>
                           )}
@@ -438,7 +450,7 @@ function ScamCheckerCategories() {
                                 <button
                                   key={optIndex}
                                   onClick={() => handleOptionClick(opt.value)}
-                                  className="flex items-center gap-2 justify-start bg-gradient-to-r from-cyan-700 to-cyan-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-cyan-500 hover:shadow-lg transition-all duration-200 border border-cyan-800 pill-button"
+                                  className="flex items-center gap-2 justify-start text-sm font-semibold rounded-full transition-all duration-200 pill-button"
                                 >
                                   {opt.label}
                                 </button>
@@ -481,7 +493,7 @@ function ScamCheckerCategories() {
                                       <span className="text-red-600">❌</span> Red Flags Detected ({msg.resultData.redFlags.length})
                                     </button>
                                     {expandedSections.redFlags && (
-                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
+                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fade-in">
                                         {msg.resultData.redFlags.map((flag, i) => (
                                           <li key={i}>{flag}</li>
                                         ))}
@@ -498,7 +510,7 @@ function ScamCheckerCategories() {
                                       <span className="text-yellow-600">⚠️</span> Missed Best Practices ({msg.resultData.missedBestPractices.length})
                                     </button>
                                     {expandedSections.missedBestPractices && (
-                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
+                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fade-in">
                                         {msg.resultData.missedBestPractices.map((missed, i) => (
                                           <li key={i}>{missed}</li>
                                         ))}
@@ -515,7 +527,7 @@ function ScamCheckerCategories() {
                                       <span className="text-green-600">✅</span> Best Practices Followed ({msg.resultData.bestPractices.length})
                                     </button>
                                     {expandedSections.bestPractices && (
-                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
+                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fade-in">
                                         {msg.resultData.bestPractices.map((practice, i) => (
                                           <li key={i}>{practice}</li>
                                         ))}
@@ -557,13 +569,15 @@ function ScamCheckerCategories() {
                 </div>
               ))}
               {isTyping && (
-                <div className="flex justify-start items-start gap-x-3 animate-slideIn">
-                  <img
-                    src={botImage}
-                    alt="Bot Avatar"
-                    className="w-6 h-6 rounded-full shadow-sm flex-shrink-0 mt-1"
-                  />
-                  <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 py-2 rounded-xl shadow-sm border border-slate-600 max-w-[80%]">
+                <div className="flex justify-start items-start gap-x-3 animate-slide-in">
+                  {/* 
+                    <img
+                      src={botImage}
+                      alt="Bot Avatar"
+                      className="w-6 h-6 rounded-full shadow-sm flex-shrink-0 mt-1"
+                    />
+                  */}
+                  <div className="bg-gradient-to-r from-cyan-700 to-cyan-600 text-white px-4 py-2 rounded-xl shadow-sm border border-cyan-800 max-w-[80%]">
                     <div className="flex items-center space-x-1">
                       <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
                       <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
