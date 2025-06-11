@@ -109,18 +109,22 @@ function ScamCheckerCategories() {
         animation: fadeIn 0.3s ease-out forwards;
       }
       .pill-button {
+        display: inline-flex;
+        align-items: center;
+        justify-content: flex-start;
         min-width: 120px;
         max-width: 100%;
         word-break: break-word;
         white-space: normal;
-        text-align: left;
         padding: 0.5rem 1rem;
         line-height: 1.25rem;
+        font-size: 0.875rem;
+        text-align: left;
+        flex-wrap: wrap;
       }
       @media (max-width: 767px) {
         .pill-button {
-          min-width: 100px;
-          font-size: 0.875rem;
+          font-size: 0.75rem;
           padding: 0.5rem 0.75rem;
         }
       }
@@ -254,7 +258,7 @@ function ScamCheckerCategories() {
       }
 
       const previousOptions = flow[currentStep - 1]?.options || [];
-      const selectedOption = previousOptions.find((opt) => opt.value === value26value) || { label: 'Unknown Response' };
+      const selectedOption = previousOptions.find((opt) => opt.value === value) || { label: 'Unknown Response' };
       const userText = typeof selectedOption.label === 'string' ? selectedOption.label : value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       setAnswers((prev) => [...prev, value]);
@@ -387,12 +391,14 @@ function ScamCheckerCategories() {
     'Low Risk': { color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-600', text: 'text-gray-900' },
   };
 
+  ம
+
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
       <Header />
       <section className="flex-grow flex flex-col px-4 sm:px-6 py-8">
         <div className="w-full max-w-6xl mx-auto flex flex-col flex-grow">
-          <div className="bg-white dark:bg-slate-850 rounded-2xl 🍊xl shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col min-h-[800px] h-[85vh] w-full">
+          <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col min-h-[800px] h-[85vh] w-full">
             <div className="p-6 border-b border-gray-200 dark:border-slate-700 flex items-center gap-4 bg-white dark:bg-slate-850">
               <img
                 src={fraudCheckLogo}
