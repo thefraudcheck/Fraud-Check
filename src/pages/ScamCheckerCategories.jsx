@@ -112,20 +112,21 @@ function ScamCheckerCategories() {
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        min-width: 120px;
-        max-width: 100%;
-        word-break: break-word;
+        padding: 0.75rem 1.25rem;
+        font-size: 1rem;
+        line-height: 1.5rem;
+        border-radius: 9999px;
         white-space: normal;
-        padding: 0.5rem 1rem;
-        line-height: 1.25rem;
-        font-size: 0.875rem;
+        word-break: break-word;
         text-align: left;
+        max-width: 100%;
         flex-wrap: wrap;
       }
       @media (max-width: 767px) {
         .pill-button {
+          padding: 0.375rem 0.75rem;
           font-size: 0.75rem;
-          padding: 0.5rem 0.75rem;
+          line-height: 1.25rem;
         }
       }
     `;
