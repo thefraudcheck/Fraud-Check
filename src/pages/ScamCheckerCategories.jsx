@@ -108,6 +108,22 @@ function ScamCheckerCategories() {
       .animate-fadeIn {
         animation: fadeIn 0.3s ease-out forwards;
       }
+      .pill-button {
+        min-width: 120px;
+        max-width: 100%;
+        word-break: break-word;
+        white-space: normal;
+        text-align: left;
+        padding: 0.5rem 1rem;
+        line-height: 1.25rem;
+      }
+      @media (max-width: 767px) {
+        .pill-button {
+          min-width: 100px;
+          font-size: 0.875rem;
+          padding: 0.5rem 0.75rem;
+        }
+      }
     `;
     document.head.appendChild(styleElement);
 
@@ -417,7 +433,7 @@ function ScamCheckerCategories() {
                                 <button
                                   key={optIndex}
                                   onClick={() => handleOptionClick(opt.value)}
-                                  className="flex items-center gap-2 justify-start bg-gradient-to-r from-cyan-700 to-cyan-600 text-white text-sm font-semibold px-3 py-1.5 rounded-full shadow-md hover:bg-cyan-500 hover:shadow-lg transition-all duration-200 border border-cyan-800 whitespace-nowrap"
+                                  className="flex items-center gap-2 justify-start bg-gradient-to-r from-cyan-700 to-cyan-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-cyan-500 hover:shadow-lg transition-all duration-200 border border-cyan-800 pill-button"
                                 >
                                   {opt.label}
                                 </button>
@@ -444,13 +460,13 @@ function ScamCheckerCategories() {
                               </h3>
                               <ResultCard
                                 isScam={msg.resultData.riskLevel === 'High Risk'}
-                                message={msg.resultData.summary}
+                                message={msg.resultData}
                                 riskLevel={msg.resultData.riskLevel}
                                 redFlags={msg.resultData.redFlags}
                                 bestPractices={msg.resultData.bestPractices}
                                 missedBestPractices={msg.resultData.missedBestPractices}
                               />
-                              {msg.resultData.redFlags.length > 0 && (
+                              {msg.resultData.redFlags?.length > 0 && (
                                 <div className="mt-4 bg-red-100 dark:bg-red-900/20 p-3 rounded-md">
                                   <button
                                     onClick={() => toggleSection('redFlags')}
@@ -526,9 +542,8 @@ function ScamCheckerCategories() {
                           <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white px-4 py-2 rounded-xl shadow-sm border border-cyan-800">
                             <p className="text-sm font-sans leading-relaxed">{msg.text}</p>
                           </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mr-2 mt-1">{formatTimestamp(msg.timestamp)}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500 mr-2 mt-1">{formatTimestamp(msg)}</div>
                         </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -542,9 +557,9 @@ function ScamCheckerCategories() {
                   />
                   <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 py-2 rounded-xl shadow-sm border border-slate-600 max-w-[80%]">
                     <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 </div>
