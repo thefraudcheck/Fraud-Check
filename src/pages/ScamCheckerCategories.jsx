@@ -391,8 +391,6 @@ function ScamCheckerCategories() {
     'Low Risk': { color: 'text-green-600', bg: 'bg-green-50', border: 'border-green-600', text: 'text-gray-900' },
   };
 
-  ம
-
   return (
     <div className="min-h-screen flex flex-col bg-gradient-to-b from-[#e6f9fd] to-[#c8edf6] dark:bg-slate-900">
       <Header />
