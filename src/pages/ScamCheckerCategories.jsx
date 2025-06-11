@@ -112,21 +112,22 @@ function ScamCheckerCategories() {
         display: inline-flex;
         align-items: center;
         justify-content: flex-start;
-        padding: 0.75rem 1.25rem;
-        font-size: 1rem;
-        line-height: 1.5rem;
+        padding: 0.5rem 1rem;
+        font-size: 0.875rem;
+        line-height: 1.25rem;
         border-radius: 9999px;
         white-space: normal;
         word-break: break-word;
         text-align: left;
         max-width: 100%;
+        min-width: 100px;
         flex-wrap: wrap;
+        height: auto;
       }
       @media (max-width: 767px) {
         .pill-button {
           padding: 0.375rem 0.75rem;
           font-size: 0.75rem;
-          line-height: 1.25rem;
         }
       }
     `;
@@ -416,29 +417,29 @@ function ScamCheckerCategories() {
                   className={`flex ${msg.sender === 'bot' ? 'justify-start items-start gap-x-3' : 'justify-end items-end gap-x-3'} animate-slideIn`}
                   style={{ animationDelay: `${index * 0.1}s` }}
                 >
-                  {msg.sender === 'bot' && (
+                  {/* 
                     <img
                       src={botImage}
                       alt="Bot Avatar"
                       className="w-6 h-6 rounded-full shadow-sm flex-shrink-0 mt-1"
                     />
-                  )}
+                  */}
                   <div className={`flex flex-col ${msg.sender === 'bot' ? 'max-w-[80%]' : 'max-w-[80%]'}`}>
                     <div className={`flex ${msg.sender === 'bot' ? 'justify-start' : 'justify-end'} items-end`}>
                       {msg.sender === 'bot' ? (
                         <div className="flex flex-col">
                           {msg.text && (
-                            <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 py-2 rounded-xl shadow-sm border border-slate-600">
+                            <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white px-5 py-3 rounded-full shadow-md border border-blue-600">
                               <p className="text-sm font-sans leading-relaxed">{msg.text}</p>
                             </div>
                           )}
                           {msg.options && (
-                            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-2">
+                            <div className="mt-2 grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
                               {msg.options.map((opt, optIndex) => (
                                 <button
                                   key={optIndex}
                                   onClick={() => handleOptionClick(opt.value)}
-                                  className="flex items-center gap-2 justify-start bg-gradient-to-r from-cyan-700 to-cyan-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-cyan-500 hover:shadow-lg transition-all duration-200 border border-cyan-800 pill-button"
+                                  className="flex items-center gap-2 justify-start bg-gradient-to-r from-blue-500 to-blue-700 text-sm font-semibold text-white rounded-full shadow-md hover:bg-blue-400 hover:shadow-lg transition-all duration-200 border border-blue-600 pill-button"
                                 >
                                   {opt.label}
                                 </button>
@@ -546,7 +547,7 @@ function ScamCheckerCategories() {
                         </div>
                       ) : (
                         <div className="flex flex-col items-end">
-                          <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white px-4 py-2 rounded-xl shadow-sm border border-cyan-800">
+                          <div className="bg-gradient-to-r from-blue-600 to-blue-700 text-white px-5 py-3 rounded-full shadow-md border border-blue-600">
                             <p className="text-sm font-sans leading-relaxed">{msg.text}</p>
                           </div>
                           <div className="text-xs text-gray-400 dark:text-gray-500 mr-2 mt-1">{formatTimestamp(msg.timestamp)}</div>
@@ -558,16 +559,18 @@ function ScamCheckerCategories() {
               ))}
               {isTyping && (
                 <div className="flex justify-start items-start gap-x-3 animate-slideIn">
-                  <img
-                    src={botImage}
-                    alt="Bot Avatar"
-                    className="w-6 h-6 rounded-full shadow-sm flex-shrink-0 mt-1"
-                  />
-                  <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 py-2 rounded-xl shadow-sm border border-slate-600 max-w-[80%]">
+                  {/* 
+                    <img
+                      src={botImage}
+                      alt="Bot Avatar"
+                      className="w-6 h-6 rounded-full shadow-sm flex-shrink-0 mt-1"
+                    />
+                  */}
+                  <div className="bg-gradient-to-r from-blue-700 to-blue-600 text-white px-5 py-3 rounded-full shadow-md border border-blue-600 max-w-[80%]">
                     <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      <div className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                      <div className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-blue-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 </div>
@@ -586,7 +589,7 @@ function ScamCheckerCategories() {
               <p className="text-xs text-gray-500 dark:text-gray-400">Powered by Fraud Check</p>
               <button
                 onClick={handleReset}
-                className="bg-gradient-to-r from-cyan-700 to-cyan-600 text-white font-semibold text-sm px-6 py-2 rounded-full shadow-md hover:bg-cyan-500 hover:shadow-lg transition-all duration-200 border border-cyan-800"
+                className="bg-gradient-to-r from-blue-700 to-blue-600 text-white font-semibold text-sm px-6 py-2 rounded-full shadow-md hover:bg-blue-500 hover:shadow-lg transition-all duration-200 border border-blue-600"
               >
                 Restart Assessment
               </button>
