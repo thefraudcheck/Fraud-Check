@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, Fragment } from 'react';
 import paymentFlows from '../data/paymentFlows';
 import calculateRisk from '../utils/scamLogic';
 import Header from '../components/Header';
@@ -254,7 +254,7 @@ function ScamCheckerCategories() {
       }
 
       const previousOptions = flow[currentStep - 1]?.options || [];
-      const selectedOption = previousOptions.find((opt) => opt.value === value) || { label: 'Unknown Response' };
+      const selectedOption = previousOptions.find((opt) => opt.value === value26value) || { label: 'Unknown Response' };
       const userText = typeof selectedOption.label === 'string' ? selectedOption.label : value.replace(/-/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase());
 
       setAnswers((prev) => [...prev, value]);
@@ -392,7 +392,7 @@ function ScamCheckerCategories() {
       <Header />
       <section className="flex-grow flex flex-col px-4 sm:px-6 py-8">
         <div className="w-full max-w-6xl mx-auto flex flex-col flex-grow">
-          <div className="bg-white dark:bg-slate-850 rounded-2xl shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col min-h-[800px] h-[85vh] w-full">
+          <div className="bg-white dark:bg-slate-850 rounded-2xl 🍊xl shadow-lg border border-gray-200 dark:border-slate-700 flex flex-col min-h-[800px] h-[85vh] w-full">
             <div className="p-6 border-b border-gray-200 dark:border-slate-700 flex items-center gap-4 bg-white dark:bg-slate-850">
               <img
                 src={fraudCheckLogo}
@@ -454,86 +454,88 @@ function ScamCheckerCategories() {
                             </div>
                           )}
                           {msg.resultData && (
-                            <div className={`mt-3 p-4 rounded-xl ${riskStyles[msg.resultData.riskLevel].bg} border-l-4 ${riskStyles[msg.resultData.riskLevel].border} shadow-md`}>
-                              <h3 className={`text-lg font-semibold ${riskStyles[msg.resultData.riskLevel].color}`}>
-                                {msg.resultData.riskLevel}
-                              </h3>
-                              <ResultCard
-                                isScam={msg.resultData.riskLevel === 'High Risk'}
-                                message={msg.resultData}
-                                riskLevel={msg.resultData.riskLevel}
-                                redFlags={msg.resultData.redFlags}
-                                bestPractices={msg.resultData.bestPractices}
-                                missedBestPractices={msg.resultData.missedBestPractices}
-                              />
-                              {msg.resultData.redFlags?.length > 0 && (
-                                <div className="mt-4 bg-red-100 dark:bg-red-900/20 p-3 rounded-md">
-                                  <button
-                                    onClick={() => toggleSection('redFlags')}
-                                    className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400 hover:underline w-full"
-                                  >
-                                    <span className="text-red-600">❌</span> Red Flags Detected ({msg.resultData.redFlags.length})
-                                  </button>
-                                  {expandedSections.redFlags && (
-                                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
-                                      {msg.resultData.redFlags.map((flag, i) => (
-                                        <li key={i}>{flag}</li>
+                            <Fragment>
+                              <div className={`mt-3 p-4 rounded-xl ${riskStyles[msg.resultData.riskLevel].bg} border-l-4 ${riskStyles[msg.resultData.riskLevel].border} shadow-md`}>
+                                <h3 className={`text-lg font-semibold ${riskStyles[msg.resultData.riskLevel].color}`}>
+                                  {msg.resultData.riskLevel}
+                                </h3>
+                                <ResultCard
+                                  isScam={msg.resultData.riskLevel === 'High Risk'}
+                                  message={msg.resultData.summary}
+                                  riskLevel={msg.resultData.riskLevel}
+                                  redFlags={msg.resultData.redFlags}
+                                  bestPractices={msg.resultData.bestPractices}
+                                  missedBestPractices={msg.resultData.missedBestPractices}
+                                />
+                                {msg.resultData.redFlags.length > 0 && (
+                                  <div className="mt-4 bg-red-100 dark:bg-red-900/20 p-3 rounded-md">
+                                    <button
+                                      onClick={() => toggleSection('redFlags')}
+                                      className="flex items-center gap-2 text-sm font-medium text-red-700 dark:text-red-400 hover:underline w-full"
+                                    >
+                                      <span className="text-red-600">❌</span> Red Flags Detected ({msg.resultData.redFlags.length})
+                                    </button>
+                                    {expandedSections.redFlags && (
+                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
+                                        {msg.resultData.redFlags.map((flag, i) => (
+                                          <li key={i}>{flag}</li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
+                                {msg.resultData.missedBestPractices.length > 0 && (
+                                  <div className="mt-4 bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-md">
+                                    <button
+                                      onClick={() => toggleSection('missedBestPractices')}
+                                      className="flex items-center gap-2 text-sm font-medium text-yellow-700 dark:text-yellow-400 hover:underline w-full"
+                                    >
+                                      <span className="text-yellow-600">⚠️</span> Missed Best Practices ({msg.resultData.missedBestPractices.length})
+                                    </button>
+                                    {expandedSections.missedBestPractices && (
+                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
+                                        {msg.resultData.missedBestPractices.map((missed, i) => (
+                                          <li key={i}>{missed}</li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
+                                {msg.resultData.bestPractices.length > 0 && (
+                                  <div className="mt-4 bg-green-100 dark:bg-green-900/20 p-3 rounded-md">
+                                    <button
+                                      onClick={() => toggleSection('bestPractices')}
+                                      className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400 hover:underline w-full"
+                                    >
+                                      <span className="text-green-600">✅</span> Best Practices Followed ({msg.resultData.bestPractices.length})
+                                    </button>
+                                    {expandedSections.bestPractices && (
+                                      <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
+                                        {msg.resultData.bestPractices.map((practice, i) => (
+                                          <li key={i}>{practice}</li>
+                                        ))}
+                                      </ul>
+                                    )}
+                                  </div>
+                                )}
+                                {msg.resultData.patternSuggestions?.length > 0 && (
+                                  <div className="mt-4 bg-blue-100 dark:bg-blue-900/20 p-3 rounded-md">
+                                    <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
+                                      This situation may be related to another scam type:
+                                    </p>
+                                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">
+                                      {msg.resultData.patternSuggestions.map((suggestion, i) => (
+                                        <li key={i}>{suggestion}</li>
                                       ))}
                                     </ul>
-                                  )}
+                                  </div>
+                                )}
+                                <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
+                                  <p className="text-sm font-medium text-gray-700 dark:text-gray-300">What to Do Next:</p>
+                                  <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{msg.resultData.advice}</p>
                                 </div>
-                              )}
-                              {msg.resultData.missedBestPractices.length > 0 && (
-                                <div className="mt-4 bg-yellow-100 dark:bg-yellow-900/20 p-3 rounded-md">
-                                  <button
-                                    onClick={() => toggleSection('missedBestPractices')}
-                                    className="flex items-center gap-2 text-sm font-medium text-yellow-700 dark:text-yellow-400 hover:underline w-full"
-                                  >
-                                    <span className="text-yellow-600">⚠️</span> Missed Best Practices ({msg.resultData.missedBestPractices.length})
-                                  </button>
-                                  {expandedSections.missedBestPractices && (
-                                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
-                                      {msg.resultData.missedBestPractices.map((missed, i) => (
-                                        <li key={i}>{missed}</li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              )}
-                              {msg.resultData.bestPractices.length > 0 && (
-                                <div className="mt-4 bg-green-100 dark:bg-green-900/20 p-3 rounded-md">
-                                  <button
-                                    onClick={() => toggleSection('bestPractices')}
-                                    className="flex items-center gap-2 text-sm font-medium text-green-700 dark:text-green-400 hover:underline w-full"
-                                  >
-                                    <span className="text-green-600">✅</span> Best Practices Followed ({msg.resultData.bestPractices.length})
-                                  </button>
-                                  {expandedSections.bestPractices && (
-                                    <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1 animate-fadeIn">
-                                      {msg.resultData.bestPractices.map((practice, i) => (
-                                        <li key={i}>{practice}</li>
-                                      ))}
-                                    </ul>
-                                  )}
-                                </div>
-                              )}
-                              {msg.resultData.patternSuggestions?.length > 0 && (
-                                <div className="mt-4 bg-blue-100 dark:bg-blue-900/20 p-3 rounded-md">
-                                  <p className="text-sm font-medium text-blue-700 dark:text-blue-400">
-                                    This situation may be related to another scam type:
-                                  </p>
-                                  <ul className="list-disc list-inside text-sm text-gray-600 dark:text-gray-400 mt-1 space-y-1">
-                                    {msg.resultData.patternSuggestions.map((suggestion, i) => (
-                                      <li key={i}>{suggestion}</li>
-                                    ))}
-                                  </ul>
-                                </div>
-                              )}
-                              <div className="mt-4 p-3 bg-gray-100 dark:bg-gray-800 rounded-md">
-                                <p className="text-sm font-medium text-gray-700 dark:text-gray-300">What to Do Next:</p>
-                                <p className="text-sm text-gray-600 dark:text-gray-400 mt-1">{msg.resultData.advice}</p>
                               </div>
-                            </div>
+                            </Fragment>
                           )}
                           <div className="text-xs text-gray-400 dark:text-gray-500 ml-2 mt-1">{formatTimestamp(msg.timestamp)}</div>
                         </div>
@@ -542,8 +544,9 @@ function ScamCheckerCategories() {
                           <div className="bg-gradient-to-r from-cyan-600 to-cyan-700 text-white px-4 py-2 rounded-xl shadow-sm border border-cyan-800">
                             <p className="text-sm font-sans leading-relaxed">{msg.text}</p>
                           </div>
-                          <div className="text-xs text-gray-400 dark:text-gray-500 mr-2 mt-1">{formatTimestamp(msg)}</div>
+                          <div className="text-xs text-gray-400 dark:text-gray-500 mr-2 mt-1">{formatTimestamp(msg.timestamp)}</div>
                         </div>
+                      )}
                     </div>
                   </div>
                 </div>
@@ -557,9 +560,9 @@ function ScamCheckerCategories() {
                   />
                   <div className="bg-gradient-to-r from-slate-700 to-slate-800 text-white px-4 py-2 rounded-xl shadow-sm border border-slate-600 max-w-[80%]">
                     <div className="flex items-center space-x-1">
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                      <div className="w-2 h-2 bg-cyan-400 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
+                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0s' }}></div>
+                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
+                      <div className="w-2 h-2 bg-cyan-300 rounded-full animate-bounce" style={{ animationDelay: '0.4s' }}></div>
                     </div>
                   </div>
                 </div>
